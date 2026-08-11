@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eric Guan — Real Estate Year Plan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #1a1c1b;
+        --ink-soft: #3d4240;
+        --muted: #6b726e;
+        --line: #d9ddd8;
+        --paper: #f3f1ec;
+        --card: #ffffff;
+        --accent: #2f6f5e;
+        --accent-deep: #1f4d41;
+        --warm: #c4a574;
+        --warm-soft: #efe6d6;
+        --danger: #8a4b3a;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html,
+      body {
+        background: #111;
+        color: var(--ink);
+        font-family: Manrope, system-ui, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .deck {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding: 24px;
+        align-items: center;
+      }
+
+      .slide {
+        width: 1280px;
+        height: 720px;
+        background: var(--paper);
+        position: relative;
+        overflow: hidden;
+        page-break-after: always;
+        break-after: page;
+        flex-shrink: 0;
+      }
+
+      .slide::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(900px 420px at 100% 0%, rgba(196, 165, 116, 0.18), transparent 55%),
+          radial-gradient(700px 380px at 0% 100%, rgba(47, 111, 94, 0.12), transparent 50%),
+          linear-gradient(180deg, #f7f5f0 0%, #efece5 100%);
+        z-index: 0;
+      }
+
+      .slide > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .frame {
+        position: absolute;
+        inset: 28px;
+        border: 1px solid rgba(26, 28, 27, 0.08);
+        pointer-events: none;
+      }
+
+      .topline {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 36px 48px 0;
+        font-size: 13px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .footer {
+        position: absolute;
+        left: 48px;
+        right: 48px;
+        bottom: 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .content {
+        padding: 28px 48px 64px;
+        height: calc(100% - 70px);
+      }
+
+      h1 {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 600;
+        font-size: 64px;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        color: var(--ink);
+      }
+
+      h2 {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 600;
+        font-size: 42px;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        margin-bottom: 18px;
+      }
+
+      h3 {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 600;
+        font-size: 22px;
+        margin-bottom: 10px;
+      }
+
+      p,
+      li {
+        font-size: 18px;
+        line-height: 1.45;
+        color: var(--ink-soft);
+      }
+
+      .lede {
+        font-size: 22px;
+        max-width: 720px;
+        margin-top: 18px;
+        color: var(--ink-soft);
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 16px;
+      }
+
+      .grid-4 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        gap: 14px;
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(26, 28, 27, 0.08);
+        padding: 18px 20px;
+        backdrop-filter: blur(6px);
+      }
+
+      .card.accent {
+        background: var(--accent-deep);
+        color: #f4f7f5;
+        border-color: transparent;
+      }
+
+      .card.accent p,
+      .card.accent li,
+      .card.accent h3 {
+        color: #f4f7f5;
+      }
+
+      .card.warm {
+        background: var(--warm-soft);
+        border-color: rgba(196, 165, 116, 0.35);
+      }
+
+      .tag {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 8px;
+      }
+
+      .card.accent .tag {
+        color: var(--warm);
+      }
+
+      ul {
+        list-style: none;
+        display: grid;
+        gap: 8px;
+      }
+
+      ul.compact {
+        gap: 6px;
+      }
+
+      ul.compact li {
+        font-size: 16px;
+      }
+
+      li::before {
+        content: "";
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        background: var(--accent);
+        margin-right: 10px;
+        transform: translateY(-1px);
+      }
+
+      .card.accent li::before {
+        background: var(--warm);
+      }
+
+      .kpi {
+        font-family: Fraunces, Georgia, serif;
+        font-size: 34px;
+        line-height: 1;
+        margin: 6px 0 8px;
+        color: var(--ink);
+      }
+
+      .card.accent .kpi {
+        color: #fff;
+      }
+
+      .small {
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .card.accent .small {
+        color: rgba(255, 255, 255, 0.72);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        font-size: 16px;
+        vertical-align: top;
+      }
+
+      th {
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .quote {
+        font-family: Fraunces, Georgia, serif;
+        font-size: 20px;
+        line-height: 1.4;
+        background: #fff;
+        border-left: 4px solid var(--accent);
+        padding: 16px 18px;
+        color: var(--ink);
+      }
+
+      .quote + .quote {
+        margin-top: 12px;
+      }
+
+      .quote .label {
+        display: block;
+        font-family: Manrope, sans-serif;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .title-slide .brand {
+        font-size: 14px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 18px;
+      }
+
+      .title-slide h1 {
+        max-width: 900px;
+      }
+
+      .title-slide .meta {
+        margin-top: 36px;
+        display: flex;
+        gap: 28px;
+        color: var(--muted);
+        font-size: 15px;
+        font-weight: 600;
+      }
+
+      .big-number {
+        font-family: Fraunces, Georgia, serif;
+        font-size: 72px;
+        color: var(--accent);
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+
+      .checklist li::before {
+        content: "□";
+        background: none;
+        width: auto;
+        color: var(--accent);
+        font-weight: 700;
+        margin-right: 8px;
+      }
+
+      .month-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 42px;
+        height: 28px;
+        padding: 0 10px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+      }
+
+      .two-col-tight {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 20px;
+        height: 100%;
+      }
+
+      .rule {
+        height: 1px;
+        background: var(--line);
+        margin: 16px 0;
+      }
+
+      .title-slide .bar {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 12px;
+        background: linear-gradient(90deg, var(--accent-deep), var(--warm));
+      }
+
+      @media print {
+        body {
+          background: white;
+        }
+        .deck {
+          padding: 0;
+          gap: 0;
+        }
+        .slide {
+          margin: 0;
+          page-break-after: always;
+          break-after: page;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck">
+      <!-- 1 -->
+      <section class="slide title-slide">
+        <div class="frame"></div>
+        <div class="content" style="padding-top: 120px">
+          <p class="brand">Eric Guan Photography</p>
+          <h1>Real Estate Photography<br />12-Month Launch Plan</h1>
+          <p class="lede">
+            A practical year roadmap: lens, outreach, systems, pricing, and growth
+            — built for your Sony a6400.
+          </p>
+          <div class="meta">
+            <span>Camera: Sony a6400</span>
+            <span>Focus: Listing photography</span>
+            <span>Year 1</span>
+          </div>
+        </div>
+        <div class="bar"></div>
+      </section>
+
+      <!-- 2 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Overview</span><span>Eric Guan · Year Plan</span></div>
+        <div class="content">
+          <h2>The year in four phases</h2>
+          <div class="grid-4" style="margin-top: 12px">
+            <div class="card accent">
+              <div class="tag">Phase 1</div>
+              <div class="kpi">M0–1</div>
+              <h3>Setup + outreach</h3>
+              <p class="small">Buy lens, shoot practice homes, contact known agents.</p>
+            </div>
+            <div class="card">
+              <div class="tag">Phase 2</div>
+              <div class="kpi">M2–3</div>
+              <h3>Systems + quality</h3>
+              <p class="small">Booking flow, checklists, first upsells, raise prices.</p>
+            </div>
+            <div class="card">
+              <div class="tag">Phase 3</div>
+              <div class="kpi">M4–9</div>
+              <h3>Repeat clients</h3>
+              <p class="small">Become the reliable shooter. Productize packages.</p>
+            </div>
+            <div class="card">
+              <div class="tag">Phase 4</div>
+              <div class="kpi">M10–12</div>
+              <h3>Stabilize</h3>
+              <p class="small">Referrals, rate review, year-2 gear decisions.</p>
+            </div>
+          </div>
+          <div class="card warm" style="margin-top: 18px">
+            <p>
+              <strong>Rule for Year 1:</strong> Photos first. Video is an optional upsell.
+              No drone, no second body, no fancy kit until demand pays for it.
+            </p>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>02</span></div>
+      </section>
+
+      <!-- 3 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Gear</span><span>Week 0 purchase</span></div>
+        <div class="content">
+          <h2>Buy this wide-angle lens</h2>
+          <div class="grid-2">
+            <div class="card accent">
+              <div class="tag">Primary recommendation</div>
+              <h3 style="font-size: 28px; margin-top: 8px">
+                Sigma 10–18mm f/2.8 DC DN
+              </h3>
+              <p style="margin: 10px 0 14px">Sony E-mount · APS-C · Contemporary</p>
+              <ul class="compact">
+                <li>10mm ≈ 15mm full-frame — best for tight rooms</li>
+                <li>Light and easy for all-day listing shoots</li>
+                <li>Shoot interiors around f/7.1–f/9</li>
+                <li>Budget: ~$600–650 new · ~$450–550 used</li>
+              </ul>
+            </div>
+            <div>
+              <div class="card">
+                <div class="tag">Runner-up</div>
+                <h3>Tamron 11–20mm f/2.8</h3>
+                <p>Slightly less wide, more reach + weather sealing.</p>
+              </div>
+              <div class="card" style="margin-top: 14px">
+                <div class="tag">Do not buy yet</div>
+                <ul class="compact">
+                  <li>Gimbal</li>
+                  <li>Drone</li>
+                  <li>Second camera body</li>
+                  <li>Complex lighting kits</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>03</span></div>
+      </section>
+
+      <!-- 4 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Gear</span><span>Also buy this week</span></div>
+        <div class="content">
+          <h2>High-ROI kit (cheap)</h2>
+          <div class="grid-3" style="margin-top: 8px">
+            <div class="card">
+              <div class="big-number">01</div>
+              <h3>Tripod</h3>
+              <p>Sturdy travel tripod · $80–150. Locked shots beat shaky walkthroughs.</p>
+            </div>
+            <div class="card">
+              <div class="big-number">02</div>
+              <h3>Batteries + cards</h3>
+              <p>2–3 spare batteries · 128GB+ fast SD cards.</p>
+            </div>
+            <div class="card">
+              <div class="big-number">03</div>
+              <h3>CPL filter</h3>
+              <p>67mm polarizer for exterior glass and sky control.</p>
+            </div>
+            <div class="card">
+              <div class="big-number">04</div>
+              <h3>Editing</h3>
+              <p>Lightroom or Capture One. Free start: Darktable / LR trial.</p>
+            </div>
+            <div class="card">
+              <div class="big-number">05</div>
+              <h3>Month 2–3</h3>
+              <p>Optional: Godox flash (V1 / V860III Sony) for dark rooms + twilight.</p>
+            </div>
+            <div class="card warm">
+              <div class="tag">Priority</div>
+              <h3>Lens &gt; lights &gt; video gear</h3>
+              <p>Get the Sigma first. Everything else waits for paid demand.</p>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>04</span></div>
+      </section>
+
+      <!-- 5 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Month 0</span><span>Weeks 1–2</span></div>
+        <div class="content">
+          <h2>Setup before you message anyone</h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="tag">Camera presets</div>
+              <ul class="compact">
+                <li>RAW always</li>
+                <li>f/7.1–f/9</li>
+                <li>ISO 100–400</li>
+                <li>WB Auto or Kelvin ~4000–5000</li>
+                <li>Bracket ±1 or ±2 EV for bright windows</li>
+                <li>Use grid — keep verticals straight</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="tag">Practice goal</div>
+              <h3>Shoot 3 homes free</h3>
+              <p style="margin-bottom: 12px">
+                Your place, family/friend home, or open house with permission.
+              </p>
+              <ul class="compact">
+                <li>Edit bright, clean, true color</li>
+                <li>Straight verticals on every frame</li>
+                <li>Deliver 15–30 images per home</li>
+                <li>Replace all stock photos on your site</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>05</span></div>
+      </section>
+
+      <!-- 6 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Month 0</span><span>Every property shot list</span></div>
+        <div class="content">
+          <h2>Standard shot list</h2>
+          <div class="grid-3" style="margin-top: 8px">
+            <div class="card"><h3>01–02</h3><p>Exterior front · straight-on + 45°</p></div>
+            <div class="card"><h3>03–04</h3><p>Entry · Living room</p></div>
+            <div class="card"><h3>05–06</h3><p>Kitchen overall · island/detail</p></div>
+            <div class="card"><h3>07–08</h3><p>Dining · Primary bedroom</p></div>
+            <div class="card"><h3>09–10</h3><p>Primary bath · Secondary rooms</p></div>
+            <div class="card"><h3>11–12</h3><p>Laundry/garage · Backyard/patio</p></div>
+          </div>
+          <div class="card warm" style="margin-top: 16px">
+            <p><strong>Later:</strong> Twilight exterior only when you can stay for blue hour. Don’t block Month 0 on it.</p>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>06</span></div>
+      </section>
+
+      <!-- 7 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Month 0</span><span>Business basics</span></div>
+        <div class="content">
+          <h2>Portfolio + business setup</h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="tag">Must ship</div>
+              <ul>
+                <li>Website live with <strong>your</strong> photos only</li>
+                <li>Free host: GitHub Pages</li>
+                <li>Simple pricing page / PDF</li>
+                <li>Invoice: Wave (free) or Stripe</li>
+                <li>Phone you actually answer</li>
+                <li>Payment: e-transfer / Venmo / Zelle / Stripe</li>
+              </ul>
+            </div>
+            <div class="card accent">
+              <div class="tag">Promise to agents</div>
+              <div class="kpi" style="font-size: 40px; margin: 16px 0">24–48 hrs</div>
+              <p>Edited photos delivered ready for MLS and marketing. Reliability beats fancy gear.</p>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>07</span></div>
+      </section>
+
+      <!-- 8 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Pricing</span><span>Starter packages</span></div>
+        <div class="content">
+          <h2>Intro pricing (adjust to your city)</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Package</th>
+                <th>Includes</th>
+                <th>Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Essentials</strong></td>
+                <td>15–25 edited stills</td>
+                <td>$150–250</td>
+              </tr>
+              <tr>
+                <td><strong>Standard</strong></td>
+                <td>25–40 stills, full coverage</td>
+                <td>$225–350</td>
+              </tr>
+              <tr>
+                <td><strong>Premium</strong></td>
+                <td>Stills + twilight or short Reel</td>
+                <td>$350–500</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="card warm" style="margin-top: 18px">
+            <p>
+              Underprice slightly at first for <strong>reviews + referrals</strong>.
+              Raise rates every 5–10 completed jobs.
+            </p>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>08</span></div>
+      </section>
+
+      <!-- 9 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Month 1</span><span>Agent outreach</span></div>
+        <div class="content">
+          <h2>Contact agents you already know</h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="tag">Before you text</div>
+              <ul class="checklist compact">
+                <li>8–12 strong portfolio images</li>
+                <li>Website live with your work</li>
+                <li>24–48h turnaround promise</li>
+                <li>One discounted first-listing offer</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="tag">Build a list of 10–20</div>
+              <ul class="compact">
+                <li>Agents you’ve met</li>
+                <li>Friends/family agents</li>
+                <li>Open-house / showing contacts</li>
+                <li>Friends who can intro an agent</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card accent" style="margin-top: 16px">
+            <p><strong>Week 1 target:</strong> message 10–20 people. Follow up once after 5–7 days. Then stop nudging.</p>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>09</span></div>
+      </section>
+
+      <!-- 10 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Month 1</span><span>Scripts</span></div>
+        <div class="content">
+          <h2>Message scripts</h2>
+          <div class="quote">
+            <span class="label">First touch</span>
+            Hey [Name] — I’m starting real estate photography locally. Portfolio: [link].
+            I’m opening a few discounted first-listing spots this month for agents I already know.
+            If you have a listing coming up, I’d love to shoot it — 24–48hr turnaround.
+          </div>
+          <div class="quote">
+            <span class="label">If they say yes</span>
+            For a typical [2–3 bed / condo], intro rate is $[X] for [Y] edited photos in 48 hours.
+            Want me to hold a slot for your next listing?
+          </div>
+          <div class="quote">
+            <span class="label">One follow-up only</span>
+            Hey [Name], just bumping this in case it got buried. Happy to shoot one listing at $[discount] so you can see the workflow.
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>10</span></div>
+      </section>
+
+      <!-- 11 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Month 1</span><span>Calls + free jobs</span></div>
+        <div class="content">
+          <h2>10-minute call agenda</h2>
+          <div class="grid-2">
+            <div class="card">
+              <ul>
+                <li>Show 6 best photos on your phone</li>
+                <li>Explain: book → shoot 45–90 min → deliver 24–48h</li>
+                <li>Ask what they hate about current photographers</li>
+                <li>Ask when their next listing is</li>
+                <li>Offer one discounted shoot + review after</li>
+              </ul>
+            </div>
+            <div class="card warm">
+              <div class="tag">Discount rules</div>
+              <ul class="compact">
+                <li>One discounted property per agent max</li>
+                <li>Call it an “intro rate” in writing</li>
+                <li>Get permission to use photos</li>
+                <li>Ask for a referral after delivery</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>11</span></div>
+      </section>
+
+      <!-- 12 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Month 2</span><span>Systems</span></div>
+        <div class="content">
+          <h2>Booking flow (use every time)</h2>
+          <div class="grid-4" style="margin-top: 8px">
+            <div class="card"><div class="month-pill">1</div><h3>Request</h3><p class="small">Address, date, package</p></div>
+            <div class="card"><div class="month-pill">2</div><h3>Confirm</h3><p class="small">Time, access, staging, pets, parking, price</p></div>
+            <div class="card"><div class="month-pill">3</div><h3>Shoot</h3><p class="small">45–90 minutes on site</p></div>
+            <div class="card"><div class="month-pill">4</div><h3>Deliver</h3><p class="small">Drive/Dropbox + invoice + review ask</p></div>
+          </div>
+          <div class="quote" style="margin-top: 18px">
+            <span class="label">Confirm template</span>
+            Confirmed for [Address] on [Day] at [Time]. Package: [Standard] — $[price].
+            Please have lights on, blinds open, counters clear, cars out of driveway if possible.
+            Edited photos within 48 hours.
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>12</span></div>
+      </section>
+
+      <!-- 13 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Month 2</span><span>On-site</span></div>
+        <div class="content">
+          <h2>Shoot-day checklist</h2>
+          <div class="grid-2">
+            <div class="card">
+              <ul class="checklist">
+                <li>Arrive 5–10 min early</li>
+                <li>Walk the property once</li>
+                <li>Lights on, TV off, fans off</li>
+                <li>Hide trash, cords, remotes, magnets</li>
+                <li>Exterior first if light is good</li>
+                <li>Verticals straight every frame</li>
+                <li>Consistent camera height</li>
+              </ul>
+            </div>
+            <div class="card accent">
+              <div class="tag">Month 2 weekly goals</div>
+              <ul>
+                <li>2–4 paid or discounted shoots</li>
+                <li>5 new agent outreaches / week</li>
+                <li>Collect 3 written testimonials</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>13</span></div>
+      </section>
+
+      <!-- 14 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Month 3</span><span>Quality + soft video</span></div>
+        <div class="content">
+          <h2>Raise quality — keep video light</h2>
+          <div class="grid-2">
+            <div class="card">
+              <div class="tag">Do this</div>
+              <ul class="compact">
+                <li>Add flash for dark rooms / twilight practice</li>
+                <li>Learn simple window pull / HDR blend</li>
+                <li>Raise prices ~10–20% after 8–10 jobs</li>
+                <li>Ask every happy agent for team intros</li>
+                <li>Attend 1 local realtor networking event</li>
+              </ul>
+            </div>
+            <div class="card warm">
+              <div class="tag">Video without a gimbal</div>
+              <ul class="compact">
+                <li>5–8 locked tripod clips</li>
+                <li>20–40s vertical Reel</li>
+                <li>Stabilize in CapCut if needed</li>
+                <li>Charge +$50–100 at first</li>
+                <li>Only after photos are solid</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>14</span></div>
+      </section>
+
+      <!-- 15 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Months 4–6</span><span>Be the reliable one</span></div>
+        <div class="content">
+          <h2>Mid-year targets</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Target by Month 6</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Paid shoots</td><td>20–40 total</td></tr>
+              <tr><td>Repeat agents</td><td>3–5</td></tr>
+              <tr><td>Average order value</td><td>$250–400</td></tr>
+              <tr><td>Turnaround</td><td>≤ 48 hours, every time</td></tr>
+              <tr><td>Portfolio properties</td><td>12+ real listings</td></tr>
+            </tbody>
+          </table>
+          <div class="card" style="margin-top: 16px">
+            <p>Buy flash / better tripod only if earning. Buy a used gimbal only if agents ask for walkthroughs weekly. No drone yet.</p>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>15</span></div>
+      </section>
+
+      <!-- 16 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Months 7–9</span><span>Productize</span></div>
+        <div class="content">
+          <h2>Turn work into a product</h2>
+          <div class="grid-3">
+            <div class="card">
+              <div class="tag">Look</div>
+              <h3>Edit preset</h3>
+              <p>Lock your bright/clean style so delivery stays fast.</p>
+            </div>
+            <div class="card">
+              <div class="tag">Upsell</div>
+              <h3>Twilight</h3>
+              <p>Fixed add-on +$75–150.</p>
+            </div>
+            <div class="card">
+              <div class="tag">Upsell</div>
+              <h3>Reel</h3>
+              <p>Fixed add-on +$75–150.</p>
+            </div>
+            <div class="card">
+              <div class="tag">Partners</div>
+              <h3>Don’t buy everything</h3>
+              <p>Refer drone / staging / cleaning partners.</p>
+            </div>
+            <div class="card">
+              <div class="tag">Distribution</div>
+              <h3>Leave-behind PDF</h3>
+              <p>Samples + packages + contact for brokerages.</p>
+            </div>
+            <div class="card accent">
+              <div class="tag">Pitch</div>
+              <h3>30 seconds</h3>
+              <p>Clean listing photos fast. 24–48h. Standard at $[X]. Backup or primary for your team.</p>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>16</span></div>
+      </section>
+
+      <!-- 17 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Months 10–12</span><span>Stabilize</span></div>
+        <div class="content">
+          <h2>End-of-year goals</h2>
+          <div class="grid-2">
+            <div class="card">
+              <ul>
+                <li>4–8 shoots per month (more if going full-time)</li>
+                <li>50%+ work from repeats / referrals</li>
+                <li>Market pricing — not intro pricing</li>
+                <li>Site shows only your real listings</li>
+                <li>Emergency kit: batteries, cards, cloths, rain cover</li>
+              </ul>
+            </div>
+            <div class="card">
+              <div class="tag">Decide with data</div>
+              <ul class="compact">
+                <li>Agents ask for video often → used gimbal</li>
+                <li>Luxury work appears → twilight mastery</li>
+                <li>Calendar mostly full → raise 15–25%</li>
+                <li>Slow months → reactivate past agents</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card warm" style="margin-top: 14px">
+            <p><strong>Admin:</strong> track mileage + gear · separate business account when regular · save ~25–30% for taxes · simple service agreement.</p>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>17</span></div>
+      </section>
+
+      <!-- 18 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Calendar</span><span>All 12 months</span></div>
+        <div class="content">
+          <h2>Month-by-month map</h2>
+          <div class="grid-3" style="margin-top: 4px">
+            <div class="card"><div class="month-pill">0</div><p class="small">Buy Sigma 10–18 · 3 practice homes · fix portfolio</p></div>
+            <div class="card"><div class="month-pill">1</div><p class="small">Message known agents · book discounted first jobs</p></div>
+            <div class="card"><div class="month-pill">2</div><p class="small">Systems: booking, checklist, delivery, invoices</p></div>
+            <div class="card"><div class="month-pill">3</div><p class="small">Flash + edits · soft video upsell · slight price raise</p></div>
+            <div class="card"><div class="month-pill">4–5</div><p class="small">Repeat clients · testimonials · track every job</p></div>
+            <div class="card"><div class="month-pill">6</div><p class="small">Reliability reputation · mid-year price review</p></div>
+            <div class="card"><div class="month-pill">7–8</div><p class="small">Twilight + Reel upsells · brokerage intros</p></div>
+            <div class="card"><div class="month-pill">9</div><p class="small">Partner referrals · leave-behind PDF</p></div>
+            <div class="card"><div class="month-pill">10–12</div><p class="small">Speed presets · fill calendar · year-2 decisions</p></div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>18</span></div>
+      </section>
+
+      <!-- 19 -->
+      <section class="slide">
+        <div class="frame"></div>
+        <div class="topline"><span>Start now</span><span>This week</span></div>
+        <div class="content">
+          <h2>Do these 7 things this week</h2>
+          <div class="grid-2" style="margin-top: 8px">
+            <div class="card">
+              <ul class="checklist">
+                <li>Order Sigma 10–18mm f/2.8 (Sony E)</li>
+                <li>Order tripod + 2 batteries</li>
+                <li>Shoot one practice home this weekend</li>
+                <li>Put your real photos on the site</li>
+              </ul>
+            </div>
+            <div class="card accent">
+              <ul class="checklist">
+                <li>Write agent list (names + phone)</li>
+                <li>Send first-touch text to 5 agents</li>
+                <li>Set intro price + 48-hour promise</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="footer"><span>Real Estate Launch Plan</span><span>19</span></div>
+      </section>
+
+      <!-- 20 -->
+      <section class="slide title-slide">
+        <div class="frame"></div>
+        <div class="content" style="padding-top: 140px">
+          <p class="brand">Next step</p>
+          <h1>Buy the lens.<br />Shoot one home.<br />Text five agents.</h1>
+          <p class="lede">Photos first. Reliability second. Video later.</p>
+          <div class="meta">
+            <span>Eric Guan Photography</span>
+            <span>Real Estate · Year 1</span>
+          </div>
+        </div>
+        <div class="bar"></div>
+      </section>
+    </div>
+  </body>
+</html>

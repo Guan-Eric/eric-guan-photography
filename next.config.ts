@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["better-sqlite3", "sharp"],
   images: {
     // Placeholder portfolio imagery. Remove this entry once every stock photo
     // has been replaced with the tenant's own work.

@@ -1,245 +1,274 @@
-# Real Estate Media Platform Plan
+# Real Estate Media Platform — SaaS Plan
 
-> Build a portal-independent, white-label platform that replaces Aryeo for solo photographers first, then scales to multi-photographer SaaS — starting with Eric Guan Photography as tenant #1.
+> A multi-tenant SaaS for real estate photographers: white-label sites, booking, gated delivery, and shareable listing pages — priced to beat Aryeo on cost and agent friction.
+>
+> **Eric Guan Photography is tenant #1** (dogfood customer), not the product. Every feature must work for the next photographer who signs up.
 
-**Status:** Phase 0 complete (marketing site + tenant schema). Phases 1–5 not started.  
-**Stack decision:** Next.js App Router, Postgres (Neon or Supabase), Cloudflare (Workers via OpenNext + R2), Stripe Connect, Resend.  
-**Pricing model to beat Aryeo:** per-listing or low fixed + usage, not $99–$179/month subscription.
+**Product name (working):** TBD — treat the repo as the platform, not a personal site.  
+**Status:** Wave 1–4 SaaS shell shipped (platform apex, Stripe Billing stubs, property pages, automation, invites). Postgres RLS SQL + signed R2 still required before an external paying studio.  
+**Stack target:** Next.js App Router + TypeScript · Postgres (SQLite locally) · Cloudflare (OpenNext + R2) · Stripe Connect + Stripe Billing · Resend.  
+**Local now:** SQLite + filesystem media; apex = platform marketing; studios at `{slug}.localhost` (`ericguan`, `demo`).
 
 ---
 
-## Why this can beat Aryeo
+## Vision
 
-Aryeo is strong at order → gallery → Zillow Showcase. It is weak for independents who care about:
+Photographers run their business on **their brand**, not a Zillow-adjacent portal.
 
-| Gap | Aryeo | This product |
+| Who | What they get |
+|---|---|
+| **Photographer (tenant)** | White-label marketing site, booking/quoting, shoot board, upload → proofs → pay-to-unlock galleries, MLS zips, later property pages + automation |
+| **Agent (buyer of shoots)** | No account required for delivery; signed gallery link; pay in-gallery; branded or unbranded shares |
+| **Platform (you)** | Per-tenant isolation, Connect payouts, usage/per-listing billing, onboarding, quotas, legal |
+
+**Do not compete on** Zillow Showcase exclusivity or national staffing.  
+**Compete on** price, white-label, no agent login, instant unlock, photographer-owned data.
+
+---
+
+## Why this can win vs Aryeo
+
+| Gap | Aryeo | This SaaS |
 |---|---|---|
-| Cost | ~$49–$179/mo whether you shoot or not | Near-$0 fixed; Stripe fees + optional per-listing |
-| Agent friction | Agent login / portal | Signed gallery links, no login |
-| Ownership | Zillow Group (ShowingTime+) | Photographer-owned data |
-| Payment unlock | Invoice round-trip | One-tap pay-in-gallery unlock |
-| Trust | Binary gate | Per-agent trust tiers (pay-first vs net-7) |
-| Scheduling | Generic slots | Sunset-aware twilight + drive-time buffers (later) |
-| White-label | Platform-branded experience | Full white-label from day one |
-
-**Do not try to win on Zillow Showcase exclusivity or national team payroll.** Win on cost, friction, independence, and agent experience.
-
-**Market signal:** Alternatives (Spiro ~$5/listing, HDPhotoHub ~$1.20–$2/listing) price per listing. Portal-independent + white-label + modern UX is an open lane.
+| Cost | ~$49–$179/mo whether you shoot or not | Per-listing / usage-first; low fixed |
+| Agent friction | Agent login / portal | Token gallery links, no login |
+| Ownership | Zillow Group (ShowingTime+) | Photographer-owned data + media |
+| Payment unlock | Invoice round-trip | Pay-in-gallery unlock (wallet-ready later) |
+| Trust | One-size gate | Per-agent trust tiers (`pay_first` / `net7`) |
+| White-label | Platform-branded feel | Full white-label (theme, domain, packages) |
+| Market lane | All-in portal | Portal-independent + modern UX (open vs Spiro / HDPhotoHub pricing models) |
 
 ---
 
 ## Product principles
 
-1. **Tenant #1 is Eric Guan.** Every public page is rendered from tenant config, not hardcoded HTML.
-2. **Ship volume before features.** A perfect platform with zero clients is worthless. Gate heavy build work on paid listings delivered manually.
-3. **Gate downloads server-side.** Watermarked proofs until payment (or trust-tier unlock). Never rely on “please don’t download yet.”
-4. **No agent accounts unless necessary.** Signed, expiring, revocable URLs beat logins for delivery.
-5. **Per-listing economics for SaaS.** Photographers hate paying rent in slow months.
-6. **Commercial-safe hosting.** Do not use Vercel Hobby for a business product. Prefer Cloudflare free tier (commercial OK) via OpenNext.
+1. **SaaS-first data model.** Every business row has `tenant_id`. No “Eric-only” tables or routes.
+2. **Dogfood, don’t derail.** Tenant #1 validates workflows; features that only help one studio wait.
+3. **Server-side gates.** Watermarked proofs until payment or trust unlock — never UI-only.
+4. **Agents stay link-based.** Photographer auth only, until brokerage history truly needs accounts.
+5. **Per-listing economics.** Photographers hate rent in slow months; platform billing mirrors that.
+6. **Commercial-safe hosting.** Cloudflare (commercial OK) via OpenNext — not Vercel Hobby for a business product.
+7. **Swap storage/DB behind interfaces.** Local SQLite/files today; Postgres + R2 when second tenant or real traffic arrives.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Marketing / portfolio (static SSG)                         │
-│  Tenant-themed site: home, pricing, prep, city landings     │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-┌───────────────────────────▼─────────────────────────────────┐
-│  App (Next.js App Router)                                   │
-│  Booking · Admin board · Galleries · Property sites · API   │
-└───┬─────────────┬─────────────┬─────────────┬───────────────┘
-    │             │             │             │
- Postgres      R2 media      Stripe       Resend
- (tenants,     (originals,   Connect      (confirmations,
-  orders,       proofs,       (per-tenant  delivery, pay,
-  galleries,    MLS sizes)     payouts)    review ask)
-  agents)
+                    ┌──────────────────────────────────────┐
+                    │  Platform control plane (future)     │
+                    │  Signup · billing · Connect · domains│
+                    └──────────────────┬───────────────────┘
+                                       │
+┌──────────────────────────────────────▼──────────────────────────────────────┐
+│  Tenant edge (host → tenant_id)                                             │
+│  custom-domain.com  ·  slug.platform.com  ·  localhost → default tenant     │
+└──────────────────┬───────────────────────────────┬──────────────────────────┘
+                   │                               │
+┌──────────────────▼──────────────┐  ┌─────────────▼──────────────────────────┐
+│  Public tenant surface          │  │  Photographer app                      │
+│  Site · pricing · prep · book   │  │  Admin board · upload · publish · CRM  │
+│  /g/[token] galleries           │  │  Settings · packages · service area    │
+│  Property pages (later)         │  │                                        │
+└──────────────────┬──────────────┘  └─────────────┬──────────────────────────┘
+                   │                               │
+         Postgres + R2 + Stripe Connect + Resend (+ Calendar later)
 ```
 
-### Recommended stack
+### Stack
 
 | Layer | Choice | Why |
 |---|---|---|
-| Framework | Next.js (App Router) + TypeScript | Chosen; React ecosystem; App Router for marketing + app |
-| Hosting | Cloudflare Workers (OpenNext) | Free tier, commercial-safe, edge |
-| Media | Cloudflare R2 | 10 GB free, **zero egress** (critical for photo delivery) |
-| Database | Neon or Supabase Postgres | Multi-tenant RLS; real SQL; not D1 for SaaS |
-| Auth | Photographer login only (Clerk / Auth.js / Supabase Auth) | Agents stay link-based |
-| Payments | **Stripe Connect** | Each photographer collects; platform can take a fee later |
-| Email | Resend | Free tier enough early |
-| Images | `sharp` on upload | Derivatives once; cache forever |
+| App | Next.js App Router + TypeScript | Marketing + app in one codebase |
+| Host | Cloudflare Workers (OpenNext) | Commercial-safe free tier, edge |
+| Media | Cloudflare R2 | Zero egress — critical for photo delivery |
+| DB | Postgres (Neon / Supabase) | Multi-tenant + RLS; SQLite is local-only |
+| Auth | Photographer-only (Auth.js / Clerk / Supabase Auth) | Agents remain token-based |
+| Money | **Stripe Connect** (Express/Standard) | Each studio gets paid; platform fee later |
+| Email | Resend | Cheap transactional |
+| Images | `sharp` on upload | Proof / web / MLS / original derivatives once |
 
-**Fixed cost target:** domain only (~$12/year) until volume forces paid tiers.
+**Cost target early:** domain + free tiers until usage forces paid Cloudflare / DB.
 
-### Multi-tenancy
+### Multi-tenancy rules
 
-- Every row keyed by `tenant_id`.
-- Host resolution: custom domain → subdomain → default tenant (dev).
-- Theme = CSS custom properties injected on `<html>` (already implemented).
-- Content shape lives in `lib/tenant-schema.ts` — becomes the DB row when Postgres lands.
+- Resolve tenant from **Host** (custom domain → subdomain → env default).
+- Theme = CSS variables on `<html>` from tenant record.
+- Content shape: `lib/tenant-schema.ts` → becomes DB row when onboarding ships.
+- **RLS or equivalent** before any second live tenant.
+- Media paths always namespaced: `{tenantId}/{galleryId}/…`.
 
-### Critical data model (sketch)
+### Data model (SaaS)
 
 ```
-tenants
-  └─ brokerages
-       └─ agents (trust_tier: pay_first | net7 | open)
-            └─ orders (address, geocode, sqft, package, price, status, access)
-                 ├─ appointments
-                 ├─ media_assets → derivatives (proof, web, mls, full)
-                 ├─ invoices / payments
-                 ├─ galleries (state: proofing | unlocked | archived, token)
-                 ├─ tour_pages
-                 └─ events (views, downloads)
+platform_accounts          # who pays the SaaS (studio owner)
+  └─ tenants               # brand / site / packages / service area
+       ├─ memberships      # users ↔ tenant (owner, editor)
+       ├─ brokerages
+       │    └─ agents (trust_tier: pay_first | net7 | open)
+       ├─ orders
+       │    ├─ appointments
+       │    ├─ galleries (proofing | unlocked | archived, public_token, revoked_at)
+       │    ├─ media_assets → derivatives
+       │    ├─ payments (Connect / Checkout)
+       │    ├─ tour_pages (Phase 3+)
+       │    └─ events (views, downloads)
+       └─ billing_usage    # active listings, storage GB (platform metering)
 ```
 
-Order statuses: `requested → confirmed → shot → editing → delivered → paid`.
+Order flow: `requested → confirmed → shot → editing → delivered → paid` (+ `cancelled`).
 
 ---
 
-## Phase 0 — Marketing site + tenant seam ✅
+## Roadmap
 
-**Goal:** A site that wins inquiries, with a schema that becomes the SaaS `tenants` table.
+Phases below are **product milestones for the SaaS**. Dogfooding on tenant #1 is how we prove each slice, not the end state.
 
-**Done:**
+### Phase 0 — Tenant-themed marketing surface ✅
 
-- [x] Next.js App Router + TypeScript over the old static HTML
-- [x] Tenant schema + Eric Guan tenant record (`content/tenants/eric-guan.ts`)
-- [x] Theme tokens as CSS variables; site data-driven from tenant
-- [x] Home, pricing, seller-prep (`/prep`), city landing (`/real-estate-photography/[city]`)
-- [x] SEO: metadata, LocalBusiness JSON-LD, FAQ schema, sitemap, robots, OG image, favicon
-- [x] Lightbox: `<dialog>`, focus restore, arrows, swipe, captions
-- [x] Responsive images via `next/image` (AVIF/WebP)
-- [x] Prefill `mailto:` booking stopgap (address, sqft, access, timing)
-- [x] Twilight removed from public packages until kit supports it
+**Goal:** Prove white-label sites can win inquiries from config, not hardcoded HTML.
 
-**Still required before calling Phase 0 “live for agents”:**
+**Done**
 
-- [ ] Replace Unsplash placeholders with real listing photos; set `portfolioComplete: true`
-- [ ] Confirm city / `siteUrl` / email / phone / Instagram in tenant config
-- [ ] Deploy (Cloudflare Pages/Workers) + custom domain
-- [ ] Optional: analytics (Plausible / Cloudflare Web Analytics)
+- [x] Next.js App Router + TypeScript
+- [x] Tenant schema + Eric Guan as sample tenant (`content/tenants/eric-guan.ts`)
+- [x] Theme tokens; home, pricing, prep, city SEO landings
+- [x] SEO (metadata, JSON-LD, sitemap, robots, OG, favicon)
+- [x] Portfolio lightbox UX
 
-**Non-negotiable business step (not code):** shoot 3 homes free, deliver 15–30 images each, put them on the site.
+**Tenant #1 go-live checklist (ops, not platform)**
+
+- [ ] Real portfolio photos; `portfolioComplete: true`
+- [ ] Correct `siteUrl` / contact / Instagram
+- [ ] Deploy + custom domain
+- [ ] Optional analytics
 
 ---
 
-## Phase 1 — Booking + quoting
+### Phase 1 — Booking + photographer ops ✅ (single-tenant runtime)
 
-**Goal:** Replace `mailto:` with a flow Calendly + Google Forms cannot match.
+**Goal:** Quote + book + shoot board good enough to run a real studio.
 
-**Build:**
+**Done**
 
-- [ ] Instant quote from package + square footage (firm price, not “I’ll get back to you”)
-- [ ] Duration derived from sqft / package (`durationMinutes` already on packages)
-- [ ] Service-area / postal-code gating
-- [ ] Drive-time buffer between appointments (refuse slots that collide with travel)
-- [ ] Access capture: lockbox/code, pets, parking, occupied vs vacant, who meets you
-- [ ] Photographer admin board: one screen for all order statuses
-- [ ] Google Calendar free/busy sync (personal calendar stays source of truth)
-- [ ] Confirmation email + link to `/prep`
+- [x] Instant quote (package + sqft)
+- [x] Service-area gating + drive-time buffers
+- [x] Access capture (lockbox, pets, parking, occupancy)
+- [x] Preferred-time UX; confirm → calendar hold (Google free/busy stubbed)
+- [x] Admin board + password gate
+- [x] Email confirmations (Resend or console stub)
 
-**Defer until kit supports it:** sunset-aware twilight slot offering.
-
-**Gate to start Phase 1:** Phase 0 live with real portfolio photos. Prefer at least a few warm agent conversations so the form fields match real questions.
+**SaaS gap remaining:** shared admin password → real photographer auth + memberships.
 
 ---
 
-## Phase 2 — Gated delivery (the Aryeo-killer)
+### Phase 2 — Gated delivery ✅ (local media / single Stripe account shape)
 
-**Goal:** Proofs first; full-res only after payment (or trust tier).
+**Goal:** Aryeo-killer delivery: proofs → pay → unlock on the same link.
 
-**Build:**
+**Done**
 
-- [ ] Upload pipeline → R2: original, web, watermarked proof, MLS-sized variants
-- [ ] Gallery states: `proofing` → `unlocked` → `archived`
-- [ ] Server-side download block in `proofing` (not UI-only)
-- [ ] Signed, expiring, revocable gallery URLs — **no agent login**
-- [ ] Stripe Checkout / Payment Element **inside the gallery** (Apple Pay / Google Pay)
-- [ ] Webhook flips gallery to `unlocked`; same URL, full files appear
-- [ ] Per-agent trust tiers: new agents pay-first; retainers get net-7 auto-unlock
-- [ ] “Download for MLS” presets (long-edge, file size, sRGB, naming, zip)
-- [ ] Branded + unbranded share links (MLS compliance)
+- [x] Upload → original / web / watermarked proof / MLS derivatives (`data/media`, R2-ready helpers)
+- [x] Gallery states + server-side download block
+- [x] `/g/[token]` — no agent login; revoke flag
+- [x] Stripe Checkout + webhook (local stub unlock without keys)
+- [x] Trust tiers (`pay_first` / `net7` from prior paid orders)
+- [x] MLS + full-res zips; branded / unbranded (`?brand=off`)
 
-**Gate to start Phase 2:** Prefer **5 paid listings delivered manually** (Drive + Wave/Stripe invoice) so the workflow is real before you automate it.
+**SaaS gap remaining:** R2, expiring tokens, Connect destination charges, in-gallery wallets.
 
 ---
 
-## Phase 3 — Property websites + share kit
+### Phase 3 — Multi-tenant platform shell
 
-**Goal:** Every listing gets a shareable property page agents actually send to sellers.
+**Goal:** A second photographer can sign up and run without touching code.
 
-**Build:**
+**Done (MVP)**
 
-- [ ] Auto page from order data: hero, address, map, gallery, optional video/reel, agent bio
-- [ ] Branded / unbranded toggle; custom slug; OG image per listing
-- [ ] Share kit: Instagram feed + Story crops, Facebook crop, flyer PDF, short listing copy
-- [ ] Optional floor plan / reel embed slots
+- [x] Multi-tenant tables in SQLite (`users`, `tenants`, `memberships`, quotas) — Postgres-shaped; swap driver when `DATABASE_URL` lands
+- [x] Photographer auth (signup / login / session) + memberships (`owner` / `editor`)
+- [x] Onboarding wizard (`/signup` → `/onboarding`) for studio name, slug, theme accent, timezone
+- [x] Host routing via `proxy.ts` (`{slug}.{PLATFORM_ROOT_DOMAIN}` + custom domain field)
+- [x] Stripe Connect Express onboarding stubs + Checkout destination charges + `PLATFORM_FEE_BPS` (default 0)
+- [x] Tenant-scoped admin mutations (order/upload/delivery require membership)
+- [x] Seeded second tenant `demo-studio` + isolation script (`scripts/isolation-check.ts`)
+- [x] R2 adapter stub (env-gated; local mirror until signed PutObject SDK)
+- [x] Storage quota + upload rate limits
 
----
+**Still later / production harden**
 
-## Phase 4 — Automation + retention
+- [ ] Real Postgres + RLS policies
+- [ ] Signed R2 client (`@aws-sdk/client-s3`) without local mirror
+- [ ] Live Connect test payouts on two tenants
+- [ ] Custom domain SSL automation
 
-**Goal:** Reduce manual email; make agents look good to their sellers.
-
-**Build:**
-
-- [ ] Transactional email on every state change
-- [ ] Day-before reminder + seller-prep link
-- [ ] Delivery notice + pay CTA
-- [ ] Timed review / referral request after payment
-- [ ] Listing media report: views, downloads, tour traffic → branded email agents can forward to sellers
-- [ ] In-gallery upsells after delivery (extra rooms, reel, floor plan — twilight later)
-
----
-
-## Phase 5 — Scale (only at volume)
-
-**Gate:** consistently **2–3 shoots/week**.
-
-**Build:**
-
-- [ ] Agent accounts with listing history
-- [ ] Brokerage-level pricing
-- [ ] Referral links
-- [ ] Editor / second-shooter handoff queue
-- [ ] Floor plans, virtual staging via third-party APIs
-- [ ] Photographer onboarding for SaaS (tenant signup, Connect onboarding, branding)
+**Exit criteria progress:** two tenants exist locally (Eric + Demo); Connect works when Stripe keys are set.
 
 ---
 
-## SaaS-specific work (because this is a product)
+### Phase 4 — Property websites + share kit ✅
 
-These are **extra** relative to “tool for myself only”:
+**Done**
 
-1. **Stripe Connect** — Express or Standard accounts per photographer; platform fee optional later.
-2. **Row-level security** — tenants cannot read each other’s data.
-3. **Host routing** — `slug.platform.com` + custom domains + SSL.
-4. **Onboarding** — studio name, brand colors, packages, service area, Connect link.
-5. **Billing for the platform** — prefer per-active-listing or usage over high monthly SaaS rent.
-6. **Legal** — ToS, privacy, media license defaults, DPA if needed.
-7. **Abuse** — storage quotas, rate limits, malware scan on upload.
+- [x] Auto listing page `/p/[slug]` (hero, address, OSM map, gallery, agent card)
+- [x] Branded / unbranded; OG image
+- [x] Share kit (Studio): IG/Story/FB crops, flyer PDF, caption copy
+- [x] Growth+ entitlement for property pages
 
-Keep the data model multi-tenant from Phase 1 onward even if only one tenant exists.
+### Phase 5 — Automation + retention ✅
+
+**Done**
+
+- [x] Transactional email on status changes (confirmed / delivered / paid / cancelled)
+- [x] Day-before reminder cron (`/api/cron/reminders` + `CRON_SECRET`)
+- [x] Delivery + pay CTA; post-pay thank-you
+- [x] Listing media report (views, downloads) at `/g/[token]/report`
+- [x] In-gallery upsells on Studio plan
+
+### Phase 6 — Growth & teams (partial)
+
+**Done**
+
+- [x] Platform billing: $49 / $99 / $179 + trial + listing/seat quotas
+- [x] Editor invites with seat limits
+- [x] Legal pack: `/terms`, `/privacy`
+- [x] Isolation tests include billing + listing pages
+- [x] Postgres RLS SQL draft (`scripts/postgres-rls.sql`)
+
+**Still later / production harden**
+
+- [ ] Live Stripe Price IDs + Customer Portal
+- [ ] Postgres + apply RLS before inviting an external studio
+- [ ] Signed R2 client (`@aws-sdk/client-s3`) without local mirror
+- [ ] Custom domain SSL automation
+- [ ] Agent history / brokerage-level pricing
+- [ ] Malware scan on upload
 
 ---
 
-## Free “starter stack” (manual ops until Phase 2)
+## Platform vs dogfood (keep these separate)
 
-Use while building — do not skip learning the business:
+| Track | Purpose | Examples |
+|---|---|---|
+| **Platform** | Sell to many photographers | Auth, Connect, domains, RLS, quotas, metering, onboarding |
+| **Dogfood (tenant #1)** | Learn real RE photo ops | Portfolio shoots, Montréal outreach, package pricing, twilight later |
 
-| Need | Free tool |
-|---|---|
-| Inquiries | Site contact / Forms |
-| Scheduling | Calendar + manual confirm |
-| Invoicing | Wave or Stripe Payment Links |
-| Delivery | Google Drive / WeTransfer |
-| Payment protection | Watermarked proofs → unlock full-res after pay |
+Never block platform isolation on “one more marketing page for Eric.”  
+Never ship multi-tenant money movement without Connect + isolation tests.
 
-**Upgrade signal:** 2–3 shoots every week, or manual back-and-forth eating evenings.
+---
+
+## Pricing thesis (platform)
+
+Match Aryeo Pro ladders in USD via Stripe Billing:
+
+1. **14-day trial** of Starter (full booking + galleries).
+2. **Starter $49/mo** — 100 listings/year, 1 seat, subdomain.
+3. **Growth $99/mo** — 250 listings/year, 3 seats, custom domain, property pages.
+4. **Studio $179/mo** — 500 listings/year, 5 seats, share kit, reports, in-gallery upsells.
+5. **Payment fees** — Stripe + optional platform % on Connect (`PLATFORM_FEE_BPS`).
+
+No perpetual free Lite in v1. Env: `STRIPE_PRICE_STARTER` / `GROWTH` / `STUDIO`.
 
 ---
 
@@ -247,48 +276,59 @@ Use while building — do not skip learning the business:
 
 | Risk | Mitigation |
 |---|---|
-| Building instead of booking agents | Cap Phase 2 until 5 paid manual deliveries |
-| Storage / bandwidth cost | R2 + archive full-res after ~90 days |
-| MLS rules vary | Confirm local unbranded / branding rules before presets |
-| Signed URL leaks | Long tokens, expiry, revoke on request |
-| Stripe Connect complexity | Budget real time; start with one Connect account (yours) |
-| Twilight marketed too early | Kept off public packages until flash + blue-hour practice |
+| Building a personal CRM forever | Phase 3 shell is the next engineering priority |
+| Second tenant leaks data | Postgres + RLS / strict `tenant_id` filters + automated tests before invite |
+| Storage / bandwidth blowups | R2, archive full-res ~90 days, quotas |
+| Connect complexity | Budget real time; dogfood Connect on tenant #1 first |
+| MLS branding rules differ | Branded + unbranded links; confirm per market |
+| Token gallery leaks | Long tokens, expiry, revoke |
+| Building instead of selling | Cap net-new dogfood features until 1–2 external tenants or clear waitlist |
 
 ---
 
-## Scorecard vs Aryeo (target)
+## Scorecard (SaaS targets)
 
-| Dimension | Target outcome |
+| Dimension | Target |
 |---|---|
-| Monthly software cost | ~$0 + payment fees vs $49–$179 |
-| Agent login | None for delivery |
-| Unlock speed | Seconds (wallet pay) vs invoice email loop |
+| Photographer software cost | Usage-first vs $49–$179/mo |
+| Time for new studio to go live | < 1 hour (onboarding + Connect + domain) |
+| Agent login for delivery | None |
+| Unlock speed | Seconds |
 | Data / portal independence | Full |
-| Zillow Showcase / 3D Home | Accept loss; don’t chase |
-| Team payroll / multi-market | Accept loss until Phase 5 |
+| White-label | Theme + domain + packages |
+| Zillow Showcase / 3D Home | Explicit non-goal |
 
 ---
 
 ## Immediate next actions
 
-1. **Shoot three homes** and replace portfolio images; flip `portfolioComplete`.
-2. Correct tenant fields if needed: city, `siteUrl`, phone, Instagram (`content/tenants/eric-guan.ts`).
-3. **Deploy** Phase 0 to Cloudflare + domain.
-4. Run outreach from the year-plan slides (warm agents first).
-5. Start **Phase 1** only after the site shows real work and you are taking bookings.
+**Platform**
+
+1. Create Stripe products/prices ($49 / $99 / $179) and set `STRIPE_PRICE_*`.
+2. Point a real `DATABASE_URL` (Postgres) and apply `scripts/postgres-rls.sql` before inviting an external studio.
+3. Complete Stripe Connect on dogfood tenant; verify destination Checkout.
+4. Wire signed R2 uploads; drop local mirror for production media.
+5. Pick a public `PLATFORM_NAME` + `PLATFORM_ROOT_DOMAIN`.
+
+**Dogfood (tenant #1, parallel)**
+
+1. Open `http://ericguan.localhost:3000` for the studio site; apex `localhost:3000` is now the SaaS.
+2. Shoot / replace portfolio; deploy domain.
+3. Run real bookings through gated galleries.
 
 ---
 
-## Repo map (Phase 0)
+## Repo map
 
 ```
-app/                 # Routes: home, pricing, prep, city, SEO endpoints
-components/          # Header, footer, gallery, JSON-LD, reveal
-content/tenants/     # Tenant records (Eric Guan = tenant #1)
-lib/tenant-schema.ts # Public site + future tenants table shape
-lib/tenants.ts       # Loader (file today → DB tomorrow)
-PLATFORM-PLAN.md     # This document
-year-plan-slides.html# 12-month business launch plan (ops, not product)
+app/                  # Public + admin + gallery + APIs (must stay tenant-scoped)
+components/           # UI
+content/tenants/      # File-based tenants until onboarding/DB
+lib/                  # quoting, orders, galleries, media, stripe, db, email
+data/                 # Local SQLite + media (gitignored) — not production SaaS
+PLATFORM-PLAN.md      # This document
+.env.example          # Secrets stubs (admin, Resend, Stripe, media, later Connect)
+year-plan-slides.html # Eric’s business ops plan (not the SaaS product roadmap)
 ```
 
 ---
@@ -297,9 +337,16 @@ year-plan-slides.html# 12-month business launch plan (ops, not product)
 
 | Date | Decision |
 |---|---|
-| 2026-08-14 | Product is multi-photographer SaaS, not solo-only tool |
-| 2026-08-14 | Stack: Next.js (not Astro / not static-only) |
-| 2026-08-14 | Start with Phase 0; Phase 0 implemented |
+| 2026-08-14 | Product is **multi-photographer SaaS**; Eric Guan = tenant #1 dogfood only |
+| 2026-08-14 | Stack: Next.js (not Astro / static-only) |
 | 2026-08-14 | Host commercially on Cloudflare, not Vercel Hobby |
-| 2026-08-14 | Payments: Stripe Connect for SaaS |
-| 2026-08-14 | Twilight option removed from public packages until kit supports it |
+| 2026-08-14 | Payments end-state: Stripe Connect; local single-account Checkout OK for dogfood |
+| 2026-08-14 | Agents: no login for delivery (token galleries) |
+| 2026-08-14 | Platform pricing: prefer per-listing / usage over high monthly rent |
+| 2026-08-14 | Twilight off public packages until kit supports it |
+| 2026-08-14 | Phase 0–2 dogfood MVP shipped (SQLite + local media) |
+| 2026-08-14 | **Next engineering priority = Phase 3 multi-tenant shell**, not more solo-only polish |
+| 2026-08-14 | Remade this plan to lead with SaaS, not “tool for myself first” |
+| 2026-08-14 | Phase 3 MVP: photographer auth, DB tenants, proxy host routing, Connect stubs, isolation |
+| 2026-08-14 | Apex host is the **SaaS marketing site**; Eric Guan lives at `ericguan.{platform}` |
+| 2026-08-14 | Photographer billing: Aryeo-matched **$49 / $99 / $179** Stripe subscriptions + 14-day trial |

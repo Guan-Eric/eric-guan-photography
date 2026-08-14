@@ -8,6 +8,7 @@ export function SiteFooter({ tenant }: { tenant: Tenant }) {
         © {new Date().getFullYear()} {tenant.studioName} · Real Estate Photography
       </p>
       <div className="footer-links">
+        <Link href="/book">Book</Link>
         <Link href="/pricing">Pricing</Link>
         <Link href="/prep">Before your shoot</Link>
         <a href={`mailto:${tenant.email}`}>Email</a>

@@ -5,10 +5,12 @@ import { LocalBusinessJsonLd } from "@/components/json-ld";
 import { RevealObserver } from "@/components/reveal-observer";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { getTenant } from "@/lib/tenants";
+import { requireRequestTenant } from "@/lib/tenants";
 
-export default function HomePage() {
-  const tenant = getTenant();
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const tenant = await requireRequestTenant();
   const primaryArea = tenant.serviceAreas[0];
 
   return (
@@ -36,7 +38,7 @@ export default function HomePage() {
             <h1>{tenant.tagline}</h1>
             <p className="lede">{tenant.lede}</p>
             <div className="hero-actions">
-              <Link className="btn btn-primary" href="#contact">
+              <Link className="btn btn-primary" href="/book">
                 Request a shoot
               </Link>
               <Link className="btn btn-ghost" href="#work">
@@ -57,7 +59,11 @@ export default function HomePage() {
             <h2>Spaces shown with clarity and calm.</h2>
           </div>
 
-          <Gallery images={tenant.gallery} />
+          {tenant.gallery.length > 0 ? (
+            <Gallery images={tenant.gallery} />
+          ) : (
+            <p className="portfolio-note">Portfolio photos will appear here once uploaded.</p>
+          )}
 
           {!tenant.portfolioComplete ? (
             <p className="portfolio-note">
@@ -121,41 +127,25 @@ export default function HomePage() {
         <section className="contact" id="contact">
           <div className="contact-inner">
             <div className="section-intro">
-              <p className="eyebrow">Contact</p>
+              <p className="eyebrow">Book</p>
               <h2>Have a listing that needs photos?</h2>
               <p className="section-copy">
-                Tell me the property and timing — I&rsquo;ll confirm availability
-                quickly.
+                Get an instant quote from square footage, pick an open slot, and
+                send access notes in one request.
               </p>
             </div>
 
             <div className="contact-panel">
-              <a className="contact-email" href={`mailto:${tenant.email}`}>
-                {tenant.email}
-              </a>
-              <p className="contact-hint">
-                Include the address, square footage, access notes, and preferred
-                time window. Send the{" "}
+              <p className="contact-hint" style={{ marginTop: 0 }}>
+                Prefer email?{" "}
+                <a href={`mailto:${tenant.email}`}>{tenant.email}</a>
+                . Either way, send the{" "}
                 <Link href="/prep">pre-shoot checklist</Link> to your seller
-                ahead of time and the shoot runs faster.
+                ahead of time.
               </p>
-              <a
-                className="btn btn-solid"
-                href={`mailto:${tenant.email}?subject=${encodeURIComponent(
-                  "Listing photo request",
-                )}&body=${encodeURIComponent(
-                  [
-                    "Property address:",
-                    "Square footage:",
-                    "Preferred date and time window:",
-                    "Package:",
-                    "Occupied or vacant:",
-                    "Access notes (lockbox, pets, parking):",
-                  ].join("\n"),
-                )}`}
-              >
-                Email to book
-              </a>
+              <Link className="btn btn-solid" href="/book">
+                Book a listing shoot
+              </Link>
             </div>
           </div>
         </section>

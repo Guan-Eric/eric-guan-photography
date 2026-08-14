@@ -45,7 +45,7 @@ export function SiteHeader({ tenant, solid = false }: Props) {
           </Link>
         ))}
       </nav>
-      <Link className="header-cta" href="/#contact">
+      <Link className="header-cta" href="/book">
         Book a listing
       </Link>
     </header>

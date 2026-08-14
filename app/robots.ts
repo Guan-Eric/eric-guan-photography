@@ -1,19 +1,24 @@
 import type { MetadataRoute } from "next";
-import { getTenant } from "@/lib/tenants";
+import { platformPublicUrl } from "@/lib/platform";
+import { getRequestTenant } from "@/lib/tenants";
 
-export default function robots(): MetadataRoute.Robots {
-  const tenant = getTenant();
+export const dynamic = "force-dynamic";
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const tenant = await getRequestTenant();
+  const sitemap = new URL(
+    "/sitemap.xml",
+    tenant?.siteUrl ?? platformPublicUrl(),
+  ).toString();
 
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        // Client galleries are private by design and must never be indexed,
-        // even though they are reachable by signed link.
-        disallow: ["/g/", "/api/"],
+        disallow: ["/g/", "/p/", "/api/", "/admin", "/admin/", "/book/confirmation/", "/invite/"],
       },
     ],
-    sitemap: new URL("/sitemap.xml", tenant.siteUrl).toString(),
+    sitemap,
   };
 }

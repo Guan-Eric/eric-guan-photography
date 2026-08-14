@@ -33,9 +33,8 @@ export const ericGuan: Tenant = {
 
   nav: [
     { label: "Work", href: "/#work" },
-    { label: "Services", href: "/#services" },
     { label: "Pricing", href: "/pricing" },
-    { label: "Contact", href: "/#contact" },
+    { label: "Book", href: "/book" },
   ],
 
   hero: {
@@ -147,7 +146,7 @@ export const ericGuan: Tenant = {
   process: [
     {
       title: "Book",
-      body: "Send the address, access notes, and preferred time window.",
+      body: "Get an instant quote, pick an open slot, and send access notes online.",
     },
     {
       title: "Shoot",
@@ -177,6 +176,14 @@ export const ericGuan: Tenant = {
       ],
     },
   ],
+
+  serviceAreaGate: {
+    enabled: true,
+    region: "CA",
+    prefixes: ["H", "J3", "J4", "J5", "J7"],
+    message:
+      "I currently cover Greater Montréal (island, Laval, South Shore, and nearby North Shore). If this listing is farther out, email me and I’ll say whether the drive works.",
+  },
 
   turnaround: "24–48 hours",
 

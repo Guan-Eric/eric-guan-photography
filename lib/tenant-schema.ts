@@ -72,6 +72,10 @@ export type Package = {
   /** Bullets shown on the pricing page. */
   includes: string[];
   featured?: boolean;
+  /** When set, this package can be offered as an in-gallery upsell. */
+  upsell?: boolean;
+  /** Firm add-on price in cents (used by gallery Checkout upsells). */
+  priceCents?: number;
 };
 
 export type ProcessStep = {
@@ -86,6 +90,17 @@ export type ServiceArea = {
   slug: string;
   /** Neighbourhoods and nearby towns, used as supporting SEO copy. */
   neighbourhoods: string[];
+};
+
+/**
+ * Booking geo-gate. When disabled, any postal/ZIP-like value is accepted.
+ * Prefixes are Canadian FSAs (H, J4) or US ZIP prefixes (100, 902).
+ */
+export type ServiceAreaGate = {
+  enabled: boolean;
+  region: "CA" | "US" | "none";
+  prefixes: string[];
+  message: string;
 };
 
 export type Tenant = {
@@ -116,6 +131,7 @@ export type Tenant = {
   packages: Package[];
   process: ProcessStep[];
   serviceAreas: ServiceArea[];
+  serviceAreaGate?: ServiceAreaGate;
 
   /** Turnaround promise, e.g. "24–48 hours". Reused across copy and email. */
   turnaround: string;

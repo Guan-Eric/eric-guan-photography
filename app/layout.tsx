@@ -1,7 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree, Syne } from "next/font/google";
-import { getTenant, themeStyle } from "@/lib/tenants";
+import {
+  platformName,
+  platformPublicUrl,
+  platformSeo,
+  platformTheme,
+} from "@/lib/platform";
+import { getRequestTenant, requestTheme, themeStyle } from "@/lib/tenants";
 import "./globals.css";
+
+export const dynamic = "force-dynamic";
 
 const syne = Syne({
   subsets: ["latin"],
@@ -18,48 +26,70 @@ const figtree = Figtree({
   display: "swap",
 });
 
-/**
- * Phase 0 serves a single tenant, so this resolves statically and every page
- * can be prerendered. Host-based resolution (`getTenantByHost`) moves into
- * middleware when subdomains and custom domains land.
- */
-const tenant = getTenant();
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getRequestTenant();
+  if (!tenant) {
+    const seo = platformSeo();
+    const url = platformPublicUrl();
+    return {
+      metadataBase: new URL(url),
+      title: {
+        default: seo.title,
+        template: `%s — ${platformName()}`,
+      },
+      description: seo.description,
+      alternates: { canonical: "/" },
+      openGraph: {
+        type: "website",
+        siteName: platformName(),
+        title: seo.title,
+        description: seo.description,
+        url,
+      },
+      robots: { index: true, follow: true },
+    };
+  }
 
-export const metadata: Metadata = {
-  metadataBase: new URL(tenant.siteUrl),
-  title: {
-    default: `${tenant.studioName} — Real Estate Photography`,
-    template: `%s — ${tenant.studioName}`,
-  },
-  description: tenant.seo.description,
-  alternates: { canonical: "/" },
-  openGraph: {
-    type: "website",
-    siteName: tenant.studioName,
-    title: `${tenant.studioName} — Real Estate Photography`,
+  return {
+    metadataBase: new URL(tenant.siteUrl),
+    title: {
+      default: `${tenant.studioName} — Real Estate Photography`,
+      template: `%s — ${tenant.studioName}`,
+    },
     description: tenant.seo.description,
-    url: tenant.siteUrl,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `${tenant.studioName} — Real Estate Photography`,
-    description: tenant.seo.description,
-  },
-  robots: { index: true, follow: true },
-};
+    alternates: { canonical: "/" },
+    openGraph: {
+      type: "website",
+      siteName: tenant.studioName,
+      title: `${tenant.studioName} — Real Estate Photography`,
+      description: tenant.seo.description,
+      url: tenant.siteUrl,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${tenant.studioName} — Real Estate Photography`,
+      description: tenant.seo.description,
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
-export const viewport: Viewport = {
-  themeColor: tenant.theme.bg,
-};
+export async function generateViewport(): Promise<Viewport> {
+  const tenant = await getRequestTenant();
+  return { themeColor: requestTheme(tenant).bg };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const tenant = await getRequestTenant();
+  const theme = tenant?.theme ?? platformTheme();
+
   return (
     <html
       lang="en"
       className={`${syne.variable} ${figtree.variable}`}
-      style={themeStyle(tenant)}
+      style={themeStyle(theme)}
     >
       <body>
         <a className="skip-link" href="#main">

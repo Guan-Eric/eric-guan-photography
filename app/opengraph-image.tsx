@@ -1,12 +1,16 @@
 import { ImageResponse } from "next/og";
-import { getTenant } from "@/lib/tenants";
+import { platformName, platformSeo, platformTheme } from "@/lib/platform";
+import { getRequestTenant } from "@/lib/tenants";
 
-export const alt = "Real estate photography";
+export const alt = "Real estate photography platform";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function OpengraphImage() {
-  const tenant = getTenant();
+  const tenant = await getRequestTenant();
+  const theme = tenant?.theme ?? platformTheme();
+  const title = tenant?.studioName ?? platformName();
+  const tagline = tenant?.tagline ?? platformSeo().description;
 
   return new ImageResponse(
     (
@@ -18,8 +22,8 @@ export default async function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "flex-end",
           padding: "72px",
-          background: `linear-gradient(135deg, ${tenant.theme.bg} 0%, ${tenant.theme.bgDeep} 55%, ${tenant.theme.accent} 190%)`,
-          color: tenant.theme.ink,
+          background: `linear-gradient(135deg, ${theme.bg} 0%, ${theme.bgDeep} 55%, ${theme.accent} 190%)`,
+          color: theme.ink,
           fontFamily: "sans-serif",
         }}
       >
@@ -28,31 +32,22 @@ export default async function OpengraphImage() {
             fontSize: 30,
             letterSpacing: 6,
             textTransform: "uppercase",
-            color: tenant.theme.accent,
+            color: theme.accent,
             marginBottom: 24,
           }}
         >
-          {tenant.studioName}
+          {title}
         </div>
         <div
           style={{
-            fontSize: 76,
+            fontSize: 64,
             fontWeight: 700,
             lineHeight: 1.05,
             letterSpacing: -2,
-            maxWidth: 900,
+            maxWidth: 980,
           }}
         >
-          {tenant.tagline}
-        </div>
-        <div
-          style={{
-            marginTop: 28,
-            fontSize: 32,
-            color: tenant.theme.inkSoft,
-          }}
-        >
-          {`${tenant.serviceAreas[0]?.city ?? "Real estate photography"} · ${tenant.turnaround} delivery`}
+          {tagline}
         </div>
       </div>
     ),

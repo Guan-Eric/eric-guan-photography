@@ -9,6 +9,10 @@ next-env.d.ts
 .env.local
 .env*.local
 
+data/
+*.sqlite
+*.sqlite-*
+
 .DS_Store
 *.pem
 npm-debug.log*

@@ -6,27 +6,25 @@ import { LocalBusinessJsonLd } from "@/components/json-ld";
 import { RevealObserver } from "@/components/reveal-observer";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { getTenant } from "@/lib/tenants";
-
-const tenant = getTenant();
+import { requireRequestTenant } from "@/lib/tenants";
 
 type Params = { city: string };
 
-function findArea(slug: string) {
-  return tenant.serviceAreas.find((area) => area.slug === slug);
+function findArea<T extends { slug: string }>(slug: string, areas: T[]) {
+  return areas.find((area) => area.slug === slug);
 }
 
-export function generateStaticParams(): Params[] {
-  return tenant.serviceAreas.map((area) => ({ city: area.slug }));
-}
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
 
 export async function generateMetadata({
   params,
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
+  const tenant = await requireRequestTenant();
   const { city } = await params;
-  const area = findArea(city);
+  const area = findArea(city, tenant.serviceAreas);
   if (!area) return {};
 
   const title = `Real Estate Photography in ${area.city}`;
@@ -44,8 +42,9 @@ export default async function CityPage({
 }: {
   params: Promise<Params>;
 }) {
+  const tenant = await requireRequestTenant();
   const { city } = await params;
-  const area = findArea(city);
+  const area = findArea(city, tenant.serviceAreas);
   if (!area) notFound();
 
   return (
@@ -64,7 +63,7 @@ export default async function CityPage({
               galleries delivered in {tenant.turnaround}.
             </p>
             <div className="hero-actions">
-              <Link className="btn btn-solid" href="/#contact">
+              <Link className="btn btn-solid" href="/book">
                 Request a shoot
               </Link>
               <Link className="btn btn-outline" href="/pricing">
@@ -103,7 +102,7 @@ export default async function CityPage({
             <p className="eyebrow">Recent work</p>
             <h2>Interiors, exteriors, and the details buyers linger on.</h2>
           </div>
-          <Gallery images={tenant.gallery} />
+          {tenant.gallery.length > 0 ? <Gallery images={tenant.gallery} /> : null}
         </section>
       </main>
 

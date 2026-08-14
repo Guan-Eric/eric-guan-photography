@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import { PrepChecklist } from "@/components/prep-checklist";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { getTenant } from "@/lib/tenants";
-
-const tenant = getTenant();
+import { requireRequestTenant } from "@/lib/tenants";
 
 export const metadata: Metadata = {
   title: "Before your shoot",
@@ -58,7 +57,8 @@ const checklists = [
   },
 ];
 
-export default function PrepPage() {
+export default async function PrepPage() {
+  const tenant = await requireRequestTenant();
   return (
     <>
       <SiteHeader tenant={tenant} solid />
@@ -69,27 +69,15 @@ export default function PrepPage() {
             <p className="eyebrow">Before your shoot</p>
             <h1>Fifteen minutes of prep is worth two hours of editing.</h1>
             <p className="section-copy">
-              Send this to your seller a day or two ahead. A home that is ready
-              when I arrive photographs better and shoots faster — and nothing
-              here takes long.
+              Send this to your seller a day or two ahead. Check items off as you
+              go — progress stays on this device.
             </p>
           </div>
         </header>
 
         <section className="page-section" style={{ paddingTop: 0 }}>
           <div className="page-inner">
-            <div className="checklist-grid">
-              {checklists.map((group) => (
-                <div className="checklist-group" key={group.title}>
-                  <h3>{group.title}</h3>
-                  <ul className="checklist">
-                    {group.items.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
+            <PrepChecklist groups={checklists} />
           </div>
         </section>
 

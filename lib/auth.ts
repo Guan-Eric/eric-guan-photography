@@ -5,6 +5,7 @@ import { customAlphabet } from "nanoid";
 import { getDb, schema } from "@/lib/db";
 import type { Membership, MembershipRole, User } from "@/lib/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { passwordIssues } from "@/lib/password-rules";
 import { cookieDomain } from "@/lib/platform";
 
 const SESSION_COOKIE = "eg_photographer_session";
@@ -63,8 +64,9 @@ export async function createPhotographerSession(userId: string, tenantId?: strin
 
 export async function clearPhotographerSession() {
   const jar = await cookies();
-  jar.delete(SESSION_COOKIE);
-  jar.delete(ACTIVE_TENANT_COOKIE);
+  const expired = { ...sessionCookieOptions(), maxAge: 0 };
+  jar.set(SESSION_COOKIE, "", expired);
+  jar.set(ACTIVE_TENANT_COOKIE, "", expired);
 }
 
 export async function setActiveTenantCookie(tenantId: string) {
@@ -149,8 +151,9 @@ export function registerUser(options: {
   if (existing) {
     return { ok: false as const, error: "An account with that email already exists." };
   }
-  if (options.password.length < 8) {
-    return { ok: false as const, error: "Password must be at least 8 characters." };
+  const issues = passwordIssues(options.password);
+  if (issues.length > 0) {
+    return { ok: false as const, error: `Password: ${issues[0]!.toLowerCase()}.` };
   }
 
   const createdAt = new Date().toISOString();

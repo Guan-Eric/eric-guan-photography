@@ -41,10 +41,6 @@ export function StudioSettingsPanel() {
   const [state, setState] = useState<ConnectState | null>(null);
   const [billing, setBilling] = useState<BillingState | null>(null);
   const [domain, setDomain] = useState("");
-  const [prefixes, setPrefixes] = useState("");
-  const [gateEnabled, setGateEnabled] = useState(false);
-  const [region, setRegion] = useState("none");
-  const [gateMessage, setGateMessage] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,13 +56,6 @@ export function StudioSettingsPanel() {
     if (connectJson.ok) {
       setState(connectJson);
       setDomain(connectJson.domain ?? "");
-      const gate = connectJson.serviceAreaGate;
-      if (gate) {
-        setGateEnabled(Boolean(gate.enabled));
-        setRegion(gate.region ?? "none");
-        setPrefixes((gate.prefixes ?? []).join(", "));
-        setGateMessage(gate.message ?? "");
-      }
     }
     if (billingJson.ok) setBilling(billingJson);
   }
@@ -117,33 +106,6 @@ export function StudioSettingsPanel() {
       }
       setMessage(json.note ?? "Domain saved.");
       await load();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function saveServiceArea() {
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const response = await fetch("/api/admin/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "serviceArea",
-          enabled: gateEnabled,
-          region,
-          prefixes,
-          message: gateMessage,
-        }),
-      });
-      const json = await response.json();
-      if (!json.ok) {
-        setError(json.error ?? "Could not save service area.");
-        return;
-      }
-      setMessage("Service area saved.");
     } finally {
       setBusy(false);
     }
@@ -206,7 +168,7 @@ export function StudioSettingsPanel() {
         setError(json.error ?? "Could not invite.");
         return;
       }
-      setMessage(`Invite created: ${json.acceptPath}`);
+      setMessage(`Invite sent to ${inviteEmail}.`);
       setInviteEmail("");
     } finally {
       setBusy(false);
@@ -215,78 +177,107 @@ export function StudioSettingsPanel() {
 
   const usedGb = state ? (state.storageBytesUsed / 1e9).toFixed(2) : "—";
   const quotaGb = state ? (state.mediaQuotaBytes / 1e9).toFixed(0) : "—";
+  const storagePct = state
+    ? Math.min(100, (state.storageBytesUsed / Math.max(state.mediaQuotaBytes, 1)) * 100)
+    : 0;
+  const trialLabel = billing?.trialEndsAt
+    ? new Date(billing.trialEndsAt).toLocaleDateString("en-CA", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+  const connectLabel =
+    {
+      not_started: "Not connected",
+      pending: "Setup in progress",
+      complete: "Connected",
+      restricted: "Needs attention",
+    }[state?.connectStatus ?? ""] ?? "…";
 
   return (
-    <div className="booking-card" style={{ display: "grid", gap: "1.25rem" }}>
-      <div>
-        <p className="eyebrow">Studio settings</p>
-        <h1>Plan, payments & domain</h1>
-        <p className="muted">
-          Slug: <code>{state?.slug ?? "…"}</code> · Storage: {usedGb} / {quotaGb} GB
-        </p>
+    <div className="studio-settings">
+      <div className="admin-toolbar">
+        <div>
+          <p className="eyebrow">Settings</p>
+          <h1>Plan & studio</h1>
+          <p className="muted">
+            Storage {usedGb} / {quotaGb} GB
+          </p>
+          {state ? (
+            <div className="storage-meter" aria-hidden="true">
+              <span style={{ width: `${storagePct}%` }} />
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      <section>
-        <h2 style={{ fontSize: "1.1rem", margin: "0 0 0.5rem" }}>Subscription</h2>
+      <section className="studio-section">
+        <h2>Subscription</h2>
         <p className="muted">
           {billing ? (
             <>
-              <strong>{billing.planLabel}</strong> · {billing.subscriptionStatus}
-              {billing.trialEndsAt ? ` · trial until ${billing.trialEndsAt.slice(0, 10)}` : ""}
+              {billing.planLabel}
+              {billing.subscriptionStatus === "trialing" && trialLabel
+                ? ` · trial through ${trialLabel}`
+                : ` · ${billing.subscriptionStatus}`}
               <br />
-              Listings {billing.listingsUsedYear} / {billing.listingQuotaAnnual} · seats{" "}
-              {billing.seatsQuota}
+              {billing.listingsUsedYear} of {billing.listingQuotaAnnual} listings this year ·{" "}
+              {billing.seatsQuota} {billing.seatsQuota === 1 ? "seat" : "seats"}
             </>
           ) : (
             "Loading…"
           )}
         </p>
-        <div className="admin-delivery-actions">
-          <button type="button" className="btn" disabled={busy} onClick={() => checkout("starter")}>
-            Starter $49
-          </button>
-          <button type="button" className="btn" disabled={busy} onClick={() => checkout("growth")}>
-            Growth $99
-          </button>
-          <button type="button" className="btn" disabled={busy} onClick={() => checkout("studio")}>
-            Studio $179
-          </button>
-          <button type="button" className="btn btn-outline" disabled={busy} onClick={openPortal}>
-            Manage billing
-          </button>
+        <div className="plan-pick">
+          {(
+            [
+              ["starter", "Starter", "$49"],
+              ["growth", "Growth", "$99"],
+              ["studio", "Studio", "$179"],
+            ] as const
+          ).map(([id, label, price]) => (
+            <button
+              key={id}
+              type="button"
+              className={billing?.plan === id ? "is-current" : undefined}
+              disabled={busy}
+              onClick={() => checkout(id)}
+            >
+              <strong>{label}</strong>
+              <span>{price} / month</span>
+            </button>
+          ))}
         </div>
-      </section>
-
-      <section>
-        <h2 style={{ fontSize: "1.1rem", margin: "0 0 0.5rem" }}>Stripe Connect</h2>
-        <p className="muted">
-          Status: <strong>{state?.connectStatus ?? "…"}</strong>
-          {state?.connectAccountId ? (
-            <>
-              {" "}
-              · <code>{state.connectAccountId}</code>
-            </>
-          ) : null}
-        </p>
-        <p className="field-hint">
-          Express onboarding pays gallery Checkout into your connected account.
-        </p>
-        <button type="button" className="btn" disabled={busy} onClick={startConnect}>
-          {busy ? "Working…" : "Start / continue Connect"}
+        <button type="button" className="btn btn-outline" disabled={busy} onClick={openPortal}>
+          Manage billing
         </button>
       </section>
 
-      <section>
-        <h2 style={{ fontSize: "1.1rem", margin: "0 0 0.5rem" }}>Custom domain</h2>
+      <section className="studio-section">
+        <h2>Payouts</h2>
+        <p className="muted">{connectLabel}</p>
+        <p className="field-hint">
+          Connect Stripe so gallery payments land in your account.
+        </p>
+        <button type="button" className="btn btn-solid" disabled={busy} onClick={startConnect}>
+          {busy ? "Working…" : state?.connectStatus === "complete" ? "Update payouts" : "Connect payouts"}
+        </button>
+      </section>
+
+      <section className="studio-section">
+        <h2>Custom domain</h2>
         {!state?.canCustomDomain ? (
-          <p className="field-hint">Growth or Studio plan required.</p>
-        ) : null}
+          <p className="field-hint">Available on Growth and Studio.</p>
+        ) : (
+          <p className="field-hint">Point a hostname at this studio, then save it here.</p>
+        )}
         <label className="field">
-          <span>Domain (e.g. photos.yourbrokerage.com)</span>
+          <span>Domain</span>
           <input
             value={domain}
             onChange={(event) => setDomain(event.target.value)}
-            placeholder="photos.example.com"
+            placeholder="photos.yourstudio.com"
             disabled={!state?.canCustomDomain}
           />
         </label>
@@ -300,42 +291,9 @@ export function StudioSettingsPanel() {
         </button>
       </section>
 
-      <section>
-        <h2 style={{ fontSize: "1.1rem", margin: "0 0 0.5rem" }}>Service area</h2>
-        <label className="field">
-          <span>
-            <input
-              type="checkbox"
-              checked={gateEnabled}
-              onChange={(event) => setGateEnabled(event.target.checked)}
-            />{" "}
-            Gate bookings by postal / ZIP prefix
-          </span>
-        </label>
-        <label className="field">
-          <span>Region</span>
-          <select value={region} onChange={(event) => setRegion(event.target.value)}>
-            <option value="none">No format check</option>
-            <option value="CA">Canada (postal code)</option>
-            <option value="US">United States (ZIP)</option>
-          </select>
-        </label>
-        <label className="field">
-          <span>Prefixes (comma-separated, e.g. H, J4 or 100, 902)</span>
-          <input value={prefixes} onChange={(event) => setPrefixes(event.target.value)} />
-        </label>
-        <label className="field">
-          <span>Out-of-area message</span>
-          <input value={gateMessage} onChange={(event) => setGateMessage(event.target.value)} />
-        </label>
-        <button type="button" className="btn btn-outline" disabled={busy} onClick={saveServiceArea}>
-          Save service area
-        </button>
-      </section>
-
-      <section>
-        <h2 style={{ fontSize: "1.1rem", margin: "0 0 0.5rem" }}>Team invites</h2>
-        <p className="field-hint">Seat limit is set by your plan.</p>
+      <section className="studio-section">
+        <h2>Team</h2>
+        <p className="field-hint">Seat limit follows your plan.</p>
         <label className="field">
           <span>Editor email</span>
           <input
@@ -352,10 +310,6 @@ export function StudioSettingsPanel() {
 
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-
-      <p className="field-hint">
-        <a href="/admin">← Back to shoot board</a>
-      </p>
     </div>
   );
 }

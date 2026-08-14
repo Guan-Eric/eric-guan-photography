@@ -26,6 +26,7 @@ export function proxy(request: NextRequest) {
   if (host) {
     requestHeaders.set("x-tenant-host", host);
   }
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
 
   const requestInit = { request: { headers: requestHeaders } };
 

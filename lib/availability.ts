@@ -1,5 +1,8 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
+import { resolveSchedule, startTimesForDay } from "@/lib/schedule";
+import type { WeeklySchedule, WeekdayKey } from "@/lib/tenant-schema";
+import { getTenantRow, tenantFromRow } from "@/lib/tenant-store";
 
 /** Minutes of travel cushion required between any two shoots. */
 export const DRIVE_BUFFER_MINUTES = 45;
@@ -23,13 +26,17 @@ function addMinutes(date: Date, minutes: number) {
 }
 
 /**
- * Convert a Montréal wall-clock date + HH:mm into a UTC Date by measuring
+ * Convert a wall-clock date + HH:mm in `timeZone` into a UTC Date by measuring
  * how far a UTC probe sits from the desired local wall time.
  */
-export function wallTimeToUtc(dateYmd: string, hhmm: string) {
+export function wallTimeToUtc(
+  dateYmd: string,
+  hhmm: string,
+  timeZone: string = TIME_ZONE,
+) {
   const probe = new Date(`${dateYmd}T${hhmm}:00Z`);
   const local = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIME_ZONE,
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -53,9 +60,9 @@ export function wallTimeToUtc(dateYmd: string, hhmm: string) {
   return addMinutes(probe, deltaMinutes);
 }
 
-function formatSlotLabel(start: Date) {
+function formatSlotLabel(start: Date, timeZone: string) {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIME_ZONE,
+    timeZone,
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -64,31 +71,20 @@ function formatSlotLabel(start: Date) {
   }).format(start);
 }
 
-function ymdInZone(date: Date) {
+function ymdInZone(date: Date, timeZone: string) {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIME_ZONE,
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(date);
 }
 
-function weekdayInZone(date: Date) {
+function weekdayInZone(date: Date, timeZone: string): WeekdayKey {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIME_ZONE,
+    timeZone,
     weekday: "short",
-  }).format(date);
-}
-
-function localHourMinute(date: Date) {
-  const label = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TIME_ZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(date);
-  const [hour, minute] = label.split(":").map(Number);
-  return { hour, minute };
+  }).format(date) as WeekdayKey;
 }
 
 function intervalsOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
@@ -157,44 +153,68 @@ export function isSlotFree(
   );
 }
 
+function scheduleForTenant(tenantId: string): {
+  schedule: WeeklySchedule;
+  timeZone: string;
+} {
+  const row = getTenantRow(tenantId);
+  if (!row) {
+    return { schedule: resolveSchedule(null), timeZone: TIME_ZONE };
+  }
+  const tenant = tenantFromRow(row);
+  return {
+    schedule: resolveSchedule(tenant.schedule),
+    timeZone: row.timezone || TIME_ZONE,
+  };
+}
+
 /**
- * Offer shoot slots for the next `days` days.
- * Mon–Sat, 09:00–16:30 starts, finish by 18:00 America/Toronto.
- * Requires 4 hours lead time. Applies drive-time buffer against existing jobs.
+ * Offer shoot slots from the studio weekly schedule in the tenant timezone.
+ * Applies lead time and drive-time buffer against existing appointments.
  */
 export async function listAvailableSlots(options: {
   tenantId: string;
   durationMinutes: number;
   days?: number;
+  schedule?: WeeklySchedule;
+  timeZone?: string;
 }) {
-  const days = options.days ?? 14;
+  const resolved = scheduleForTenant(options.tenantId);
+  const schedule = options.schedule
+    ? resolveSchedule(options.schedule)
+    : resolved.schedule;
+  const timeZone = options.timeZone ?? resolved.timeZone;
+  const days = options.days ?? schedule.offerDays;
   const now = new Date();
   const rangeEnd = addMinutes(now, days * 24 * 60);
   const busy = await getBusyIntervals(options.tenantId, now, rangeEnd);
   const slots: TimeSlot[] = [];
-  const startTimes = [
-    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-    "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
-    "15:00", "15:30", "16:00", "16:30",
-  ];
+  const leadMs = schedule.leadTimeHours * 60 * 60_000;
 
   for (let dayOffset = 0; dayOffset < days; dayOffset += 1) {
     const dayAnchor = addMinutes(now, dayOffset * 24 * 60);
-    const ymd = ymdInZone(dayAnchor);
-    if (weekdayInZone(wallTimeToUtc(ymd, "12:00")) === "Sun") continue;
+    const ymd = ymdInZone(dayAnchor, timeZone);
+    const weekday = weekdayInZone(wallTimeToUtc(ymd, "12:00", timeZone), timeZone);
+    const day = schedule.days[weekday];
+    if (!day?.enabled) continue;
+
+    const startTimes = startTimesForDay(
+      day.open,
+      day.close,
+      options.durationMinutes,
+      schedule.slotIntervalMinutes,
+    );
 
     for (const hhmm of startTimes) {
-      const start = wallTimeToUtc(ymd, hhmm);
+      const start = wallTimeToUtc(ymd, hhmm, timeZone);
       const end = addMinutes(start, options.durationMinutes);
-      const endHm = localHourMinute(end);
-      if (endHm.hour > 18 || (endHm.hour === 18 && endHm.minute > 0)) continue;
-      if (start.getTime() - now.getTime() < 4 * 60 * 60_000) continue;
+      if (start.getTime() - now.getTime() < leadMs) continue;
       if (!isSlotFree(start, end, busy)) continue;
 
       slots.push({
         start: start.toISOString(),
         end: end.toISOString(),
-        label: formatSlotLabel(start),
+        label: formatSlotLabel(start, timeZone),
       });
     }
   }

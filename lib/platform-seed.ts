@@ -33,26 +33,18 @@ function upsertTenant(db: Db, tenant: Tenant, timezone = "America/Toronto") {
     .where(eq(schema.tenants.id, tenant.id))
     .get();
 
-  const row = {
-    id: tenant.id,
-    slug: tenant.slug,
-    domain: tenant.domain,
-    timezone,
-    configJson: JSON.stringify(tenant),
-    updatedAt: nowIso(),
-  };
-
   if (existing) {
-    db.update(schema.tenants)
-      .set(row)
-      .where(eq(schema.tenants.id, tenant.id))
-      .run();
     return;
   }
 
+  const createdAt = nowIso();
   db.insert(schema.tenants)
     .values({
-      ...row,
+      id: tenant.id,
+      slug: tenant.slug,
+      domain: tenant.domain,
+      timezone,
+      configJson: JSON.stringify(tenant),
       stripeConnectStatus: "not_started",
       storageBytesUsed: 0,
       mediaQuotaBytes: 107_374_182_400,
@@ -62,7 +54,8 @@ function upsertTenant(db: Db, tenant: Tenant, timezone = "America/Toronto") {
       seatsQuota: 5,
       listingsUsedYear: 0,
       listingsYear: new Date().getUTCFullYear(),
-      createdAt: nowIso(),
+      createdAt,
+      updatedAt: createdAt,
     })
     .run();
 }

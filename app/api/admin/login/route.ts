@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const result = authenticateUser(legacyEmail, password);
     if (!result.ok) {
       return NextResponse.json(
-        { ok: false, error: "Wrong email or password. Use /admin/login with email." },
+        { ok: false, error: "Wrong email or password. Use /login with email." },
         { status: 401 },
       );
     }

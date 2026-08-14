@@ -58,6 +58,12 @@ export type GalleryImage = ImageAsset & {
   wide?: boolean;
 };
 
+export type PriceBand = {
+  maxSqft: number;
+  priceCents: number;
+  label: string;
+};
+
 export type Package = {
   id: string;
   name: string;
@@ -74,8 +80,10 @@ export type Package = {
   featured?: boolean;
   /** When set, this package can be offered as an in-gallery upsell. */
   upsell?: boolean;
-  /** Firm add-on price in cents (used by gallery Checkout upsells). */
+  /** Firm add-on / flat booking price in cents. */
   priceCents?: number;
+  /** Square-footage quote bands. When absent, `priceCents` is used as a single band. */
+  priceBands?: PriceBand[];
 };
 
 export type ProcessStep = {
@@ -101,6 +109,26 @@ export type ServiceAreaGate = {
   region: "CA" | "US" | "none";
   prefixes: string[];
   message: string;
+};
+
+export const WEEKDAY_KEYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+export type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
+
+/** Open/close are wall-clock HH:mm in the studio timezone. Close is the latest finish. */
+export type DaySchedule = {
+  enabled: boolean;
+  open: string;
+  close: string;
+};
+
+export type WeeklySchedule = {
+  days: Record<WeekdayKey, DaySchedule>;
+  /** Minutes between offered start times. */
+  slotIntervalMinutes: number;
+  /** Minimum hours ahead of now before a start is offered. */
+  leadTimeHours: number;
+  /** How many days ahead to offer on the booking form. */
+  offerDays: number;
 };
 
 export type Tenant = {
@@ -132,6 +160,8 @@ export type Tenant = {
   process: ProcessStep[];
   serviceAreas: ServiceArea[];
   serviceAreaGate?: ServiceAreaGate;
+  /** When absent, booking uses Mon–Sat 09:00–18:00 defaults. */
+  schedule?: WeeklySchedule;
 
   /** Turnaround promise, e.g. "24–48 hours". Reused across copy and email. */
   turnaround: string;

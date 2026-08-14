@@ -1,3 +1,4 @@
+import { PREMIUM_LISTING_BANDS, STANDARD_LISTING_BANDS } from "@/lib/quoting";
 import type { Tenant } from "@/lib/tenant-schema";
 
 export const ericGuan: Tenant = {
@@ -112,6 +113,8 @@ export const ericGuan: Tenant = {
         "Straightened verticals on every frame",
         "24–48 hour delivery",
       ],
+      priceCents: 20000,
+      priceBands: STANDARD_LISTING_BANDS,
     },
     {
       id: "premium",
@@ -127,6 +130,8 @@ export const ericGuan: Tenant = {
         "Social crops for feed and stories",
       ],
       featured: true,
+      priceCents: 30000,
+      priceBands: PREMIUM_LISTING_BANDS,
     },
     {
       id: "retainer",

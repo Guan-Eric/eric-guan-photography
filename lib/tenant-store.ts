@@ -170,3 +170,12 @@ export function updateTenantConfig(tenantId: string, patch: Partial<Tenant>) {
     .run();
   return getTenantRow(tenantId);
 }
+
+export function updateTenantTimezone(tenantId: string, timezone: string) {
+  const db = getDb();
+  db.update(schema.tenants)
+    .set({ timezone, updatedAt: nowIso() })
+    .where(eq(schema.tenants.id, tenantId))
+    .run();
+  return getTenantRow(tenantId);
+}

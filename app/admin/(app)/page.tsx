@@ -1,25 +1,25 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { AdminOrderBoard } from "@/components/admin-order-board";
 import { getPhotographerSession } from "@/lib/auth";
 import { listMedia, listRecentGalleries } from "@/lib/galleries";
 import { listOrders } from "@/lib/orders";
+import { studioOrigin } from "@/lib/platform";
 import { getTenant } from "@/lib/tenants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Admin",
+  title: "Orders",
   robots: { index: false, follow: false },
 };
 
 export default async function AdminPage() {
   const session = await getPhotographerSession();
-  if (!session) redirect("/admin/login");
-  if (!session.activeTenantId) redirect("/onboarding");
+  if (!session?.activeTenantId) return null;
 
   const tenant = getTenant(session.activeTenantId);
+  const siteUrl = studioOrigin({ slug: tenant.slug, domain: tenant.domain });
   const orders = listOrders(tenant.id);
   const galleries = listRecentGalleries(tenant.id).map((gallery) => ({
     id: gallery.id,
@@ -32,12 +32,10 @@ export default async function AdminPage() {
   }));
 
   return (
-    <main className="admin-shell" id="main">
-      <p className="muted" style={{ marginBottom: "0.75rem" }}>
-        Signed in as {session.user.email} · studio <strong>{tenant.studioName}</strong>{" "}
-        (<code>{tenant.slug}</code>) · <a href="/admin/settings">Settings</a>
-      </p>
-      <AdminOrderBoard initialOrders={orders} initialGalleries={galleries} />
-    </main>
+    <AdminOrderBoard
+      initialOrders={orders}
+      initialGalleries={galleries}
+      bookingUrl={`${siteUrl}/book`}
+    />
   );
 }

@@ -1,4 +1,6 @@
 import { platformTheme, studioOrigin } from "@/lib/platform";
+import { PREMIUM_LISTING_BANDS, STANDARD_LISTING_BANDS } from "@/lib/quoting";
+import { defaultWeeklySchedule } from "@/lib/schedule";
 import type { Tenant } from "@/lib/tenant-schema";
 
 const PLACEHOLDER_HERO = {
@@ -57,6 +59,8 @@ export function buildStudioConfig(options: {
           "MLS-sized and full-resolution downloads",
           "24–48 hour delivery",
         ],
+        priceCents: 20000,
+        priceBands: STANDARD_LISTING_BANDS,
       },
       {
         id: "premium",
@@ -71,6 +75,8 @@ export function buildStudioConfig(options: {
           "Single-property website",
         ],
         featured: true,
+        priceCents: 30000,
+        priceBands: PREMIUM_LISTING_BANDS,
       },
       {
         id: "floor-plan",
@@ -120,6 +126,7 @@ export function buildStudioConfig(options: {
       prefixes: [],
       message: "This studio does not currently cover that area.",
     },
+    schedule: defaultWeeklySchedule(),
     turnaround: "24–48 hours",
     seo: {
       description: `${options.studioName} — real estate photography for agents. MLS-ready galleries delivered in 24–48 hours.`,

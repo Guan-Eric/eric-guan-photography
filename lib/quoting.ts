@@ -1,4 +1,4 @@
-import type { Package, Tenant } from "@/lib/tenant-schema";
+import type { Package, PriceBand, Tenant } from "@/lib/tenant-schema";
 
 export type QuoteInput = {
   packageId: string;
@@ -23,33 +23,42 @@ export type QuoteResult =
       contactOnly?: boolean;
     };
 
-type PriceBand = {
-  maxSqft: number;
-  priceCents: number;
-  label: string;
-};
+export const STANDARD_LISTING_BANDS: PriceBand[] = [
+  { maxSqft: 1500, priceCents: 15000, label: "under 1,500 sq ft" },
+  { maxSqft: 2500, priceCents: 20000, label: "1,500–2,500 sq ft" },
+  { maxSqft: 99999, priceCents: 25000, label: "over 2,500 sq ft" },
+];
 
-/**
- * Firm price bands for bookable packages. Display ranges on the marketing site
- * stay human-readable; this table is what the booking engine quotes.
- */
-const BANDS: Record<string, PriceBand[]> = {
-  standard: [
-    { maxSqft: 1500, priceCents: 15000, label: "under 1,500 sq ft" },
-    { maxSqft: 2500, priceCents: 20000, label: "1,500–2,500 sq ft" },
-    { maxSqft: Number.POSITIVE_INFINITY, priceCents: 25000, label: "over 2,500 sq ft" },
-  ],
-  premium: [
-    { maxSqft: 1500, priceCents: 25000, label: "under 1,500 sq ft" },
-    { maxSqft: 2500, priceCents: 30000, label: "1,500–2,500 sq ft" },
-    { maxSqft: Number.POSITIVE_INFINITY, priceCents: 35000, label: "over 2,500 sq ft" },
-  ],
-};
+export const PREMIUM_LISTING_BANDS: PriceBand[] = [
+  { maxSqft: 1500, priceCents: 25000, label: "under 1,500 sq ft" },
+  { maxSqft: 2500, priceCents: 30000, label: "1,500–2,500 sq ft" },
+  { maxSqft: 99999, priceCents: 35000, label: "over 2,500 sq ft" },
+];
 
-function formatCad(cents: number) {
+export function priceBandsFor(pkg: Package): PriceBand[] | null {
+  if (pkg.priceBands && pkg.priceBands.length > 0) return pkg.priceBands;
+  if (pkg.priceCents != null && pkg.priceCents > 0) {
+    return [
+      {
+        maxSqft: 99999,
+        priceCents: pkg.priceCents,
+        label: "any size",
+      },
+    ];
+  }
+  if (pkg.id === "standard") return STANDARD_LISTING_BANDS;
+  if (pkg.id === "premium") return PREMIUM_LISTING_BANDS;
+  return null;
+}
+
+export function isBookablePackage(pkg: Package) {
+  return pkg.durationMinutes != null && priceBandsFor(pkg) != null;
+}
+
+function formatMoney(cents: number, currency: string) {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
-    currency: "CAD",
+    currency: currency || "CAD",
     maximumFractionDigits: 0,
   }).format(cents / 100);
 }
@@ -67,7 +76,8 @@ export function quotePackage(tenant: Tenant, input: QuoteInput): QuoteResult {
     return { ok: false, error: "Choose a package to continue." };
   }
 
-  if (pkg.durationMinutes == null || !BANDS[pkg.id]) {
+  const bands = priceBandsFor(pkg);
+  if (pkg.durationMinutes == null || !bands) {
     return {
       ok: false,
       error: "Retainers are custom — email to set up an ongoing booking window.",
@@ -84,21 +94,22 @@ export function quotePackage(tenant: Tenant, input: QuoteInput): QuoteResult {
   }
 
   const band =
-    BANDS[pkg.id].find((candidate) => squareFootage <= candidate.maxSqft) ??
-    BANDS[pkg.id][BANDS[pkg.id].length - 1];
+    bands.find((candidate) => squareFootage <= candidate.maxSqft) ??
+    bands[bands.length - 1]!;
 
   const durationMinutes = durationFor(pkg, squareFootage);
   if (durationMinutes == null) {
     return { ok: false, error: "This package cannot be booked online." };
   }
 
+  const currency = tenant.seo.currency || "CAD";
   return {
     ok: true,
     packageId: pkg.id,
     packageName: pkg.name,
     priceCents: band.priceCents,
-    priceLabel: formatCad(band.priceCents),
-    currency: tenant.seo.currency,
+    priceLabel: formatMoney(band.priceCents, currency),
+    currency,
     durationMinutes,
     squareFootage,
     bandLabel: band.label,
@@ -106,5 +117,5 @@ export function quotePackage(tenant: Tenant, input: QuoteInput): QuoteResult {
 }
 
 export function bookablePackages(tenant: Tenant) {
-  return tenant.packages.filter((pkg) => pkg.durationMinutes != null && BANDS[pkg.id]);
+  return tenant.packages.filter(isBookablePackage);
 }

@@ -33,9 +33,11 @@ type GallerySummary = Pick<
 export function AdminOrderBoard({
   initialOrders,
   initialGalleries,
+  bookingUrl,
 }: {
   initialOrders: Order[];
   initialGalleries: GallerySummary[];
+  bookingUrl: string;
 }) {
   const router = useRouter();
   const [orders, setOrders] = useState(initialOrders);
@@ -190,29 +192,27 @@ export function AdminOrderBoard({
     }
   }
 
-  async function logout() {
-    await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/admin/login");
-    router.refresh();
-  }
-
   return (
     <div className="admin-board">
       <div className="admin-toolbar">
         <div>
           <p className="eyebrow">Orders</p>
-          <h1>Shoot board</h1>
+          <h1>Shoots</h1>
         </div>
-        <button type="button" className="btn btn-outline" onClick={logout}>
-          Sign out
-        </button>
+        <a className="btn btn-outline" href={bookingUrl} target="_blank" rel="noreferrer">
+          Booking page
+        </a>
       </div>
 
       {error ? <p className="form-error">{error}</p> : null}
 
       {orders.length === 0 ? (
-        <div className="booking-card">
-          <p>No orders yet. When an agent books at `/book`, they show up here.</p>
+        <div className="studio-empty">
+          <h2>No shoots yet</h2>
+          <p>When an agent books, the job lands on this board.</p>
+          <a className="btn btn-solid" href={bookingUrl} target="_blank" rel="noreferrer">
+            Open booking page
+          </a>
         </div>
       ) : (
         <div className="admin-order-list">
@@ -239,7 +239,6 @@ export function AdminOrderBoard({
                         </div>
                       ));
                     })()}
-                    <div className="muted">{order.id}</div>
                   </div>
                   <div>
                     <p className="eyebrow">Property</p>

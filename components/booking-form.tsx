@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PreferredTimesPicker } from "@/components/preferred-times-picker";
 import type { PreferredSlot } from "@/lib/preferred-slots";
 import { normalizePostalCode } from "@/lib/service-area";
+import { isBookablePackage } from "@/lib/quoting";
 import type { Package } from "@/lib/tenant-schema";
 
 type Slot = { start: string; end: string; label: string };
@@ -75,7 +76,7 @@ function FieldLabel({
 export function BookingForm({ packages, defaultPackageId, email }: Props) {
   const router = useRouter();
   const bookable = useMemo(
-    () => packages.filter((pkg) => pkg.durationMinutes != null),
+    () => packages.filter(isBookablePackage),
     [packages],
   );
 

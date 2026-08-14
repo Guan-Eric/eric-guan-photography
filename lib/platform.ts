@@ -67,7 +67,7 @@ export function isLocalPlatform() {
 }
 
 export function cookieDomain() {
-  if (isLocalPlatform()) return undefined;
+  if (isLocalPlatform()) return "localhost";
   return `.${platformRootDomain()}`;
 }
 

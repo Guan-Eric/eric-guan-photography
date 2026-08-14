@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { AuthShell } from "@/components/auth-shell";
 import { getPhotographerSession, setActiveTenantCookie } from "@/lib/auth";
 import { acceptInvite, getInviteByToken } from "@/lib/invites";
 
@@ -24,9 +25,12 @@ export default async function InvitePage({
   const invite = getInviteByToken(token);
   if (!invite) {
     return (
-      <main className="admin-shell" id="main">
-        <p>This invite is invalid.</p>
-      </main>
+      <AuthShell line="Join the studio that invited you.">
+        <div className="auth-form-intro">
+          <h1>Invite expired</h1>
+          <p>Ask the studio owner to send a new invite.</p>
+        </div>
+      </AuthShell>
     );
   }
 
@@ -38,9 +42,12 @@ export default async function InvitePage({
 
   if (!result.ok) {
     return (
-      <main className="admin-shell" id="main">
-        <p>{result.error}</p>
-      </main>
+      <AuthShell line="Join the studio that invited you.">
+        <div className="auth-form-intro">
+          <h1>Couldn’t join</h1>
+          <p>{result.error}</p>
+        </div>
+      </AuthShell>
     );
   }
 

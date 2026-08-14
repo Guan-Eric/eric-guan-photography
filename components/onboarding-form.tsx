@@ -9,7 +9,6 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
   const [photographerName, setPhotographerName] = useState(defaultName);
   const [slug, setSlug] = useState("");
   const [timezone, setTimezone] = useState("America/Toronto");
-  const [accent, setAccent] = useState("#2f5d50");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +25,6 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
           photographerName,
           slug: slug || undefined,
           timezone,
-          accent,
         }),
       });
       const json = await response.json();
@@ -34,7 +32,7 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
         setError(json.error ?? "Could not create studio.");
         return;
       }
-      router.push("/admin/settings");
+      router.push("/admin");
       router.refresh();
     } catch {
       setError("Network error.");
@@ -44,23 +42,26 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
   }
 
   return (
-    <form className="booking-card admin-login" onSubmit={onSubmit} style={{ width: "min(520px, 100%)" }}>
-      <h1>Create your studio</h1>
-      <p className="field-hint">
-        White-label site, booking, and gated delivery for this brand. Subdomain will be{" "}
-        <code>{slug || "yourslug"}.{"{platform}"}</code>. You get a 14-day Starter trial.
-      </p>
+    <form className="auth-form" onSubmit={onSubmit}>
+      <div className="auth-form-intro">
+        <h1>Name your studio</h1>
+        <p>
+          This is the brand agents see on booking and galleries. You start with a
+          14-day trial.
+        </p>
+      </div>
       <label className="field">
         <span>Studio name</span>
         <input
           value={studioName}
           onChange={(event) => setStudioName(event.target.value)}
+          autoFocus
           required
           minLength={2}
         />
       </label>
       <label className="field">
-        <span>Photographer name</span>
+        <span>Your name</span>
         <input
           value={photographerName}
           onChange={(event) => setPhotographerName(event.target.value)}
@@ -68,13 +69,16 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
         />
       </label>
       <label className="field">
-        <span>Subdomain slug</span>
+        <span>
+          Subdomain <span className="optional-marker">optional</span>
+        </span>
         <input
           value={slug}
           onChange={(event) =>
             setSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
           }
-          placeholder="acmephotos"
+          placeholder="northlight"
+          autoComplete="off"
         />
       </label>
       <label className="field">
@@ -88,17 +92,9 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
           <option value="America/Denver">America/Denver</option>
         </select>
       </label>
-      <label className="field">
-        <span>Accent colour</span>
-        <input
-          type="color"
-          value={accent}
-          onChange={(event) => setAccent(event.target.value)}
-        />
-      </label>
       {error ? <p className="form-error">{error}</p> : null}
       <button className="btn btn-solid" type="submit" disabled={loading}>
-        {loading ? "Creating…" : "Create studio"}
+        {loading ? "Creating…" : "Open studio"}
       </button>
     </form>
   );

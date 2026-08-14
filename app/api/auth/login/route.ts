@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import {
   authenticateUser,
   createPhotographerSession,
+  setActiveTenantCookie,
 } from "@/lib/auth";
+import { getDb, schema } from "@/lib/db";
+import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
 
@@ -14,6 +17,20 @@ export async function POST(request: Request) {
   if (!result.ok) {
     return NextResponse.json(result, { status: 401 });
   }
-  await createPhotographerSession(result.user.id);
-  return NextResponse.json({ ok: true });
+
+  const membership = getDb()
+    .select()
+    .from(schema.memberships)
+    .where(eq(schema.memberships.userId, result.user.id))
+    .get();
+
+  await createPhotographerSession(result.user.id, membership?.tenantId);
+  if (membership?.tenantId) {
+    await setActiveTenantCookie(membership.tenantId);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    hasStudio: Boolean(membership?.tenantId),
+  });
 }

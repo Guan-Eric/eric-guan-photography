@@ -25,7 +25,7 @@ export function AdminLoginForm() {
         setError(json.error ?? "Login failed.");
         return;
       }
-      router.push("/admin");
+      router.push(json.hasStudio ? "/admin" : "/onboarding");
       router.refresh();
     } catch {
       setError("Network error.");
@@ -35,19 +35,18 @@ export function AdminLoginForm() {
   }
 
   return (
-    <form className="booking-card admin-login" onSubmit={onSubmit}>
-      <h1>Studio login</h1>
-      <p className="field-hint">
-        Photographer dashboard. Seeded dogfood:{" "}
-        <code>ericguan.photo@gmail.com</code> / <code>dev-admin</code>. Demo:{" "}
-        <code>demo@example.com</code> / <code>dev-admin</code>.
-      </p>
+    <form className="auth-form" onSubmit={onSubmit}>
+      <div className="auth-form-intro">
+        <h1>Sign in</h1>
+        <p>Use the email you registered with to open your studio.</p>
+      </div>
       <label className="field">
         <span>Email</span>
         <input
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
+          autoComplete="email"
           autoFocus
           required
         />
@@ -58,6 +57,7 @@ export function AdminLoginForm() {
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
+          autoComplete="current-password"
           required
         />
       </label>
@@ -65,7 +65,7 @@ export function AdminLoginForm() {
       <button className="btn btn-solid" type="submit" disabled={loading}>
         {loading ? "Signing in…" : "Sign in"}
       </button>
-      <p className="field-hint">
+      <p className="auth-form-foot">
         New studio? <a href="/signup">Create an account</a>
       </p>
     </form>

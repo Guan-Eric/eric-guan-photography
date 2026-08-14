@@ -1,0 +1,32 @@
+import { NextResponse } from "next/server";
+import { bookingRequestSchema } from "@/lib/booking-schema";
+import { createBooking } from "@/lib/orders";
+import { getRequestTenant } from "@/lib/tenants";
+
+export const runtime = "nodejs";
+
+export async function POST(request: Request) {
+  const body = await request.json().catch(() => null);
+  const parsed = bookingRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Check the form — something required is missing or invalid.",
+        details: parsed.error.flatten(),
+      },
+      { status: 400 },
+    );
+  }
+
+  const tenant = await getRequestTenant();
+  if (!tenant) {
+    return NextResponse.json({ ok: false, error: "Studio not found." }, { status: 404 });
+  }
+  const result = await createBooking(tenant, parsed.data);
+  if (!result.ok) {
+    return NextResponse.json(result, { status: 400 });
+  }
+
+  return NextResponse.json(result);
+}

@@ -1,0 +1,54 @@
+{
+  "name": "eric-guan-photography",
+  "version": "1.0.0",
+  "description": "Real estate media platform — booking, gated delivery, and property sites for photographers.",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "isolation:check": "npx --yes tsx scripts/isolation-check.ts",
+    "slides:pdf": "node export-slides-pdf.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Guan-Eric/eric-guan-photography.git"
+  },
+  "keywords": [],
+  "author": "Eric Guan",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/Guan-Eric/eric-guan-photography/issues"
+  },
+  "homepage": "https://github.com/Guan-Eric/eric-guan-photography#readme",
+  "dependencies": {
+    "archiver": "^8.0.0",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-orm": "^0.45.2",
+    "nanoid": "^6.0.1",
+    "next": "^16.3.1",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "sharp": "^0.35.3",
+    "stripe": "^22.5.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/archiver": "^8.0.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "drizzle-kit": "^0.31.10",
+    "playwright": "^1.62.1",
+    "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "better-sqlite3@13.0.3": true
+  }
+}

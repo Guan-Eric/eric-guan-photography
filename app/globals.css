@@ -1,3 +1,9 @@
+/*
+ * Design tokens are declared here as fallbacks only. The real values are
+ * injected per tenant as inline custom properties on the html element by
+ * `themeStyle()` in lib/tenants.ts, so a tenant can be restyled without
+ * touching this file.
+ */
 :root {
   --bg: #e8ebe6;
   --bg-deep: #dfe4dd;
@@ -11,8 +17,8 @@
   --radius: 2px;
   --header-h: 4.25rem;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --font-display: "Syne", sans-serif;
-  --font-body: "Figtree", sans-serif;
+  --font-display: sans-serif;
+  --font-body: sans-serif;
 }
 
 *,
@@ -23,6 +29,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Keeps in-page anchors clear of the fixed header. */
+  scroll-padding-top: var(--header-h);
 }
 
 body {
@@ -35,6 +43,7 @@ body {
     radial-gradient(1200px 700px at 12% -10%, rgba(63, 122, 105, 0.18), transparent 55%),
     radial-gradient(900px 600px at 100% 8%, rgba(23, 26, 23, 0.08), transparent 50%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+  background-attachment: fixed;
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -59,8 +68,28 @@ button {
   padding: 0;
 }
 
-code {
-  font-size: 0.92em;
+:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 80;
+  padding: 0.75rem 1.15rem;
+  background: var(--ink);
+  color: #f4f6f1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 0 0 var(--radius) 0;
+  transform: translateY(-120%);
+  transition: transform 0.2s var(--ease);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 .noise {
@@ -91,6 +120,14 @@ code {
 
 .site-header.is-scrolled {
   background: rgba(232, 235, 230, 0.78);
+  backdrop-filter: blur(14px);
+  border-bottom-color: var(--line);
+}
+
+/* Inner pages have no full-bleed hero behind the header, so it needs a surface
+   from the first pixel to stay legible. */
+.site-header.is-solid {
+  background: rgba(232, 235, 230, 0.86);
   backdrop-filter: blur(14px);
   border-bottom-color: var(--line);
 }
@@ -224,6 +261,32 @@ code {
   margin-top: 1.75rem;
 }
 
+.hero-proof {
+  margin: 1.75rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.4rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  color: rgba(247, 248, 245, 0.78);
+}
+
+.hero-proof li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hero-proof li::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -262,11 +325,57 @@ code {
   border-color: rgba(244, 246, 241, 0.9);
 }
 
+/* Dark-on-light variants, for use off the hero. */
+.btn-solid {
+  background: var(--accent);
+  color: #f7f8f5;
+}
+
+.btn-solid:hover,
+.btn-solid:focus-visible {
+  background: var(--accent-soft);
+}
+
+.btn-outline {
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.btn-outline:hover,
+.btn-outline:focus-visible {
+  border-color: var(--ink);
+}
+
 .work,
 .services,
 .process,
-.contact {
+.contact,
+.page-section {
   padding: clamp(4.5rem, 10vh, 7rem) clamp(1.25rem, 4vw, 3rem);
+}
+
+.page-header {
+  padding: calc(var(--header-h) + clamp(3rem, 9vh, 5.5rem)) clamp(1.25rem, 4vw, 3rem)
+    clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.page-header-inner,
+.page-inner {
+  width: min(980px, 100%);
+  margin: 0 auto;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.page-header .section-copy {
+  max-width: 52ch;
 }
 
 .section-intro {
@@ -285,7 +394,8 @@ code {
 
 .section-intro h2,
 .process-inner h2,
-.contact-inner h2 {
+.contact-inner h2,
+.page-inner h2 {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 700;
@@ -356,6 +466,9 @@ code {
 
 .portfolio-note {
   margin: 1.75rem 0 0;
+  padding: 0.85rem 1.1rem;
+  border-left: 2px solid var(--accent-soft);
+  background: var(--paper);
   color: var(--ink-soft);
   font-size: 0.92rem;
 }
@@ -463,6 +576,7 @@ code {
   letter-spacing: -0.04em;
   border-bottom: 1px solid rgba(23, 26, 23, 0.25);
   margin-bottom: 0.85rem;
+  overflow-wrap: anywhere;
 }
 
 .contact-hint {
@@ -482,6 +596,12 @@ code {
   font-size: 0.92rem;
 }
 
+.footer-links {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
 [data-reveal] {
   opacity: 0;
   transform: translateY(24px);
@@ -493,27 +613,268 @@ code {
   transform: translateY(0);
 }
 
+/* Pricing page */
+.package-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.package-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.35rem, 3vw, 1.9rem);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.package-card.is-featured {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-soft);
+}
+
+.package-card h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+
+
+.package-card .price {
+  margin: 0.6rem 0 0;
+  font-size: 1.6rem;
+}
+
+.package-meta {
+  margin: 0.35rem 0 1.1rem;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+.package-includes {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.package-includes li {
+  display: grid;
+  grid-template-columns: 1rem 1fr;
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.package-includes li::before {
+  content: "";
+  margin-top: 0.55rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent-soft);
+}
+
+.package-card .btn {
+  margin-top: auto;
+}
+
+/* Straddles the card's top border so it never competes with the title for space. */
+.badge {
+  position: absolute;
+  top: 0;
+  right: clamp(1.35rem, 3vw, 1.9rem);
+  transform: translateY(-50%);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #f7f8f5;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Checklists, used on the seller-prep page */
+.checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: clamp(1.25rem, 3vw, 2rem);
+  margin-top: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.checklist-group h3 {
+  margin: 0 0 0.9rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+  color: var(--ink-soft);
+  font-size: 0.97rem;
+}
+
+.checklist li {
+  display: grid;
+  grid-template-columns: 1.1rem 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.checklist li::before {
+  content: "";
+  margin-top: 0.3rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(252, 253, 250, 0.6);
+}
+
+.prose {
+  max-width: 62ch;
+  color: var(--ink-soft);
+}
+
+.prose h2 {
+  margin: 2.5rem 0 0.75rem;
+  color: var(--ink);
+}
+
+.prose p {
+  margin: 0 0 1rem;
+}
+
+.pill-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+}
+
+.pill-list li {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(252, 253, 250, 0.5);
+  font-size: 0.86rem;
+  color: var(--ink-soft);
+}
+
+.faq {
+  margin-top: clamp(1.5rem, 4vw, 2.5rem);
+  border-top: 1px solid var(--line);
+}
+
+.faq details {
+  border-bottom: 1px solid var(--line);
+  padding: 1.15rem 0;
+}
+
+.faq summary {
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.08rem;
+  letter-spacing: -0.02em;
+}
+
+.faq summary::marker {
+  color: var(--accent-soft);
+}
+
+.faq p {
+  margin: 0.75rem 0 0;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+/*
+ * Lightbox
+ *
+ * Built on <dialog> so focus trapping, Escape handling, and focus restoration
+ * to the thumbnail come from the platform instead of hand-rolled listeners.
+ */
 .lightbox {
   position: fixed;
   inset: 0;
   z-index: 60;
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  border: 0;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  overflow: hidden;
+  color: #f4f6f1;
   background: rgba(12, 16, 14, 0.88);
   backdrop-filter: blur(8px);
 }
 
-.lightbox[hidden] {
-  display: none;
+/*
+ * The figure is stretched rather than centred by the grid so it has a definite
+ * box. A content-sized figure makes the image's percentage max-width resolve
+ * circularly, and the browser then picks a far-too-small srcset candidate.
+ */
+.lightbox[open] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
 }
 
+.lightbox::backdrop {
+  background: rgba(12, 16, 14, 0.6);
+}
+
+.lightbox-figure {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+}
+
+/*
+ * Sized explicitly rather than by intrinsic size. A srcset candidate can
+ * declare more pixels than the delivered file actually contains, which
+ * collapses the intrinsic width and would render the photo far too small if
+ * `width` were left auto. object-fit keeps tall frames from stretching.
+ */
 .lightbox img {
+  width: 100%;
   max-width: min(1100px, 100%);
-  max-height: min(82vh, 100%);
+  height: auto;
+  max-height: 100%;
   object-fit: contain;
   border-radius: var(--radius);
   animation: riseIn 0.35s var(--ease);
+}
+
+.lightbox figcaption {
+  flex: none;
+  color: rgba(244, 246, 241, 0.82);
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 .lightbox-close {
@@ -525,6 +886,33 @@ code {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   font-size: 0.8rem;
+  padding: 0.5rem;
+}
+
+.lightbox-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  color: rgba(244, 246, 241, 0.85);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.lightbox-arrow {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(244, 246, 241, 0.35);
+  border-radius: 50%;
+  color: #f4f6f1;
+  transition: border-color 0.25s var(--ease), background 0.25s var(--ease);
+}
+
+.lightbox-arrow:hover,
+.lightbox-arrow:focus-visible {
+  border-color: rgba(244, 246, 241, 0.9);
+  background: rgba(244, 246, 241, 0.12);
 }
 
 @media (max-width: 860px) {

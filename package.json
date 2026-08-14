@@ -1,0 +1,36 @@
+{
+  "name": "eric-guan-photography",
+  "version": "1.0.0",
+  "description": "Real estate media platform — booking, gated delivery, and property sites for photographers.",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "slides:pdf": "node export-slides-pdf.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Guan-Eric/eric-guan-photography.git"
+  },
+  "keywords": [],
+  "author": "Eric Guan",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/Guan-Eric/eric-guan-photography/issues"
+  },
+  "homepage": "https://github.com/Guan-Eric/eric-guan-photography#readme",
+  "dependencies": {
+    "next": "^16.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "playwright": "^1.62.1",
+    "typescript": "^7.0.2"
+  }
+}

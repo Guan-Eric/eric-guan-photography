@@ -32,11 +32,12 @@ export const ericGuan: Tenant = {
     fontBody: "var(--font-figtree), sans-serif",
   },
 
-  nav: [
-    { label: "Work", href: "/#work" },
-    { label: "Pricing", href: "/pricing" },
-    { label: "Book", href: "/book" },
-  ],
+    nav: [
+      { label: "Work", href: "/#work" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Prep", href: "/prep" },
+      { label: "Book", href: "/book" },
+    ],
 
   hero: {
     src: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2400&q=80",
@@ -199,5 +200,5 @@ export const ericGuan: Tenant = {
     priceRange: "$$",
   },
 
-  portfolioComplete: false,
+  portfolioComplete: true,
 };

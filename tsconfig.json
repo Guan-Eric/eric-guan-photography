@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "node_modules",
-    "export-slides-pdf.mjs"
+    "export-slides-pdf.mjs",
+    ".next/dev"
   ]
 }

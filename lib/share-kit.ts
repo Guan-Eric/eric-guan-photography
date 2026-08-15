@@ -14,8 +14,8 @@ export const SHARE_PRESETS = {
 
 export type SharePreset = keyof typeof SHARE_PRESETS;
 
-export function assertShareKit(tenantId: string) {
-  const row = getTenantRow(tenantId);
+export async function assertShareKit(tenantId: string) {
+  const row = await getTenantRow(tenantId);
   if (!row) return { ok: false as const, error: "Studio not found." };
   if (!entitlements(row.plan).shareKit) {
     return { ok: false as const, error: "Share kit is on the Studio plan." };

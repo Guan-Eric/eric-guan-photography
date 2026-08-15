@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
-import { getDb, schema } from "@/lib/db";
+import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import { dayBeforeReminderEmail, sendEmail } from "@/lib/email";
 import { getOrder } from "@/lib/orders";
 import { getTenant } from "@/lib/tenants";
@@ -19,29 +19,34 @@ export async function GET(request: Request) {
   const in24h = now + 24 * 60 * 60 * 1000;
   const in36h = now + 36 * 60 * 60 * 1000;
 
-  const appointments = db.select().from(schema.appointments).all();
+  const appointments = await qAll<{
+    startsAt: string;
+    orderId: string;
+    tenantId: string;
+  }>(db.select().from(schema.appointments));
   let sent = 0;
 
   for (const appointment of appointments) {
     const start = new Date(appointment.startsAt).getTime();
     if (start < in24h || start > in36h) continue;
 
-    const already = db
-      .select()
-      .from(schema.reminderSends)
-      .where(
-        and(
-          eq(schema.reminderSends.orderId, appointment.orderId),
-          eq(schema.reminderSends.kind, "day_before"),
+    const already = await qGet(
+      db
+        .select()
+        .from(schema.reminderSends)
+        .where(
+          and(
+            eq(schema.reminderSends.orderId, appointment.orderId),
+            eq(schema.reminderSends.kind, "day_before"),
+          ),
         ),
-      )
-      .get();
+    );
     if (already) continue;
 
-    const order = getOrder(appointment.orderId, appointment.tenantId);
+    const order = await getOrder(appointment.orderId, appointment.tenantId);
     if (!order || order.status === "cancelled") continue;
 
-    const tenant = getTenant(order.tenantId);
+    const tenant = await getTenant(order.tenantId);
     await sendEmail(
       dayBeforeReminderEmail({
         tenant,
@@ -50,15 +55,15 @@ export async function GET(request: Request) {
       }),
     );
 
-    db.insert(schema.reminderSends)
-      .values({
+    await qRun(
+      db.insert(schema.reminderSends).values({
         id: `rem_${appointment.orderId}_day`,
         tenantId: order.tenantId,
         orderId: order.id,
         kind: "day_before",
         sentAt: new Date().toISOString(),
-      })
-      .run();
+      }),
+    );
     sent += 1;
   }
 

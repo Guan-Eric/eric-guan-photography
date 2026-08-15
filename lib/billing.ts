@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import type Stripe from "stripe";
-import { getDb, schema } from "@/lib/db";
+import { getDb, qAll, qRun, schema } from "@/lib/db";
 import type { PlanId, SubscriptionStatus, TenantRow } from "@/lib/db/schema";
 import { platformName, platformPublicUrl } from "@/lib/platform";
 import { getStripe, stripeEnabled } from "@/lib/stripe";
@@ -86,25 +86,27 @@ export function hasActiveAccess(row: TenantRow) {
   return false;
 }
 
-function resetYearIfNeeded(row: TenantRow) {
+async function resetYearIfNeeded(row: TenantRow) {
   const year = new Date().getUTCFullYear();
   if (row.listingsYear === year) return row;
   const db = getDb();
-  db.update(schema.tenants)
-    .set({
-      listingsUsedYear: 0,
-      listingsYear: year,
-      updatedAt: nowIso(),
-    })
-    .where(eq(schema.tenants.id, row.id))
-    .run();
-  return getTenantRow(row.id)!;
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({
+        listingsUsedYear: 0,
+        listingsYear: year,
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.tenants.id, row.id)),
+  );
+  return (await getTenantRow(row.id))!;
 }
 
-export function assertCanCreateListing(tenantId: string) {
-  const row = getTenantRow(tenantId);
+export async function assertCanCreateListing(tenantId: string) {
+  const row = await getTenantRow(tenantId);
   if (!row) return { ok: false as const, error: "Studio not found." };
-  const current = resetYearIfNeeded(row);
+  const current = await resetYearIfNeeded(row);
   if (!hasActiveAccess(current)) {
     return {
       ok: false as const,
@@ -120,35 +122,37 @@ export function assertCanCreateListing(tenantId: string) {
   return { ok: true as const, row: current };
 }
 
-export function incrementListingUsage(tenantId: string) {
-  const row = getTenantRow(tenantId);
+export async function incrementListingUsage(tenantId: string) {
+  const row = await getTenantRow(tenantId);
   if (!row) return;
-  const current = resetYearIfNeeded(row);
+  const current = await resetYearIfNeeded(row);
   const db = getDb();
-  db.update(schema.tenants)
-    .set({
-      listingsUsedYear: current.listingsUsedYear + 1,
-      updatedAt: nowIso(),
-    })
-    .where(eq(schema.tenants.id, tenantId))
-    .run();
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({
+        listingsUsedYear: current.listingsUsedYear + 1,
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.tenants.id, tenantId)),
+  );
 }
 
-export function assertCanInviteSeat(tenantId: string) {
-  const row = getTenantRow(tenantId);
+export async function assertCanInviteSeat(tenantId: string) {
+  const row = await getTenantRow(tenantId);
   if (!row) return { ok: false as const, error: "Studio not found." };
   const db = getDb();
-  const seats = db
-    .select()
-    .from(schema.memberships)
-    .where(eq(schema.memberships.tenantId, tenantId))
-    .all().length;
-  const pending = db
-    .select()
-    .from(schema.membershipInvites)
-    .where(eq(schema.membershipInvites.tenantId, tenantId))
-    .all()
-    .filter((invite) => !invite.acceptedAt).length;
+  const seats = (
+    await qAll(db.select().from(schema.memberships).where(eq(schema.memberships.tenantId, tenantId)))
+  ).length;
+  const pending = (
+    await qAll<{ acceptedAt: string | null }>(
+      db
+        .select()
+        .from(schema.membershipInvites)
+        .where(eq(schema.membershipInvites.tenantId, tenantId)),
+    )
+  ).filter((invite) => !invite.acceptedAt).length;
   if (seats + pending >= row.seatsQuota) {
     return {
       ok: false as const,
@@ -170,7 +174,7 @@ export function planFromPriceId(priceId: string | undefined): PlanId | null {
   return null;
 }
 
-export function applyPlanToTenant(
+export async function applyPlanToTenant(
   tenantId: string,
   plan: PlanId,
   options?: {
@@ -182,41 +186,43 @@ export function applyPlanToTenant(
 ) {
   const def = PLAN_DEFS[plan];
   const db = getDb();
-  db.update(schema.tenants)
-    .set({
-      plan,
-      subscriptionStatus: options?.status ?? (plan === "trial" ? "trialing" : "active"),
-      ...(options?.customerId ? { stripeCustomerId: options.customerId } : {}),
-      ...(options?.subscriptionId
-        ? { stripeSubscriptionId: options.subscriptionId }
-        : {}),
-      trialEndsAt: options?.trialEndsAt,
-      listingQuotaAnnual: def.listingQuota,
-      seatsQuota: def.seats,
-      mediaQuotaBytes: def.storageBytes,
-      updatedAt: nowIso(),
-    })
-    .where(eq(schema.tenants.id, tenantId))
-    .run();
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({
+        plan,
+        subscriptionStatus: options?.status ?? (plan === "trial" ? "trialing" : "active"),
+        ...(options?.customerId ? { stripeCustomerId: options.customerId } : {}),
+        ...(options?.subscriptionId
+          ? { stripeSubscriptionId: options.subscriptionId }
+          : {}),
+        trialEndsAt: options?.trialEndsAt,
+        listingQuotaAnnual: def.listingQuota,
+        seatsQuota: def.seats,
+        mediaQuotaBytes: def.storageBytes,
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.tenants.id, tenantId)),
+  );
 }
 
-export function recordBillingEvent(options: {
+export async function recordBillingEvent(options: {
   tenantId: string;
   type: string;
   stripeId?: string | null;
   payload?: unknown;
 }) {
   const db = getDb();
-  db.insert(schema.billingEvents)
-    .values({
+  await qRun(
+    db.insert(schema.billingEvents).values({
       id: `bev_${id()}`,
       tenantId: options.tenantId,
       type: options.type,
       stripeId: options.stripeId ?? null,
       payloadJson: JSON.stringify(options.payload ?? {}),
       createdAt: nowIso(),
-    })
-    .run();
+    }),
+  );
 }
 
 async function ensureCustomer(row: TenantRow, email: string) {
@@ -231,10 +237,12 @@ async function ensureCustomer(row: TenantRow, email: string) {
     name: row.slug,
   });
   const db = getDb();
-  db.update(schema.tenants)
-    .set({ stripeCustomerId: customer.id, updatedAt: nowIso() })
-    .where(eq(schema.tenants.id, row.id))
-    .run();
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({ stripeCustomerId: customer.id, updatedAt: nowIso() })
+      .where(eq(schema.tenants.id, row.id)),
+  );
   return { ok: true as const, customerId: customer.id };
 }
 
@@ -245,12 +253,12 @@ export async function createSubscriptionCheckout(options: {
   successUrl: string;
   cancelUrl: string;
 }) {
-  const row = getTenantRow(options.tenantId);
+  const row = await getTenantRow(options.tenantId);
   if (!row) return { ok: false as const, error: "Studio not found." };
 
   if (!stripeEnabled()) {
-    applyPlanToTenant(options.tenantId, options.plan, { status: "active" });
-    recordBillingEvent({
+    await applyPlanToTenant(options.tenantId, options.plan, { status: "active" });
+    await recordBillingEvent({
       tenantId: options.tenantId,
       type: "local_stub.plan",
       payload: { plan: options.plan },
@@ -303,7 +311,7 @@ export async function createSubscriptionCheckout(options: {
 }
 
 export async function createBillingPortalSession(tenantId: string, returnUrl: string) {
-  const row = getTenantRow(tenantId);
+  const row = await getTenantRow(tenantId);
   if (!row?.stripeCustomerId) {
     return { ok: false as const, error: "No billing customer yet. Choose a plan first." };
   }
@@ -318,7 +326,7 @@ export async function createBillingPortalSession(tenantId: string, returnUrl: st
   return { ok: true as const, url: session.url };
 }
 
-export function applyStripeSubscription(sub: Stripe.Subscription) {
+export async function applyStripeSubscription(sub: Stripe.Subscription) {
   const tenantId = sub.metadata?.tenantId;
   if (!tenantId) return { ok: false as const, error: "No tenant on subscription." };
   const priceId = sub.items.data[0]?.price?.id;
@@ -327,7 +335,7 @@ export function applyStripeSubscription(sub: Stripe.Subscription) {
     return { ok: false as const, error: "Unknown plan price." };
   }
   const status = (sub.status as SubscriptionStatus) ?? "active";
-  applyPlanToTenant(tenantId, plan, {
+  await applyPlanToTenant(tenantId, plan, {
     status: status === "trialing" ? "trialing" : status,
     customerId: typeof sub.customer === "string" ? sub.customer : sub.customer?.id,
     subscriptionId: sub.id,
@@ -335,7 +343,7 @@ export function applyStripeSubscription(sub: Stripe.Subscription) {
       ? new Date(sub.trial_end * 1000).toISOString()
       : null,
   });
-  recordBillingEvent({
+  await recordBillingEvent({
     tenantId,
     type: `subscription.${sub.status}`,
     stripeId: sub.id,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireTenantMembership, getPhotographerSession } from "@/lib/auth";
 import { entitlements } from "@/lib/billing";
+import { verifyCustomDomain } from "@/lib/custom-domain";
 import { createConnectOnboardingLink, refreshConnectStatus } from "@/lib/stripe-connect";
 import { parseTenantConfig, setTenantDomain, getTenantRow, updateTenantConfig } from "@/lib/tenant-store";
 import type { ServiceAreaGate } from "@/lib/tenant-schema";
@@ -17,12 +18,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
   }
 
-  const row = getTenantRow(session.activeTenantId);
+  const row = await getTenantRow(session.activeTenantId);
   if (request.url.includes("refresh=1") && row?.stripeConnectAccountId) {
     await refreshConnectStatus(session.activeTenantId);
   }
 
-  const latest = getTenantRow(session.activeTenantId);
+  const latest = await getTenantRow(session.activeTenantId);
   const config = latest ? parseTenantConfig(latest) : null;
   return NextResponse.json({
     ok: true,
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
 
   if (body?.action === "domain") {
-    const latest = getTenantRow(session.activeTenantId);
+    const latest = await getTenantRow(session.activeTenantId);
     if (!latest || !entitlements(latest.plan).customDomain) {
       return NextResponse.json(
         { ok: false, error: "Custom domains require the Growth or Studio plan." },
@@ -62,11 +63,16 @@ export async function POST(request: Request) {
       typeof body.domain === "string" && body.domain.trim()
         ? body.domain.trim().toLowerCase()
         : null;
-    setTenantDomain(session.activeTenantId, domain);
+    await setTenantDomain(session.activeTenantId, domain);
+    const verification = await verifyCustomDomain(domain);
     return NextResponse.json({
       ok: true,
-      domain,
-      note: "DNS: point the domain (CNAME) to the platform host, then attach SSL in Cloudflare.",
+      domain: verification.domain || null,
+      domainVerified: verification.verified,
+      domainStatus: verification.status,
+      expectedDnsTarget: verification.expectedTarget,
+      dnsRecords: verification.records,
+      note: verification.message,
     });
   }
 
@@ -83,7 +89,7 @@ export async function POST(request: Request) {
           ? body.message.trim()
           : "This studio does not currently cover that area.",
     };
-    updateTenantConfig(session.activeTenantId, { serviceAreaGate: gate });
+    await updateTenantConfig(session.activeTenantId, { serviceAreaGate: gate });
     return NextResponse.json({ ok: true, serviceAreaGate: gate });
   }
 

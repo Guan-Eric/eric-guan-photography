@@ -198,7 +198,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
   }
 
-  const row = getTenantRow(session.activeTenantId);
+  const row = await getTenantRow(session.activeTenantId);
   if (!row) {
     return NextResponse.json({ ok: false, error: "Studio not found." }, { status: 404 });
   }
@@ -213,18 +213,22 @@ export async function PATCH(request: Request) {
     if (photographerName.length < 2 || tagline.length < 2) {
       return NextResponse.json({ ok: false, error: "Name and tagline are required." }, { status: 400 });
     }
-    updateTenantConfig(session.activeTenantId, {
+    await updateTenantConfig(session.activeTenantId, {
       photographerName,
       tagline,
       lede,
       hero: parseHero(body?.hero, current.hero),
       gallery: parseGallery(body?.gallery),
+      portfolioComplete:
+        typeof body?.portfolioComplete === "boolean"
+          ? body.portfolioComplete
+          : current.portfolioComplete,
     });
     return NextResponse.json({ ok: true });
   }
 
   if (section === "pricing") {
-    updateTenantConfig(session.activeTenantId, {
+    await updateTenantConfig(session.activeTenantId, {
       packages: parsePackages(body?.packages, current.packages),
     });
     return NextResponse.json({ ok: true });
@@ -250,7 +254,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: false, error: "A valid email is required." }, { status: 400 });
     }
     const phone = asString(body?.phone).trim();
-    updateTenantConfig(session.activeTenantId, {
+    await updateTenantConfig(session.activeTenantId, {
       turnaround: asString(body?.turnaround, current.turnaround).trim() || current.turnaround,
       email,
       phone: phone || null,
@@ -268,8 +272,8 @@ export async function PATCH(request: Request) {
     if (!ALLOWED_TIMEZONES.has(timezone)) {
       return NextResponse.json({ ok: false, error: "Pick a supported timezone." }, { status: 400 });
     }
-    updateTenantConfig(session.activeTenantId, { schedule: parsed.schedule });
-    updateTenantTimezone(session.activeTenantId, timezone);
+    await updateTenantConfig(session.activeTenantId, { schedule: parsed.schedule });
+    await updateTenantTimezone(session.activeTenantId, timezone);
     return NextResponse.json({ ok: true });
   }
 

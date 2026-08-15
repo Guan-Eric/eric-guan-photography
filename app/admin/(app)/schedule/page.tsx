@@ -18,9 +18,9 @@ export default async function AdminSchedulePage() {
   const session = await getPhotographerSession();
   if (!session?.activeTenantId) return null;
 
-  const tenant = getTenant(session.activeTenantId);
-  const row = getTenantRow(session.activeTenantId);
-  const bookings = listOrders(tenant.id).filter(
+  const tenant = await getTenant(session.activeTenantId);
+  const row = await getTenantRow(session.activeTenantId);
+  const bookings = (await listOrders(tenant.id)).filter(
     (order) => order.status === "requested" || order.status === "confirmed",
   );
 

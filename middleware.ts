@@ -2,16 +2,22 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Host routing:
+ * Host routing (Edge Middleware — required by OpenNext Cloudflare).
+ * Next.js 16 prefers `proxy.ts` (Node), but Workers still need Edge middleware.
+ *
  * - localhost / apex → SaaS marketing (rewrite / and /pricing to /saas)
  * - {slug}.localhost → photographer studio
  *
  * Keep this file free of app/lib imports so the edge bundle stays isolated.
  */
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const host = request.headers.get("host");
   const hostname = (host ?? "").split(":")[0].toLowerCase();
   const root = (process.env.PLATFORM_ROOT_DOMAIN ?? "localhost").toLowerCase();
+  const contentType = request.headers.get("content-type") ?? "";
+  // Cloning the request (NextResponse.next({ request: { headers } })) breaks
+  // multipart bodies — FormData parse fails with "expected boundary after body".
+  const isMultipart = contentType.includes("multipart/form-data");
 
   const isApex =
     !hostname ||
@@ -21,6 +27,19 @@ export function proxy(request: NextRequest) {
     hostname === "127.0.0.1" ||
     hostname === "::1" ||
     hostname === "[::1]";
+
+  if (isMultipart) {
+    // Admin uploads auth via session cookie; skip header rewrite to preserve body.
+    if (isApex) {
+      const path = request.nextUrl.pathname;
+      if (path === "/" || path === "/pricing") {
+        const url = request.nextUrl.clone();
+        url.pathname = path === "/" ? "/saas" : "/saas/pricing";
+        return NextResponse.rewrite(url);
+      }
+    }
+    return NextResponse.next();
+  }
 
   const requestHeaders = new Headers(request.headers);
   if (host) {
@@ -58,6 +77,8 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Skip static assets and large multipart upload APIs (body buffering in
+    // middleware truncates >10MB by default and breaks FormData parsing).
+    "/((?!_next/static|_next/image|favicon.ico|api/admin/portfolio/upload|api/admin/orders/.*/upload|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

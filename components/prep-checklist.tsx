@@ -7,15 +7,19 @@ type ChecklistGroup = {
   items: string[];
 };
 
-const STORAGE_KEY = "eg-prep-checklist-v1";
-
-export function PrepChecklist({ groups }: { groups: ChecklistGroup[] }) {
+export function PrepChecklist({
+  groups,
+  storageKey,
+}: {
+  groups: ChecklistGroup[];
+  storageKey: string;
+}) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(storageKey);
       if (raw) {
         const parsed = JSON.parse(raw) as Record<string, boolean>;
         if (parsed && typeof parsed === "object") setChecked(parsed);
@@ -24,12 +28,12 @@ export function PrepChecklist({ groups }: { groups: ChecklistGroup[] }) {
       // Ignore bad localStorage.
     }
     setReady(true);
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
     if (!ready) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(checked));
-  }, [checked, ready]);
+    window.localStorage.setItem(storageKey, JSON.stringify(checked));
+  }, [checked, ready, storageKey]);
 
   function toggle(id: string) {
     setChecked((current) => ({ ...current, [id]: !current[id] }));

@@ -50,7 +50,11 @@ export function SignupForm() {
       if (invite) {
         router.push(`/invite/${invite}`);
       } else if (json.hasStudio) {
-        router.push("/admin");
+        const plan = searchParams.get("plan");
+        const allowed = plan === "starter" || plan === "growth" || plan === "studio";
+        router.push(
+          allowed ? `/admin?welcome=1&plan=${plan}` : "/admin?welcome=1",
+        );
       } else {
         router.push("/onboarding");
       }

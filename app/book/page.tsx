@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BookingForm } from "@/components/booking-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { getTenantRow } from "@/lib/tenant-store";
 import { requireRequestTenant } from "@/lib/tenants";
 
 export const metadata: Metadata = {
@@ -18,6 +19,11 @@ export default async function BookPage({
 }) {
   const tenant = await requireRequestTenant();
   const params = await searchParams;
+  const row = await getTenantRow(tenant.id);
+  const defaultCity =
+    tenant.serviceAreas[0]?.city && tenant.serviceAreas[0].city !== "Your market"
+      ? tenant.serviceAreas[0].city
+      : "";
 
   return (
     <>
@@ -40,6 +46,8 @@ export default async function BookPage({
               packages={tenant.packages}
               defaultPackageId={params.package}
               email={tenant.email}
+              defaultCity={defaultCity}
+              timeZone={row?.timezone ?? "America/Toronto"}
             />
           </div>
         </section>

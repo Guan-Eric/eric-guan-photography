@@ -1,5 +1,6 @@
 import { and, eq, gte, lte } from "drizzle-orm";
-import { getDb, schema } from "@/lib/db";
+import { getDb, qAll, schema } from "@/lib/db";
+import type { Appointment } from "@/lib/db/schema";
 import { resolveSchedule, startTimesForDay } from "@/lib/schedule";
 import type { WeeklySchedule, WeekdayKey } from "@/lib/tenant-schema";
 import { getTenantRow, tenantFromRow } from "@/lib/tenant-store";
@@ -97,17 +98,18 @@ export async function getLocalBusyIntervals(
   to: Date,
 ): Promise<BusyInterval[]> {
   const db = getDb();
-  const rows = db
-    .select()
-    .from(schema.appointments)
-    .where(
-      and(
-        eq(schema.appointments.tenantId, tenantId),
-        lte(schema.appointments.startsAt, to.toISOString()),
-        gte(schema.appointments.endsAt, from.toISOString()),
+  const rows = await qAll<Appointment>(
+    db
+      .select()
+      .from(schema.appointments)
+      .where(
+        and(
+          eq(schema.appointments.tenantId, tenantId),
+          lte(schema.appointments.startsAt, to.toISOString()),
+          gte(schema.appointments.endsAt, from.toISOString()),
+        ),
       ),
-    )
-    .all();
+  );
 
   return rows.map((row) => ({
     startsAt: addMinutes(new Date(row.startsAt), -row.bufferMinutes),
@@ -153,11 +155,11 @@ export function isSlotFree(
   );
 }
 
-function scheduleForTenant(tenantId: string): {
+async function scheduleForTenant(tenantId: string): Promise<{
   schedule: WeeklySchedule;
   timeZone: string;
-} {
-  const row = getTenantRow(tenantId);
+}> {
+  const row = await getTenantRow(tenantId);
   if (!row) {
     return { schedule: resolveSchedule(null), timeZone: TIME_ZONE };
   }
@@ -179,7 +181,7 @@ export async function listAvailableSlots(options: {
   schedule?: WeeklySchedule;
   timeZone?: string;
 }) {
-  const resolved = scheduleForTenant(options.tenantId);
+  const resolved = await scheduleForTenant(options.tenantId);
   const schedule = options.schedule
     ? resolveSchedule(options.schedule)
     : resolved.schedule;

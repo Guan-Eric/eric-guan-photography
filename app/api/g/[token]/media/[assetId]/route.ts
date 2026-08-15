@@ -15,14 +15,14 @@ export async function GET(
   context: { params: Promise<Params> },
 ) {
   const { token, assetId } = await context.params;
-  const gallery = getGalleryByToken(token);
+  const gallery = await getGalleryByToken(token);
   if (!gallery || gallery.revokedAt) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
 
   const url = new URL(request.url);
   const variant = url.searchParams.get("v") ?? "proof";
-  const media = listMedia(gallery.id).find((asset) => asset.id === assetId);
+  const media = (await listMedia(gallery.id)).find((asset) => asset.id === assetId);
   if (!media) {
     return NextResponse.json({ ok: false, error: "Asset not found." }, { status: 404 });
   }
@@ -44,7 +44,7 @@ export async function GET(
           ? media.pathWeb
           : media.pathProof;
 
-  const nodeStream = openMediaStream(relative);
+  const nodeStream = await openMediaStream(relative);
   const webStream = Readable.toWeb(nodeStream) as unknown as ReadableStream;
 
   return new NextResponse(webStream, {

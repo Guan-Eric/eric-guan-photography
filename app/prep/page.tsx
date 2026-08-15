@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { PrepChecklist } from "@/components/prep-checklist";
+import { PrepShareActions } from "@/components/prep-share-actions";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { studioOrigin } from "@/lib/platform";
 import { requireRequestTenant } from "@/lib/tenants";
 
 export const metadata: Metadata = {
@@ -59,6 +61,9 @@ const checklists = [
 
 export default async function PrepPage() {
   const tenant = await requireRequestTenant();
+  const siteUrl = studioOrigin({ slug: tenant.slug, domain: tenant.domain });
+  const prepUrl = `${siteUrl}/prep`;
+
   return (
     <>
       <SiteHeader tenant={tenant} solid />
@@ -70,14 +75,18 @@ export default async function PrepPage() {
             <h1>Fifteen minutes of prep is worth two hours of editing.</h1>
             <p className="section-copy">
               Send this to your seller a day or two ahead. Check items off as you
-              go — progress stays on this device.
+              go — progress stays on this device for this studio.
             </p>
+            <PrepShareActions url={prepUrl} />
           </div>
         </header>
 
         <section className="page-section" style={{ paddingTop: 0 }}>
           <div className="page-inner">
-            <PrepChecklist groups={checklists} />
+            <PrepChecklist
+              groups={checklists}
+              storageKey={`prep-checklist:${tenant.id}`}
+            />
           </div>
         </section>
 
@@ -86,22 +95,20 @@ export default async function PrepPage() {
             <div className="prose">
               <h2>On the day</h2>
               <p>
-                Plan for pets to be out of the house or crated somewhere I am not
-                shooting. If the home is occupied, it helps if everyone can step
-                outside or into a room I have already finished — empty rooms
-                photograph much faster.
+                Plan for pets to be out of the house or crated somewhere the photographer
+                is not shooting. If the home is occupied, it helps if everyone can step
+                outside or into a room already finished — empty rooms photograph much
+                faster.
               </p>
               <p>
-                I shoot exteriors first when the light is good, so if the front of
-                the house faces the sun in the morning, an earlier slot is worth
-                asking for.
+                Exteriors are usually shot first when the light is good, so if the front of
+                the house faces the sun in the morning, an earlier slot is worth asking for.
               </p>
-              <h2>What I will and will not do</h2>
+              <h2>What we will and will not do</h2>
               <p>
-                I will handle light tidying: straightening a cushion, hiding a
-                cord, closing a toilet lid, moving a trash bin. I do not stage,
-                deep clean, or move furniture, and I cannot photograph around
-                clutter without it showing.
+                Light tidying is fine: straightening a cushion, hiding a cord, closing a
+                toilet lid, moving a trash bin. Staging, deep cleaning, or moving furniture
+                is out of scope — clutter will show.
               </p>
               <p>
                 Questions before the shoot? Email{" "}

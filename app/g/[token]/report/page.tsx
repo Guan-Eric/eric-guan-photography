@@ -19,13 +19,13 @@ export default async function GalleryReportPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const gallery = getGalleryByToken(token);
+  const gallery = await getGalleryByToken(token);
   if (!gallery || gallery.revokedAt) notFound();
-  const row = getTenantRow(gallery.tenantId);
+  const row = await getTenantRow(gallery.tenantId);
   if (!row || !entitlements(row.plan).reports) notFound();
 
-  const tenant = getTenant(gallery.tenantId);
-  const stats = galleryReport(gallery.id, gallery.tenantId);
+  const tenant = await getTenant(gallery.tenantId);
+  const stats = await galleryReport(gallery.id, gallery.tenantId);
 
   return (
     <main className="admin-shell" id="main">

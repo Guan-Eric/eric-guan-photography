@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
-import { getDb, schema } from "@/lib/db";
+import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { ConnectStatus, TenantRow } from "@/lib/db/schema";
 import type { Tenant } from "@/lib/tenant-schema";
 import { studioOrigin } from "@/lib/platform";
@@ -16,33 +16,36 @@ export function parseTenantConfig(row: TenantRow): Tenant {
   return JSON.parse(row.configJson) as Tenant;
 }
 
-export function getTenantRow(tenantId: string) {
+export async function getTenantRow(tenantId: string) {
   const db = getDb();
   return (
-    db.select().from(schema.tenants).where(eq(schema.tenants.id, tenantId)).get() ??
-    null
+    (await qGet<TenantRow>(
+      db.select().from(schema.tenants).where(eq(schema.tenants.id, tenantId)),
+    )) ?? null
   );
 }
 
-export function getTenantRowBySlug(slug: string) {
+export async function getTenantRowBySlug(slug: string) {
   const db = getDb();
   return (
-    db.select().from(schema.tenants).where(eq(schema.tenants.slug, slug)).get() ??
-    null
+    (await qGet<TenantRow>(
+      db.select().from(schema.tenants).where(eq(schema.tenants.slug, slug)),
+    )) ?? null
   );
 }
 
-export function getTenantRowByDomain(domain: string) {
+export async function getTenantRowByDomain(domain: string) {
   const db = getDb();
   return (
-    db.select().from(schema.tenants).where(eq(schema.tenants.domain, domain)).get() ??
-    null
+    (await qGet<TenantRow>(
+      db.select().from(schema.tenants).where(eq(schema.tenants.domain, domain)),
+    )) ?? null
   );
 }
 
-export function listTenantRows(): TenantRow[] {
+export async function listTenantRows(): Promise<TenantRow[]> {
   const db = getDb();
-  return db.select().from(schema.tenants).all();
+  return qAll<TenantRow>(db.select().from(schema.tenants));
 }
 
 export function tenantFromRow(row: TenantRow): Tenant {
@@ -55,7 +58,7 @@ export function tenantFromRow(row: TenantRow): Tenant {
   };
 }
 
-export function createTenantFromOnboarding(options: {
+export async function createTenantFromOnboarding(options: {
   studioName: string;
   photographerName: string;
   email: string;
@@ -71,7 +74,7 @@ export function createTenantFromOnboarding(options: {
 
   let slug = baseSlug;
   let attempt = 0;
-  while (getTenantRowBySlug(slug)) {
+  while (await getTenantRowBySlug(slug)) {
     attempt += 1;
     slug = `${baseSlug}${attempt}`;
   }
@@ -92,8 +95,8 @@ export function createTenantFromOnboarding(options: {
   const createdAt = nowIso();
   const year = new Date().getUTCFullYear();
   const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-  db.insert(schema.tenants)
-    .values({
+  await qRun(
+    db.insert(schema.tenants).values({
       id,
       slug,
       domain: null,
@@ -111,46 +114,52 @@ export function createTenantFromOnboarding(options: {
       listingsYear: year,
       createdAt,
       updatedAt: createdAt,
-    })
-    .run();
+    }),
+  );
 
-  return { tenant, row: getTenantRow(id)! };
+  return { tenant, row: (await getTenantRow(id))! };
 }
 
-export function updateTenantConnect(
+export async function updateTenantConnect(
   tenantId: string,
   options: { accountId?: string; status: ConnectStatus },
 ) {
   const db = getDb();
-  db.update(schema.tenants)
-    .set({
-      stripeConnectAccountId: options.accountId,
-      stripeConnectStatus: options.status,
-      updatedAt: nowIso(),
-    })
-    .where(eq(schema.tenants.id, tenantId))
-    .run();
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({
+        stripeConnectAccountId: options.accountId,
+        stripeConnectStatus: options.status,
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.tenants.id, tenantId)),
+  );
 }
 
-export function setTenantDomain(tenantId: string, domain: string | null) {
+export async function setTenantDomain(tenantId: string, domain: string | null) {
   const db = getDb();
-  db.update(schema.tenants)
-    .set({ domain, updatedAt: nowIso() })
-    .where(eq(schema.tenants.id, tenantId))
-    .run();
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({ domain, updatedAt: nowIso() })
+      .where(eq(schema.tenants.id, tenantId)),
+  );
 }
 
-export function addTenantStorageUsage(tenantId: string, bytes: number) {
+export async function addTenantStorageUsage(tenantId: string, bytes: number) {
   const db = getDb();
-  const row = getTenantRow(tenantId);
+  const row = await getTenantRow(tenantId);
   if (!row) return;
-  db.update(schema.tenants)
-    .set({
-      storageBytesUsed: Math.max(0, row.storageBytesUsed + bytes),
-      updatedAt: nowIso(),
-    })
-    .where(eq(schema.tenants.id, tenantId))
-    .run();
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({
+        storageBytesUsed: Math.max(0, row.storageBytesUsed + bytes),
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.tenants.id, tenantId)),
+  );
 }
 
 export function platformFeeAmountCents(amountCents: number) {
@@ -159,23 +168,33 @@ export function platformFeeAmountCents(amountCents: number) {
   return Math.floor((amountCents * bps) / 10_000);
 }
 
-export function updateTenantConfig(tenantId: string, patch: Partial<Tenant>) {
-  const row = getTenantRow(tenantId);
+export async function updateTenantConfig(tenantId: string, patch: Partial<Tenant>) {
+  const row = await getTenantRow(tenantId);
   if (!row) return null;
-  const config = { ...parseTenantConfig(row), ...patch, id: row.id, slug: row.slug, domain: row.domain };
+  const config = {
+    ...parseTenantConfig(row),
+    ...patch,
+    id: row.id,
+    slug: row.slug,
+    domain: row.domain,
+  };
   const db = getDb();
-  db.update(schema.tenants)
-    .set({ configJson: JSON.stringify(config), updatedAt: nowIso() })
-    .where(eq(schema.tenants.id, tenantId))
-    .run();
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({ configJson: JSON.stringify(config), updatedAt: nowIso() })
+      .where(eq(schema.tenants.id, tenantId)),
+  );
   return getTenantRow(tenantId);
 }
 
-export function updateTenantTimezone(tenantId: string, timezone: string) {
+export async function updateTenantTimezone(tenantId: string, timezone: string) {
   const db = getDb();
-  db.update(schema.tenants)
-    .set({ timezone, updatedAt: nowIso() })
-    .where(eq(schema.tenants.id, tenantId))
-    .run();
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({ timezone, updatedAt: nowIso() })
+      .where(eq(schema.tenants.id, tenantId)),
+  );
   return getTenantRow(tenantId);
 }

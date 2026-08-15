@@ -9,6 +9,11 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "isolation:check": "npx --yes tsx scripts/isolation-check.ts",
+    "setup:check": "node scripts/setup-check.mjs",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy:cf": "npm run deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "slides:pdf": "node export-slides-pdf.mjs"
   },
   "repository": {
@@ -23,6 +28,8 @@
   },
   "homepage": "https://github.com/Guan-Eric/eric-guan-photography#readme",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1111.0",
+    "@neondatabase/serverless": "^1.1.0",
     "archiver": "^8.0.0",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.2",
@@ -36,6 +43,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.2",
     "@types/archiver": "^8.0.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24.10.1",
@@ -43,7 +51,8 @@
     "@types/react-dom": "^19.2.3",
     "drizzle-kit": "^0.31.10",
     "playwright": "^1.62.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "wrangler": "^4.123.0"
   },
   "allowScripts": {
     "esbuild@0.18.20": true,

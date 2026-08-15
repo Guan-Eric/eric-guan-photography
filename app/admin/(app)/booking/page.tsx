@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default async function AdminBookingPage() {
   const session = await getPhotographerSession();
   if (!session?.activeTenantId) return null;
-  const tenant = getTenant(session.activeTenantId);
+  const tenant = await getTenant(session.activeTenantId);
   const siteUrl = studioOrigin({ slug: tenant.slug, domain: tenant.domain });
   return <StudioBookingEditor tenant={tenant} viewUrl={`${siteUrl}/book`} />;
 }

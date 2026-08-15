@@ -10,24 +10,24 @@ import { getOrder, listOrders } from "../lib/orders";
 import { belongsToTenant } from "../lib/isolation";
 import { getTenantRow } from "../lib/tenant-store";
 
-function main() {
+async function main() {
   getDb();
 
-  const ericOrders = listOrders("eric-guan");
-  const demoOrders = listOrders("demo-studio");
+  const ericOrders = await listOrders("eric-guan");
+  const demoOrders = await listOrders("demo-studio");
 
   console.log(`eric orders: ${ericOrders.length}`);
   console.log(`demo orders: ${demoOrders.length}`);
 
   if (ericOrders.length > 0) {
-    const leaked = getOrder(ericOrders[0].id, "demo-studio");
+    const leaked = await getOrder(ericOrders[0].id, "demo-studio");
     if (leaked) {
       console.error("FAIL: demo tenant could read eric order");
       process.exit(1);
     }
     console.log("ok: getOrder(ericId, demo-studio) → null");
 
-    const leakedPage = getListingPageByOrder(ericOrders[0].id, "demo-studio");
+    const leakedPage = await getListingPageByOrder(ericOrders[0].id, "demo-studio");
     if (leakedPage) {
       console.error("FAIL: demo tenant could read eric listing page");
       process.exit(1);
@@ -37,7 +37,7 @@ function main() {
     console.log("skip cross-read (no eric orders yet)");
   }
 
-  const fakePage = getListingPageBySlug("demo-studio", "does-not-exist");
+  const fakePage = await getListingPageBySlug("demo-studio", "does-not-exist");
   if (fakePage) {
     console.error("FAIL: missing listing page returned");
     process.exit(1);
@@ -50,8 +50,8 @@ function main() {
   }
   console.log("ok: belongsToTenant isolation helper");
 
-  const ericBilling = getTenantRow("eric-guan");
-  const demoBilling = getTenantRow("demo-studio");
+  const ericBilling = await getTenantRow("eric-guan");
+  const demoBilling = await getTenantRow("demo-studio");
   if (!ericBilling || !demoBilling) {
     console.error("FAIL: seeded tenants missing");
     process.exit(1);
@@ -60,7 +60,7 @@ function main() {
     console.error("FAIL: tenant rows collapsed");
     process.exit(1);
   }
-  const quota = assertCanCreateListing("eric-guan");
+  const quota = await assertCanCreateListing("eric-guan");
   if (!quota.ok) {
     console.error("FAIL: dogfood tenant blocked from listings", quota.error);
     process.exit(1);
@@ -70,4 +70,7 @@ function main() {
   console.log("PASS isolation check");
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

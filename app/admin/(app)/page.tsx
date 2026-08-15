@@ -14,28 +14,39 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ welcome?: string; plan?: string }>;
+}) {
   const session = await getPhotographerSession();
   if (!session?.activeTenantId) return null;
 
-  const tenant = getTenant(session.activeTenantId);
+  const query = await searchParams;
+  const tenant = await getTenant(session.activeTenantId);
   const siteUrl = studioOrigin({ slug: tenant.slug, domain: tenant.domain });
-  const orders = listOrders(tenant.id);
-  const galleries = listRecentGalleries(tenant.id).map((gallery) => ({
-    id: gallery.id,
-    orderId: gallery.orderId,
-    state: gallery.state,
-    publicToken: gallery.publicToken,
-    trustTier: gallery.trustTier,
-    brandMode: gallery.brandMode,
-    mediaCount: listMedia(gallery.id).length,
-  }));
+  const orders = await listOrders(tenant.id);
+  const recent = await listRecentGalleries(tenant.id);
+  const galleries = await Promise.all(
+    recent.map(async (gallery) => ({
+      id: gallery.id,
+      orderId: gallery.orderId,
+      state: gallery.state,
+      publicToken: gallery.publicToken,
+      trustTier: gallery.trustTier,
+      brandMode: gallery.brandMode,
+      mediaCount: (await listMedia(gallery.id)).length,
+    })),
+  );
 
   return (
     <AdminOrderBoard
       initialOrders={orders}
       initialGalleries={galleries}
       bookingUrl={`${siteUrl}/book`}
+      siteUrl={siteUrl}
+      welcome={query.welcome === "1" || orders.length === 0}
+      plan={query.plan ?? null}
     />
   );
 }

@@ -1,0 +1,18 @@
+# Enable after Studiofront is live and CRON_SECRET is in repo Actions secrets.
+name: Studiofront day-before reminders
+
+on:
+  schedule:
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit reminders cron
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://studiofront.ca/api/cron/reminders"

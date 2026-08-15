@@ -14,7 +14,10 @@ export async function GET() {
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
   }
-  return NextResponse.json({ ok: true, invites: listInvites(session.activeTenantId) });
+  return NextResponse.json({
+    ok: true,
+    invites: await listInvites(session.activeTenantId),
+  });
 }
 
 export async function POST(request: Request) {

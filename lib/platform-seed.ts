@@ -6,6 +6,7 @@ import * as schema from "@/lib/db/schema";
 import { studioOrigin } from "@/lib/platform";
 import type { Tenant } from "@/lib/tenant-schema";
 
+/** SQLite-only seed (local next dev). Production Postgres uses SQL migrations — no auto-seed. */
 type Db = BetterSQLite3Database<typeof schema>;
 
 const DEMO_TENANT: Tenant = {
@@ -107,7 +108,7 @@ function ensureMembership(
     .run();
 }
 
-/** Seeds dogfood + demo tenants and default photographer logins. */
+/** Seeds dogfood + demo tenants and default photographer logins (SQLite only). */
 export function seedPlatform(db: Db) {
   const password = process.env.ADMIN_PASSWORD ?? "dev-admin";
 

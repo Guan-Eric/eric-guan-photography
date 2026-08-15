@@ -10,6 +10,9 @@ type ConnectState = {
   storageBytesUsed: number;
   mediaQuotaBytes: number;
   canCustomDomain: boolean;
+  domainVerified?: boolean;
+  domainStatus?: string;
+  expectedDnsTarget?: string;
   serviceAreaGate: {
     enabled: boolean;
     region: string;
@@ -40,24 +43,32 @@ type BillingState = {
 export function StudioSettingsPanel() {
   const [state, setState] = useState<ConnectState | null>(null);
   const [billing, setBilling] = useState<BillingState | null>(null);
+  const [invites, setInvites] = useState<Array<{ email: string; role: string; acceptedAt: string | null }>>(
+    [],
+  );
   const [domain, setDomain] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   async function load() {
-    const [connectRes, billingRes] = await Promise.all([
+    const [connectRes, billingRes, invitesRes] = await Promise.all([
       fetch("/api/admin/connect?refresh=1"),
       fetch("/api/admin/billing"),
+      fetch("/api/admin/invites"),
     ]);
     const connectJson = await connectRes.json();
     const billingJson = await billingRes.json();
+    const invitesJson = await invitesRes.json();
     if (connectJson.ok) {
       setState(connectJson);
       setDomain(connectJson.domain ?? "");
     }
     if (billingJson.ok) setBilling(billingJson);
+    if (invitesJson.ok) setInvites(invitesJson.invites ?? []);
+    setLoaded(true);
   }
 
   useEffect(() => {
@@ -104,7 +115,15 @@ export function StudioSettingsPanel() {
         setError(json.error ?? "Could not save domain.");
         return;
       }
-      setMessage(json.note ?? "Domain saved.");
+      const status =
+        json.domainStatus === "verified"
+          ? "DNS verified."
+          : json.domainStatus === "pending"
+            ? "Saved — DNS still pending."
+            : json.domainStatus === "cleared"
+              ? "Domain cleared."
+              : "Domain saved.";
+      setMessage(json.note ? `${status} ${json.note}` : status);
       await load();
     } finally {
       setBusy(false);
@@ -170,9 +189,29 @@ export function StudioSettingsPanel() {
       }
       setMessage(`Invite sent to ${inviteEmail}.`);
       setInviteEmail("");
+      await load();
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!loaded) {
+    return (
+      <div className="studio-settings">
+        <div className="admin-toolbar">
+          <div>
+            <p className="eyebrow">Settings</p>
+            <h1>Plan & studio</h1>
+            <p className="muted">Loading studio settings…</p>
+          </div>
+        </div>
+        <div className="settings-skeleton" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+    );
   }
 
   const usedGb = state ? (state.storageBytesUsed / 1e9).toFixed(2) : "—";
@@ -270,7 +309,10 @@ export function StudioSettingsPanel() {
         {!state?.canCustomDomain ? (
           <p className="field-hint">Available on Growth and Studio.</p>
         ) : (
-          <p className="field-hint">Point a hostname at this studio, then save it here.</p>
+          <p className="field-hint">
+            CNAME your hostname to the platform root domain, then save here to
+            verify DNS.
+          </p>
         )}
         <label className="field">
           <span>Domain</span>
@@ -306,6 +348,21 @@ export function StudioSettingsPanel() {
         <button type="button" className="btn btn-outline" disabled={busy} onClick={invite}>
           Send invite
         </button>
+        {invites.length > 0 ? (
+          <ul className="settings-invite-list">
+            {invites.map((inviteRow) => (
+              <li key={`${inviteRow.email}-${inviteRow.role}`}>
+                <strong>{inviteRow.email}</strong>
+                <span className="muted">
+                  {inviteRow.role}
+                  {inviteRow.acceptedAt ? " · joined" : " · pending"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="field-hint">No invites yet.</p>
+        )}
       </section>
 
       {message ? <p className="form-success">{message}</p> : null}

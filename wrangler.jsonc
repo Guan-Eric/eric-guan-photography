@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "studiofront",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "studiofront"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "studiofront-media"
+    }
+  ],
+  "images": {
+    "binding": "IMAGES"
+  },
+  "vars": {
+    "PLATFORM_NAME": "Studiofront",
+    "NEXT_PUBLIC_PLATFORM_NAME": "Studiofront",
+    "PLATFORM_ROOT_DOMAIN": "studiofront.ca",
+    "PLATFORM_PUBLIC_URL": "https://studiofront.ca",
+    "NEXT_PUBLIC_SITE_URL": "https://studiofront.ca",
+    "PLATFORM_EMAIL_FROM": "Studiofront <hello@studiofront.ca>",
+    "R2_FORCE_REMOTE": "1"
+  }
+}

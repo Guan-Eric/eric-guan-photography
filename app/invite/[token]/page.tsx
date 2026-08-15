@@ -22,7 +22,7 @@ export default async function InvitePage({
     redirect(`/signup?invite=${token}`);
   }
 
-  const invite = getInviteByToken(token);
+  const invite = await getInviteByToken(token);
   if (!invite) {
     return (
       <AuthShell line="Join the studio that invited you.">
@@ -34,7 +34,7 @@ export default async function InvitePage({
     );
   }
 
-  const result = acceptInvite({
+  const result = await acceptInvite({
     token,
     userId: session.user.id,
     userEmail: session.user.email,

@@ -1,10 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function AdminLoginForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -25,8 +23,9 @@ export function AdminLoginForm() {
         setError(json.error ?? "Login failed.");
         return;
       }
-      router.push(json.hasStudio ? "/admin" : "/onboarding");
-      router.refresh();
+      // Hard navigate so the new session cookie is always sent (soft push can race).
+      window.location.assign(json.hasStudio ? "/admin" : "/onboarding");
+      return;
     } catch {
       setError("Network error.");
     } finally {
@@ -67,6 +66,8 @@ export function AdminLoginForm() {
       </button>
       <p className="auth-form-foot">
         New studio? <a href="/signup">Create an account</a>
+        {" · "}
+        <a href="/forgot-password">Forgot password?</a>
       </p>
     </form>
   );

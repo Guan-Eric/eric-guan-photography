@@ -21,7 +21,7 @@ export default async function StudioAppLayout({
   if (!session) redirect("/login");
   if (!session.activeTenantId) redirect("/onboarding");
 
-  const tenant = getTenant(session.activeTenantId);
+  const tenant = await getTenant(session.activeTenantId);
   const siteUrl = studioOrigin({
     slug: tenant.slug,
     domain: tenant.domain,

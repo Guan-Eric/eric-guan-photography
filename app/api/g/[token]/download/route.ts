@@ -12,7 +12,7 @@ export async function GET(
   context: { params: Promise<Params> },
 ) {
   const { token } = await context.params;
-  const gallery = getGalleryByToken(token);
+  const gallery = await getGalleryByToken(token);
   if (!gallery || gallery.revokedAt) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
@@ -25,7 +25,7 @@ export async function GET(
 
   const kind = new URL(request.url).searchParams.get("kind") === "full" ? "full" : "mls";
   const branded = new URL(request.url).searchParams.get("brand") !== "off";
-  const media = listMedia(gallery.id);
+  const media = await listMedia(gallery.id);
   if (media.length === 0) {
     return NextResponse.json({ ok: false, error: "No photos." }, { status: 404 });
   }
@@ -37,7 +37,7 @@ export async function GET(
     branded,
   });
 
-  recordGalleryEvent({
+  await recordGalleryEvent({
     tenantId: gallery.tenantId,
     galleryId: gallery.id,
     orderId: gallery.orderId,

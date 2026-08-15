@@ -27,7 +27,7 @@ export async function createGalleryCheckoutSession(options: {
     return { ok: false as const, stubbed: true as const };
   }
 
-  const tenantRow = getTenantRow(options.gallery.tenantId);
+  const tenantRow = await getTenantRow(options.gallery.tenantId);
   const addOnTotal = (options.addOns ?? []).reduce((sum, item) => sum + item.amountCents, 0);
   const applicationFee = platformFeeAmountCents(options.gallery.amountCents + addOnTotal);
   const connectAccountId = tenantRow?.stripeConnectAccountId;
@@ -80,7 +80,7 @@ export async function createGalleryCheckoutSession(options: {
       : undefined,
   );
 
-  createPaymentRecord({
+  await createPaymentRecord({
     tenantId: options.gallery.tenantId,
     gallery: options.gallery,
     provider: "stripe",
@@ -99,8 +99,8 @@ export async function createGalleryCheckoutSession(options: {
 }
 
 /** Local/dev unlock when Stripe keys are absent. */
-export function localStubUnlock(gallery: Gallery) {
-  createPaymentRecord({
+export async function localStubUnlock(gallery: Gallery) {
+  await createPaymentRecord({
     tenantId: gallery.tenantId,
     gallery,
     provider: "local_stub",

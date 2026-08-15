@@ -1,13 +1,7 @@
 import { PassThrough } from "node:stream";
-import type { Archiver } from "archiver";
+import { ZipArchive } from "archiver";
 import type { Gallery, MediaAsset } from "@/lib/db/schema";
-import { resolveMediaPath } from "@/lib/media-storage";
-
-// CJS package; Next bundles this only on the Node.js runtime download route.
-const archiver = require("archiver") as (
-  format: "zip",
-  options?: { zlib?: { level?: number } },
-) => Archiver;
+import { readMediaFile } from "@/lib/media-storage";
 
 export type ZipKind = "mls" | "full";
 
@@ -20,31 +14,37 @@ function fileName(asset: MediaAsset, index: number, kind: ZipKind, branded: bool
   return `${n}${room}-${kind}${brand}.jpg`;
 }
 
+/**
+ * Build an MLS or full-res zip. Reads via media-storage (local and/or R2).
+ */
 export async function buildGalleryZip(options: {
   gallery: Gallery;
   media: MediaAsset[];
   kind: ZipKind;
   branded: boolean;
 }) {
-  const archive = archiver("zip", { zlib: { level: 9 } });
+  const archive = new ZipArchive({ zlib: { level: 9 } });
   const stream = new PassThrough();
   archive.pipe(stream);
 
-  options.media.forEach((asset, index) => {
+  const collect = (async () => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  })();
+
+  for (let index = 0; index < options.media.length; index += 1) {
+    const asset = options.media[index]!;
     const relative =
       options.kind === "mls" ? asset.pathMls : asset.pathOriginal;
-    archive.file(resolveMediaPath(relative), {
+    const buffer = await readMediaFile(relative);
+    archive.append(buffer, {
       name: fileName(asset, index, options.kind, options.branded),
     });
-  });
-
-  const done = archive.finalize();
-
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
-  await done;
 
-  return Buffer.concat(chunks);
+  await archive.finalize();
+  return collect;
 }

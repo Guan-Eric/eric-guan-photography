@@ -36,9 +36,9 @@ export async function POST(request: Request) {
           ? session.subscription
           : session.subscription.id;
       const sub = await stripe.subscriptions.retrieve(subId);
-      applyStripeSubscription(sub);
+      await applyStripeSubscription(sub);
     } else if (typeof session.id === "string") {
-      markPaymentPaidBySession(session.id);
+      await markPaymentPaidBySession(session.id);
     }
   }
 
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     event.type === "customer.subscription.updated" ||
     event.type === "customer.subscription.deleted"
   ) {
-    applyStripeSubscription(event.data.object);
+    await applyStripeSubscription(event.data.object);
   }
 
   return NextResponse.json({ received: true });

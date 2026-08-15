@@ -3,8 +3,8 @@ import {
   assertSlotAvailable,
   DRIVE_BUFFER_MINUTES,
 } from "@/lib/availability";
-import { getDb, schema } from "@/lib/db";
-import type { Order, OrderStatus } from "@/lib/db/schema";
+import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
+import type { Appointment, Order, OrderStatus } from "@/lib/db/schema";
 import { ORDER_STATUSES } from "@/lib/db/schema";
 import {
   bookingConfirmationEmail,
@@ -54,7 +54,7 @@ function nowIso() {
 }
 
 export async function createBooking(tenant: Tenant, input: BookingInput) {
-  const quota = assertCanCreateListing(tenant.id);
+  const quota = await assertCanCreateListing(tenant.id);
   if (!quota.ok) return quota;
 
   const postal = normalizePostalCode(input.postalCode);
@@ -142,12 +142,13 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
     updatedAt: createdAt,
   };
 
-  db.insert(schema.orders).values(orderRow).run();
-  incrementListingUsage(tenant.id);
+  await qRun(db.insert(schema.orders).values(orderRow));
+  await incrementListingUsage(tenant.id);
 
   // Preferences are not calendar holds. The appointment is created when you
   // mark the order confirmed, using the primary preferred slot.
-  const siteBase = process.env.NEXT_PUBLIC_SITE_URL ?? tenant.siteUrl;
+  // Always link into this studio’s host — not the platform apex SITE_URL.
+  const siteBase = tenant.siteUrl.replace(/\/$/, "");
   const confirmationUrl = `${siteBase}/book/confirmation/${id}?token=${publicToken}`;
   const adminUrl = `${siteBase}/admin`;
   const slotLabel = input.preferredSlots.map((slot) => slot.label).join(" · ");
@@ -189,44 +190,47 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
   };
 }
 
-export function listOrders(tenantId: string): Order[] {
+export async function listOrders(tenantId: string): Promise<Order[]> {
   const db = getDb();
-  return db
-    .select()
-    .from(schema.orders)
-    .where(eq(schema.orders.tenantId, tenantId))
-    .orderBy(desc(schema.orders.createdAt))
-    .all();
+  return qAll<Order>(
+    db
+      .select()
+      .from(schema.orders)
+      .where(eq(schema.orders.tenantId, tenantId))
+      .orderBy(desc(schema.orders.createdAt)),
+  );
 }
 
-export function getOrder(orderId: string, tenantId?: string) {
+export async function getOrder(orderId: string, tenantId?: string) {
   const db = getDb();
   const order =
-    db.select().from(schema.orders).where(eq(schema.orders.id, orderId)).get() ??
-    null;
+    (await qGet<Order>(
+      db.select().from(schema.orders).where(eq(schema.orders.id, orderId)),
+    )) ?? null;
   if (!order) return null;
   if (tenantId && order.tenantId !== tenantId) return null;
   return order;
 }
 
-export function getOrderForPublic(orderId: string, token: string) {
-  const order = getOrder(orderId);
+export async function getOrderForPublic(orderId: string, token: string) {
+  const order = await getOrder(orderId);
   if (!order || order.publicToken !== token) return null;
   return order;
 }
 
-function ensureAppointmentForOrder(order: Order) {
+async function ensureAppointmentForOrder(order: Order) {
   const db = getDb();
-  const existing = db
-    .select()
-    .from(schema.appointments)
-    .where(eq(schema.appointments.orderId, order.id))
-    .get();
+  const existing = await qGet<Appointment>(
+    db
+      .select()
+      .from(schema.appointments)
+      .where(eq(schema.appointments.orderId, order.id)),
+  );
 
   if (existing) return;
 
-  db.insert(schema.appointments)
-    .values({
+  await qRun(
+    db.insert(schema.appointments).values({
       id: newAppointmentId(),
       tenantId: order.tenantId,
       orderId: order.id,
@@ -235,11 +239,11 @@ function ensureAppointmentForOrder(order: Order) {
       bufferMinutes: DRIVE_BUFFER_MINUTES,
       postalCode: order.postalCode,
       createdAt: nowIso(),
-    })
-    .run();
+    }),
+  );
 }
 
-export function updateOrderStatus(
+export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
   tenantId?: string,
@@ -249,21 +253,23 @@ export function updateOrderStatus(
   }
 
   const db = getDb();
-  const existing = getOrder(orderId, tenantId);
+  const existing = await getOrder(orderId, tenantId);
   if (!existing) return { ok: false as const, error: "Order not found." };
 
-  db.update(schema.orders)
-    .set({ status, updatedAt: nowIso() })
-    .where(eq(schema.orders.id, orderId))
-    .run();
+  await qRun(
+    db
+      .update(schema.orders)
+      .set({ status, updatedAt: nowIso() })
+      .where(eq(schema.orders.id, orderId)),
+  );
 
   if (status === "cancelled") {
-    db.delete(schema.appointments)
-      .where(eq(schema.appointments.orderId, orderId))
-      .run();
+    await qRun(
+      db.delete(schema.appointments).where(eq(schema.appointments.orderId, orderId)),
+    );
   } else if (status === "confirmed") {
-    ensureAppointmentForOrder(existing);
+    await ensureAppointmentForOrder(existing);
   }
 
-  return { ok: true as const, order: getOrder(orderId, tenantId)! };
+  return { ok: true as const, order: (await getOrder(orderId, tenantId))! };
 }

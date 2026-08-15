@@ -16,7 +16,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const tenant = await requireRequestTenant();
   const { slug } = await params;
-  const data = listingPageForPublic(tenant.id, slug);
+  const data = await listingPageForPublic(tenant.id, slug);
   if (!data) return { title: "Listing", robots: { index: false, follow: false } };
   return {
     title: data.page.title,
@@ -35,7 +35,7 @@ export default async function ListingPage({
   const tenant = await requireRequestTenant();
   const { slug } = await params;
   const query = await searchParams;
-  const data = listingPageForPublic(tenant.id, slug);
+  const data = await listingPageForPublic(tenant.id, slug);
   if (!data) notFound();
 
   const branded = query.brand !== "off" && data.page.brandMode !== "unbranded";
@@ -68,7 +68,11 @@ export default async function ListingPage({
             </figure>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <div className="listing-empty">
+          <p>Photos for this listing are still being prepared.</p>
+        </div>
+      )}
 
       <section className="listing-agent">
         <p className="eyebrow">Presented by</p>

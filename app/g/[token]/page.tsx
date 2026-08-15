@@ -19,7 +19,7 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { token } = await params;
-  const gallery = getGalleryByToken(token);
+  const gallery = await getGalleryByToken(token);
   if (!gallery || gallery.revokedAt) {
     return { title: "Gallery", robots: { index: false, follow: false } };
   }
@@ -39,19 +39,19 @@ export default async function GalleryPage({
 }) {
   const { token } = await params;
   const query = await searchParams;
-  const gallery = getGalleryByToken(token);
+  const gallery = await getGalleryByToken(token);
   if (!gallery || gallery.revokedAt) notFound();
 
-  recordGalleryEvent({
+  await recordGalleryEvent({
     tenantId: gallery.tenantId,
     galleryId: gallery.id,
     orderId: gallery.orderId,
     kind: "view",
   });
 
-  const tenant = getTenant(gallery.tenantId);
-  const row = getTenantRow(gallery.tenantId);
-  const media = listMedia(gallery.id);
+  const tenant = await getTenant(gallery.tenantId);
+  const row = await getTenantRow(gallery.tenantId);
+  const media = await listMedia(gallery.id);
   const branded = query.brand !== "off" && gallery.brandMode !== "unbranded";
   const upsells =
     row && entitlements(row.plan).upsells
@@ -86,6 +86,10 @@ export default async function GalleryPage({
       paidFlag={query.paid === "1"}
       cancelledFlag={query.cancelled === "1"}
       upsells={upsells}
+      allowStubUnlock={
+        process.env.NODE_ENV === "development" ||
+        process.env.ALLOW_GALLERY_STUB_UNLOCK === "1"
+      }
     />
   );
 }

@@ -15,7 +15,7 @@ export async function POST(
   context: { params: Promise<Params> },
 ) {
   const { id: orderId } = await context.params;
-  const order = getOrder(orderId);
+  const order = await getOrder(orderId);
   if (!order) {
     return NextResponse.json({ ok: false, error: "Order not found." }, { status: 404 });
   }
@@ -32,7 +32,7 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "Choose one or more photos." }, { status: 400 });
   }
 
-  const rate = assertUploadRateLimit(order.tenantId, files.length);
+  const rate = await assertUploadRateLimit(order.tenantId, files.length);
   if (!rate.ok) {
     return NextResponse.json(rate, { status: 429 });
   }
@@ -45,12 +45,12 @@ export async function POST(
   );
 
   const incomingBytes = prepared.reduce((sum, file) => sum + file.buffer.byteLength, 0);
-  const quota = assertWithinStorageQuota(order.tenantId, incomingBytes);
+  const quota = await assertWithinStorageQuota(order.tenantId, incomingBytes);
   if (!quota.ok) {
     return NextResponse.json(quota, { status: 413 });
   }
 
-  const tenant = getTenant(order.tenantId);
+  const tenant = await getTenant(order.tenantId);
   const result = await addUploadsToGallery({
     tenant,
     order,
@@ -58,7 +58,7 @@ export async function POST(
   });
 
   const storedBytes = result.created.reduce((sum, asset) => sum + asset.bytesOriginal, 0);
-  addTenantStorageUsage(order.tenantId, storedBytes);
+  await addTenantStorageUsage(order.tenantId, storedBytes);
 
   return NextResponse.json({
     ok: true,

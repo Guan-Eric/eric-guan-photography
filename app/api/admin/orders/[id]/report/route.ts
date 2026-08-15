@@ -15,7 +15,7 @@ export async function GET(
   context: { params: Promise<Params> },
 ) {
   const { id: orderId } = await context.params;
-  const order = getOrder(orderId);
+  const order = await getOrder(orderId);
   if (!order) {
     return NextResponse.json({ ok: false, error: "Order not found." }, { status: 404 });
   }
@@ -23,14 +23,14 @@ export async function GET(
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
   }
-  const row = getTenantRow(order.tenantId);
+  const row = await getTenantRow(order.tenantId);
   if (!row || !entitlements(row.plan).reports) {
     return NextResponse.json(
       { ok: false, error: "Listing reports are on the Studio plan." },
       { status: 403 },
     );
   }
-  const gallery = getGalleryByOrderId(orderId, order.tenantId);
+  const gallery = await getGalleryByOrderId(orderId, order.tenantId);
   if (!gallery) {
     return NextResponse.json({ ok: false, error: "No gallery yet." }, { status: 404 });
   }
@@ -38,6 +38,6 @@ export async function GET(
     ok: true,
     orderId,
     propertyAddress: order.propertyAddress,
-    ...galleryReport(gallery.id, order.tenantId),
+    ...(await galleryReport(gallery.id, order.tenantId)),
   });
 }

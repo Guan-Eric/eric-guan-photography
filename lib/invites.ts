@@ -2,8 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { createMembership } from "@/lib/auth";
 import { assertCanInviteSeat } from "@/lib/billing";
-import { getDb, schema } from "@/lib/db";
-import type { MembershipRole } from "@/lib/db/schema";
+import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
+import type { MembershipInvite, MembershipRole } from "@/lib/db/schema";
 import { sendEmail } from "@/lib/email";
 import { platformName } from "@/lib/platform";
 
@@ -14,23 +14,25 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-export function listInvites(tenantId: string) {
+export async function listInvites(tenantId: string) {
   const db = getDb();
-  return db
-    .select()
-    .from(schema.membershipInvites)
-    .where(eq(schema.membershipInvites.tenantId, tenantId))
-    .all();
-}
-
-export function getInviteByToken(token: string) {
-  const db = getDb();
-  return (
+  return qAll<MembershipInvite>(
     db
       .select()
       .from(schema.membershipInvites)
-      .where(eq(schema.membershipInvites.token, token))
-      .get() ?? null
+      .where(eq(schema.membershipInvites.tenantId, tenantId)),
+  );
+}
+
+export async function getInviteByToken(token: string) {
+  const db = getDb();
+  return (
+    (await qGet<MembershipInvite>(
+      db
+        .select()
+        .from(schema.membershipInvites)
+        .where(eq(schema.membershipInvites.token, token)),
+    )) ?? null
   );
 }
 
@@ -41,21 +43,22 @@ export async function createInvite(options: {
   invitedByUserId: string;
   acceptUrl: string;
 }) {
-  const seats = assertCanInviteSeat(options.tenantId);
+  const seats = await assertCanInviteSeat(options.tenantId);
   if (!seats.ok) return seats;
 
   const email = options.email.trim().toLowerCase();
   const db = getDb();
-  const existing = db
-    .select()
-    .from(schema.membershipInvites)
-    .where(
-      and(
-        eq(schema.membershipInvites.tenantId, options.tenantId),
-        eq(schema.membershipInvites.email, email),
+  const existing = await qGet<MembershipInvite>(
+    db
+      .select()
+      .from(schema.membershipInvites)
+      .where(
+        and(
+          eq(schema.membershipInvites.tenantId, options.tenantId),
+          eq(schema.membershipInvites.email, email),
+        ),
       ),
-    )
-    .get();
+  );
   if (existing && !existing.acceptedAt) {
     return { ok: true as const, invite: existing, resent: true as const };
   }
@@ -72,7 +75,7 @@ export async function createInvite(options: {
     expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
     createdAt,
   };
-  db.insert(schema.membershipInvites).values(invite).run();
+  await qRun(db.insert(schema.membershipInvites).values(invite));
 
   await sendEmail({
     to: email,
@@ -89,8 +92,12 @@ export async function createInvite(options: {
   return { ok: true as const, invite, resent: false as const };
 }
 
-export function acceptInvite(options: { token: string; userId: string; userEmail: string }) {
-  const invite = getInviteByToken(options.token);
+export async function acceptInvite(options: {
+  token: string;
+  userId: string;
+  userEmail: string;
+}) {
+  const invite = await getInviteByToken(options.token);
   if (!invite) return { ok: false as const, error: "Invite not found." };
   if (invite.acceptedAt) return { ok: false as const, error: "Invite already used." };
   if (new Date(invite.expiresAt).getTime() < Date.now()) {
@@ -100,17 +107,19 @@ export function acceptInvite(options: { token: string; userId: string; userEmail
     return { ok: false as const, error: "Sign in with the invited email address." };
   }
 
-  createMembership({
+  await createMembership({
     userId: options.userId,
     tenantId: invite.tenantId,
     role: invite.role,
   });
 
   const db = getDb();
-  db.update(schema.membershipInvites)
-    .set({ acceptedAt: nowIso() })
-    .where(eq(schema.membershipInvites.id, invite.id))
-    .run();
+  await qRun(
+    db
+      .update(schema.membershipInvites)
+      .set({ acceptedAt: nowIso() })
+      .where(eq(schema.membershipInvites.id, invite.id)),
+  );
 
   return { ok: true as const, tenantId: invite.tenantId };
 }

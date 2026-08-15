@@ -22,7 +22,7 @@ export async function GET(
   context: { params: Promise<Params> },
 ) {
   const { id: orderId } = await context.params;
-  const order = getOrder(orderId);
+  const order = await getOrder(orderId);
   if (!order) {
     return NextResponse.json({ ok: false, error: "Order not found." }, { status: 404 });
   }
@@ -31,15 +31,15 @@ export async function GET(
     return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
   }
 
-  const share = assertShareKit(order.tenantId);
+  const share = await assertShareKit(order.tenantId);
   if (!share.ok) {
     return NextResponse.json(share, { status: 403 });
   }
 
-  const tenant = getTenant(order.tenantId);
-  const gallery = getGalleryByOrderId(orderId, order.tenantId);
-  const media = gallery ? listMedia(gallery.id) : [];
-  const page = getListingPageByOrder(orderId, order.tenantId);
+  const tenant = await getTenant(order.tenantId);
+  const gallery = await getGalleryByOrderId(orderId, order.tenantId);
+  const media = gallery ? await listMedia(gallery.id) : [];
+  const page = await getListingPageByOrder(orderId, order.tenantId);
   const listingUrl = page ? listingPagePublicUrl(page, tenant.siteUrl) : null;
   const galleryUrl = gallery ? `${tenant.siteUrl}/g/${gallery.publicToken}` : undefined;
   const url = new URL(request.url);

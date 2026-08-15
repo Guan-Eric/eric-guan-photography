@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
-import { getDb, schema } from "@/lib/db";
+import { getDb, qGet, qRun, schema } from "@/lib/db";
 import { getTenantRow } from "@/lib/tenant-store";
 
 const id = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
@@ -8,8 +8,8 @@ const id = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 const WINDOW_MS = 60 * 60 * 1000;
 const MAX_UPLOADS_PER_WINDOW = Number(process.env.UPLOAD_RATE_LIMIT ?? "60");
 
-export function assertWithinStorageQuota(tenantId: string, incomingBytes: number) {
-  const row = getTenantRow(tenantId);
+export async function assertWithinStorageQuota(tenantId: string, incomingBytes: number) {
+  const row = await getTenantRow(tenantId);
   if (!row) {
     return { ok: false as const, error: "Studio not found." };
   }
@@ -22,36 +22,43 @@ export function assertWithinStorageQuota(tenantId: string, incomingBytes: number
   return { ok: true as const, row };
 }
 
-export function assertUploadRateLimit(tenantId: string, fileCount: number) {
+export async function assertUploadRateLimit(tenantId: string, fileCount: number) {
   const db = getDb();
   const now = Date.now();
-  const existing = db
-    .select()
-    .from(schema.uploadRateLimits)
-    .where(eq(schema.uploadRateLimits.tenantId, tenantId))
-    .get();
+  const existing = await qGet<{
+    id: string;
+    windowStartedAt: string;
+    uploadCount: number;
+  }>(
+    db
+      .select()
+      .from(schema.uploadRateLimits)
+      .where(eq(schema.uploadRateLimits.tenantId, tenantId)),
+  );
 
   if (!existing) {
-    db.insert(schema.uploadRateLimits)
-      .values({
+    await qRun(
+      db.insert(schema.uploadRateLimits).values({
         id: `url_${id()}`,
         tenantId,
         windowStartedAt: new Date(now).toISOString(),
         uploadCount: fileCount,
-      })
-      .run();
+      }),
+    );
     return { ok: true as const };
   }
 
   const started = new Date(existing.windowStartedAt).getTime();
   if (now - started > WINDOW_MS) {
-    db.update(schema.uploadRateLimits)
-      .set({
-        windowStartedAt: new Date(now).toISOString(),
-        uploadCount: fileCount,
-      })
-      .where(eq(schema.uploadRateLimits.id, existing.id))
-      .run();
+    await qRun(
+      db
+        .update(schema.uploadRateLimits)
+        .set({
+          windowStartedAt: new Date(now).toISOString(),
+          uploadCount: fileCount,
+        })
+        .where(eq(schema.uploadRateLimits.id, existing.id)),
+    );
     return { ok: true as const };
   }
 
@@ -62,15 +69,17 @@ export function assertUploadRateLimit(tenantId: string, fileCount: number) {
     };
   }
 
-  db.update(schema.uploadRateLimits)
-    .set({ uploadCount: existing.uploadCount + fileCount })
-    .where(
-      and(
-        eq(schema.uploadRateLimits.id, existing.id),
-        eq(schema.uploadRateLimits.tenantId, tenantId),
+  await qRun(
+    db
+      .update(schema.uploadRateLimits)
+      .set({ uploadCount: existing.uploadCount + fileCount })
+      .where(
+        and(
+          eq(schema.uploadRateLimits.id, existing.id),
+          eq(schema.uploadRateLimits.tenantId, tenantId),
+        ),
       ),
-    )
-    .run();
+  );
 
   return { ok: true as const };
 }

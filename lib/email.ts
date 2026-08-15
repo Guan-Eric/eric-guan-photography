@@ -49,7 +49,14 @@ export async function sendEmail(message: OutboundEmail) {
   if (!response.ok) {
     const body = await response.text();
     console.error("[email] Resend failed", response.status, body);
-    return { ok: false as const, error: "Email provider rejected the message." };
+    let detail = "Email provider rejected the message.";
+    try {
+      const parsed = JSON.parse(body) as { message?: string };
+      if (parsed.message) detail = parsed.message;
+    } catch {
+      // keep default
+    }
+    return { ok: false as const, error: detail };
   }
 
   return { ok: true as const, stubbed: false };

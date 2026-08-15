@@ -14,7 +14,7 @@ export async function GET() {
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
   }
-  const row = getTenantRow(session.activeTenantId);
+  const row = await getTenantRow(session.activeTenantId);
   if (!row) {
     return NextResponse.json({ ok: false, error: "Studio not found." }, { status: 404 });
   }

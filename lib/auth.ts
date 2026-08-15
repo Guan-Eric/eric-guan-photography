@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { customAlphabet } from "nanoid";
-import { getDb, schema } from "@/lib/db";
+import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { Membership, MembershipRole, User } from "@/lib/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { passwordIssues } from "@/lib/password-rules";
@@ -101,15 +101,14 @@ export async function getPhotographerSession(): Promise<PhotographerSession | nu
 
   const db = getDb();
   const user =
-    db.select().from(schema.users).where(eq(schema.users.id, parsed.userId)).get() ??
-    null;
+    (await qGet<User>(
+      db.select().from(schema.users).where(eq(schema.users.id, parsed.userId)),
+    )) ?? null;
   if (!user) return null;
 
-  const memberships = db
-    .select()
-    .from(schema.memberships)
-    .where(eq(schema.memberships.userId, user.id))
-    .all();
+  const memberships = await qAll<Membership>(
+    db.select().from(schema.memberships).where(eq(schema.memberships.userId, user.id)),
+  );
 
   const activeFromCookie = jar.get(ACTIVE_TENANT_COOKIE)?.value ?? null;
   const activeTenantId =
@@ -136,18 +135,16 @@ export async function requireTenantMembership(tenantId: string) {
   return { ok: true as const, session: auth.session, membership };
 }
 
-export function registerUser(options: {
+export async function registerUser(options: {
   email: string;
   password: string;
   name: string;
 }) {
   const db = getDb();
   const email = options.email.trim().toLowerCase();
-  const existing = db
-    .select()
-    .from(schema.users)
-    .where(eq(schema.users.email, email))
-    .get();
+  const existing = await qGet<User>(
+    db.select().from(schema.users).where(eq(schema.users.email, email)),
+  );
   if (existing) {
     return { ok: false as const, error: "An account with that email already exists." };
   }
@@ -165,40 +162,116 @@ export function registerUser(options: {
     createdAt,
     updatedAt: createdAt,
   };
-  db.insert(schema.users).values(user).run();
+  await qRun(db.insert(schema.users).values(user));
   return { ok: true as const, user };
 }
 
-export function authenticateUser(email: string, password: string) {
+export async function authenticateUser(email: string, password: string) {
   const db = getDb();
   const user =
-    db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.email, email.trim().toLowerCase()))
-      .get() ?? null;
+    (await qGet<User>(
+      db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.email, email.trim().toLowerCase())),
+    )) ?? null;
   if (!user || !verifyPassword(password, user.passwordHash)) {
     return { ok: false as const, error: "Wrong email or password." };
   }
   return { ok: true as const, user };
 }
 
-export function createMembership(options: {
+export async function requestPasswordReset(email: string, origin: string) {
+  const db = getDb();
+  const user =
+    (await qGet<User>(
+      db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.email, email.trim().toLowerCase())),
+    )) ?? null;
+
+  // Always succeed from the caller's perspective to avoid email enumeration.
+  if (!user) {
+    return { ok: true as const };
+  }
+
+  const token = `rst_${id()}${id()}`;
+  const createdAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  await qRun(
+    db.delete(schema.passwordResetTokens).where(eq(schema.passwordResetTokens.userId, user.id)),
+  );
+  await qRun(
+    db.insert(schema.passwordResetTokens).values({
+      id: `prt_${id()}`,
+      userId: user.id,
+      token,
+      expiresAt,
+      createdAt,
+    }),
+  );
+
+  const { sendEmail } = await import("@/lib/email");
+  await sendEmail({
+    to: user.email,
+    subject: "Reset your password",
+    text: `Reset your password within one hour:\n\n${origin}/reset-password?token=${token}\n\nIf you did not ask for this, ignore this email.`,
+  });
+
+  return { ok: true as const };
+}
+
+export async function resetPasswordWithToken(token: string, password: string) {
+  const issues = passwordIssues(password);
+  if (issues.length > 0) {
+    return { ok: false as const, error: `Password: ${issues[0]!.toLowerCase()}.` };
+  }
+
+  const db = getDb();
+  const row =
+    (await qGet<{ userId: string; expiresAt: string }>(
+      db
+        .select()
+        .from(schema.passwordResetTokens)
+        .where(eq(schema.passwordResetTokens.token, token)),
+    )) ?? null;
+  if (!row || new Date(row.expiresAt).getTime() < Date.now()) {
+    return { ok: false as const, error: "This reset link is invalid or expired." };
+  }
+
+  await qRun(
+    db
+      .update(schema.users)
+      .set({ passwordHash: hashPassword(password), updatedAt: new Date().toISOString() })
+      .where(eq(schema.users.id, row.userId)),
+  );
+  await qRun(
+    db
+      .delete(schema.passwordResetTokens)
+      .where(eq(schema.passwordResetTokens.userId, row.userId)),
+  );
+
+  return { ok: true as const };
+}
+
+export async function createMembership(options: {
   userId: string;
   tenantId: string;
   role?: MembershipRole;
 }) {
   const db = getDb();
-  const existing = db
-    .select()
-    .from(schema.memberships)
-    .where(
-      and(
-        eq(schema.memberships.userId, options.userId),
-        eq(schema.memberships.tenantId, options.tenantId),
+  const existing = await qGet<Membership>(
+    db
+      .select()
+      .from(schema.memberships)
+      .where(
+        and(
+          eq(schema.memberships.userId, options.userId),
+          eq(schema.memberships.tenantId, options.tenantId),
+        ),
       ),
-    )
-    .get();
+  );
   if (existing) return existing;
 
   const row = {
@@ -208,6 +281,6 @@ export function createMembership(options: {
     role: options.role ?? "owner",
     createdAt: new Date().toISOString(),
   };
-  db.insert(schema.memberships).values(row).run();
+  await qRun(db.insert(schema.memberships).values(row));
   return row;
 }

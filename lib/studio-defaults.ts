@@ -42,6 +42,7 @@ export function buildStudioConfig(options: {
     nav: [
       { label: "Work", href: "/#work" },
       { label: "Pricing", href: "/pricing" },
+      { label: "Prep", href: "/prep" },
       { label: "Book", href: "/book" },
     ],
     hero: PLACEHOLDER_HERO,

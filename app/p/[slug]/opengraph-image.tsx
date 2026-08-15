@@ -13,7 +13,7 @@ export default async function ListingOg({
 }) {
   const tenant = await getRequestTenant();
   const { slug } = await params;
-  const data = tenant ? listingPageForPublic(tenant.id, slug) : null;
+  const data = tenant ? await listingPageForPublic(tenant.id, slug) : null;
   const title = data?.page.title ?? "Listing";
   const studio = data?.tenant.studioName ?? "";
 

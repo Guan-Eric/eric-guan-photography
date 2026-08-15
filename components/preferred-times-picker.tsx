@@ -19,6 +19,7 @@ type Props = {
   selectedSlots: PreferredSlot[];
   onChange: (next: PreferredSlot[]) => void;
   email: string;
+  timeZone?: string;
   onError: (message: string | null) => void;
   invalid?: boolean;
   errorMessage?: string;
@@ -29,11 +30,12 @@ export function PreferredTimesPicker({
   selectedSlots,
   onChange,
   email,
+  timeZone = "America/Toronto",
   onError,
   invalid = false,
   errorMessage,
 }: Props) {
-  const days = useMemo(() => groupSlotsByDay(slots), [slots]);
+  const days = useMemo(() => groupSlotsByDay(slots, timeZone), [slots, timeZone]);
   const [selectedDayKey, setSelectedDayKey] = useState("");
   const dragIndex = useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -92,7 +94,7 @@ export function PreferredTimesPicker({
     <div className={`preferred-picker${invalid ? " is-invalid" : ""}`}>
       <p className="field-hint">
         Tap a day, then tap times to add (up to {MAX_PREFERRED}). Drag your choices
-        to set 1st / 2nd / 3rd. Times are America/Toronto.
+        to set 1st / 2nd / 3rd. Times are {timeZone.replace(/_/g, " ")}.
       </p>
       {errorMessage ? (
         <p className="field-error" role="alert">
@@ -113,7 +115,7 @@ export function PreferredTimesPicker({
               onClick={() => setSelectedDayKey(day.key)}
             >
               <span className="day-chip-date">
-                {dayChipLabel(day.slots[0].start)}
+                {dayChipLabel(day.slots[0].start, timeZone)}
               </span>
               <span className="day-chip-count">{day.slots.length} open</span>
             </button>
@@ -133,7 +135,7 @@ export function PreferredTimesPicker({
               aria-pressed={selected}
               onClick={() => toggleSlot(slot)}
             >
-              {timeOnlyLabel(slot.start)}
+              {timeOnlyLabel(slot.start, timeZone)}
             </button>
           );
         })}

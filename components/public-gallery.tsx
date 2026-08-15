@@ -27,6 +27,7 @@ export function PublicGallery({
   paidFlag,
   cancelledFlag,
   upsells = [],
+  allowStubUnlock = false,
 }: {
   token: string;
   title: string;
@@ -41,6 +42,7 @@ export function PublicGallery({
   paidFlag: boolean;
   cancelledFlag: boolean;
   upsells?: Upsell[];
+  allowStubUnlock?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -48,15 +50,30 @@ export function PublicGallery({
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const unlocked = state === "unlocked";
 
+  const totalCents = useMemo(() => {
+    const addOnTotal = upsells
+      .filter((item) => selectedAddOns.includes(item.id))
+      .reduce((sum, item) => sum + item.priceCents, 0);
+    return amountCents + addOnTotal;
+  }, [amountCents, selectedAddOns, upsells]);
+
   const price = useMemo(
     () =>
       new Intl.NumberFormat("en-CA", {
         style: "currency",
         currency,
         maximumFractionDigits: 0,
-      }).format(amountCents / 100),
-    [amountCents, currency],
+      }).format(totalCents / 100),
+    [totalCents, currency],
   );
+
+  function formatAddOn(cents: number) {
+    return new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(cents / 100);
+  }
 
   async function checkout(stub = false) {
     setBusy(true);
@@ -132,7 +149,7 @@ export function PublicGallery({
                           )
                         }
                       />
-                      {item.name} (+${Math.round(item.priceCents / 100)})
+                      {item.name} (+{formatAddOn(item.priceCents)})
                     </label>
                   ))}
                 </fieldset>
@@ -144,21 +161,25 @@ export function PublicGallery({
                   disabled={busy}
                   onClick={() => checkout(false)}
                 >
-                  {busy ? "Starting…" : "Pay & unlock"}
+                  {busy ? "Starting…" : `Pay ${price} & unlock`}
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  disabled={busy}
-                  onClick={() => checkout(true)}
-                >
-                  Local stub unlock
-                </button>
+                {allowStubUnlock ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    disabled={busy}
+                    onClick={() => checkout(true)}
+                  >
+                    Dev stub unlock
+                  </button>
+                ) : null}
               </div>
             </>
           )}
           {paidFlag ? <p className="form-success">Payment received — files unlocked.</p> : null}
-          {cancelledFlag ? <p className="muted">Checkout cancelled. Proofs are still available.</p> : null}
+          {cancelledFlag && !unlocked ? (
+            <p className="muted">Checkout cancelled. Proofs are still available.</p>
+          ) : null}
           {error ? <p className="form-error">{error}</p> : null}
         </div>
       </header>

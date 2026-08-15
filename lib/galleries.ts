@@ -1,6 +1,6 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
-import { getDb, schema } from "@/lib/db";
+import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { Gallery, GalleryState, MediaAsset, Order, TrustTier } from "@/lib/db/schema";
 import { processUpload } from "@/lib/media-process";
 import { ensureGalleryDir } from "@/lib/media-storage";
@@ -15,76 +15,72 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-export function resolveTrustTier(tenantId: string, agentEmail: string): TrustTier {
+export async function resolveTrustTier(tenantId: string, agentEmail: string): Promise<TrustTier> {
   const db = getDb();
-  const priorPaid = db
-    .select()
-    .from(schema.orders)
-    .where(
-      and(
-        eq(schema.orders.tenantId, tenantId),
-        eq(schema.orders.agentEmail, agentEmail.toLowerCase()),
-        eq(schema.orders.status, "paid"),
+  const priorPaid = await qAll<Order>(
+    db
+      .select()
+      .from(schema.orders)
+      .where(
+        and(
+          eq(schema.orders.tenantId, tenantId),
+          eq(schema.orders.agentEmail, agentEmail.toLowerCase()),
+          eq(schema.orders.status, "paid"),
+        ),
       ),
-    )
-    .all();
+  );
 
   return priorPaid.length > 0 ? "net7" : "pay_first";
 }
 
-export function getGalleryByToken(token: string) {
+export async function getGalleryByToken(token: string) {
   const db = getDb();
   return (
-    db
-      .select()
-      .from(schema.galleries)
-      .where(eq(schema.galleries.publicToken, token))
-      .get() ?? null
+    (await qGet<Gallery>(
+      db.select().from(schema.galleries).where(eq(schema.galleries.publicToken, token)),
+    )) ?? null
   );
 }
 
-export function getGalleryByOrderId(orderId: string, tenantId?: string) {
+export async function getGalleryByOrderId(orderId: string, tenantId?: string) {
   const db = getDb();
   const gallery =
-    db
-      .select()
-      .from(schema.galleries)
-      .where(eq(schema.galleries.orderId, orderId))
-      .get() ?? null;
+    (await qGet<Gallery>(
+      db.select().from(schema.galleries).where(eq(schema.galleries.orderId, orderId)),
+    )) ?? null;
   if (!gallery) return null;
   if (tenantId && gallery.tenantId !== tenantId) return null;
   return gallery;
 }
 
-export function getGalleryById(galleryIdValue: string, tenantId?: string) {
+export async function getGalleryById(galleryIdValue: string, tenantId?: string) {
   const db = getDb();
   const gallery =
-    db
-      .select()
-      .from(schema.galleries)
-      .where(eq(schema.galleries.id, galleryIdValue))
-      .get() ?? null;
+    (await qGet<Gallery>(
+      db.select().from(schema.galleries).where(eq(schema.galleries.id, galleryIdValue)),
+    )) ?? null;
   if (!gallery) return null;
   if (tenantId && gallery.tenantId !== tenantId) return null;
   return gallery;
 }
 
-export function listMedia(galleryIdValue: string): MediaAsset[] {
+export async function listMedia(galleryIdValue: string): Promise<MediaAsset[]> {
   const db = getDb();
-  return db
-    .select()
-    .from(schema.mediaAssets)
-    .where(eq(schema.mediaAssets.galleryId, galleryIdValue))
-    .orderBy(asc(schema.mediaAssets.sortOrder))
-    .all();
+  return qAll<MediaAsset>(
+    db
+      .select()
+      .from(schema.mediaAssets)
+      .where(eq(schema.mediaAssets.galleryId, galleryIdValue))
+      .orderBy(asc(schema.mediaAssets.sortOrder)),
+  );
 }
 
 export async function ensureGalleryForOrder(order: Order, tenant: Tenant) {
-  const existing = getGalleryByOrderId(order.id);
+  const existing = await getGalleryByOrderId(order.id);
   if (existing) return existing;
 
   const db = getDb();
-  const trustTier = resolveTrustTier(order.tenantId, order.agentEmail);
+  const trustTier = await resolveTrustTier(order.tenantId, order.agentEmail);
   const createdAt = nowIso();
   const id = `gal_${galleryId()}`;
   const state: GalleryState = trustTier === "net7" ? "unlocked" : "proofing";
@@ -107,7 +103,7 @@ export async function ensureGalleryForOrder(order: Order, tenant: Tenant) {
     updatedAt: createdAt,
   };
 
-  db.insert(schema.galleries).values(row).run();
+  await qRun(db.insert(schema.galleries).values(row));
   await ensureGalleryDir(order.tenantId, id);
 
   if (state === "unlocked") {
@@ -115,7 +111,7 @@ export async function ensureGalleryForOrder(order: Order, tenant: Tenant) {
   }
 
   void tenant;
-  return getGalleryById(id)!;
+  return (await getGalleryById(id))!;
 }
 
 export async function addUploadsToGallery(options: {
@@ -125,7 +121,7 @@ export async function addUploadsToGallery(options: {
 }) {
   const gallery = await ensureGalleryForOrder(options.order, options.tenant);
   const db = getDb();
-  const existingCount = listMedia(gallery.id).length;
+  const existingCount = (await listMedia(gallery.id)).length;
   const created: MediaAsset[] = [];
 
   for (let index = 0; index < options.files.length; index += 1) {
@@ -156,66 +152,79 @@ export async function addUploadsToGallery(options: {
       createdAt: nowIso(),
     };
 
-    db.insert(schema.mediaAssets).values(row).run();
+    await qRun(db.insert(schema.mediaAssets).values(row));
     created.push(row as MediaAsset);
   }
 
   return { gallery, created };
 }
 
-export function setGalleryBrandMode(
+export async function setGalleryBrandMode(
   galleryIdValue: string,
   brandMode: "branded" | "unbranded",
 ) {
   const db = getDb();
-  db.update(schema.galleries)
-    .set({ brandMode, updatedAt: nowIso() })
-    .where(eq(schema.galleries.id, galleryIdValue))
-    .run();
+  await qRun(
+    db
+      .update(schema.galleries)
+      .set({ brandMode, updatedAt: nowIso() })
+      .where(eq(schema.galleries.id, galleryIdValue)),
+  );
   return getGalleryById(galleryIdValue);
 }
 
-export function unlockGallery(galleryIdValue: string, options?: { markOrderPaid?: boolean }) {
+export async function unlockGallery(
+  galleryIdValue: string,
+  options?: { markOrderPaid?: boolean },
+) {
   const db = getDb();
-  const gallery = getGalleryById(galleryIdValue);
+  const gallery = await getGalleryById(galleryIdValue);
   if (!gallery) return { ok: false as const, error: "Gallery not found." };
   if (gallery.revokedAt) return { ok: false as const, error: "Gallery revoked." };
 
   const unlockedAt = nowIso();
-  db.update(schema.galleries)
-    .set({ state: "unlocked", unlockedAt, updatedAt: unlockedAt })
-    .where(eq(schema.galleries.id, galleryIdValue))
-    .run();
+  await qRun(
+    db
+      .update(schema.galleries)
+      .set({ state: "unlocked", unlockedAt, updatedAt: unlockedAt })
+      .where(eq(schema.galleries.id, galleryIdValue)),
+  );
 
   if (options?.markOrderPaid) {
-    db.update(schema.orders)
-      .set({ status: "paid", updatedAt: unlockedAt })
-      .where(eq(schema.orders.id, gallery.orderId))
-      .run();
+    await qRun(
+      db
+        .update(schema.orders)
+        .set({ status: "paid", updatedAt: unlockedAt })
+        .where(eq(schema.orders.id, gallery.orderId)),
+    );
   } else {
-    db.update(schema.orders)
-      .set({ status: "delivered", updatedAt: unlockedAt })
-      .where(eq(schema.orders.id, gallery.orderId))
-      .run();
+    await qRun(
+      db
+        .update(schema.orders)
+        .set({ status: "delivered", updatedAt: unlockedAt })
+        .where(eq(schema.orders.id, gallery.orderId)),
+    );
   }
 
-  return { ok: true as const, gallery: getGalleryById(galleryIdValue)! };
+  return { ok: true as const, gallery: (await getGalleryById(galleryIdValue))! };
 }
 
-export function revokeGallery(galleryIdValue: string) {
+export async function revokeGallery(galleryIdValue: string) {
   const db = getDb();
-  db.update(schema.galleries)
-    .set({ revokedAt: nowIso(), updatedAt: nowIso() })
-    .where(eq(schema.galleries.id, galleryIdValue))
-    .run();
+  await qRun(
+    db
+      .update(schema.galleries)
+      .set({ revokedAt: nowIso(), updatedAt: nowIso() })
+      .where(eq(schema.galleries.id, galleryIdValue)),
+  );
   return getGalleryById(galleryIdValue);
 }
 
-export function publishDelivery(orderId: string, tenantId?: string) {
+export async function publishDelivery(orderId: string, tenantId?: string) {
   const db = getDb();
-  const gallery = getGalleryByOrderId(orderId, tenantId);
+  const gallery = await getGalleryByOrderId(orderId, tenantId);
   if (!gallery) return { ok: false as const, error: "Upload photos before publishing." };
-  const media = listMedia(gallery.id);
+  const media = await listMedia(gallery.id);
   if (media.length === 0) {
     return { ok: false as const, error: "Upload at least one photo before publishing." };
   }
@@ -223,27 +232,31 @@ export function publishDelivery(orderId: string, tenantId?: string) {
   const nextState: GalleryState =
     gallery.trustTier === "net7" ? "unlocked" : "proofing";
 
-  db.update(schema.galleries)
-    .set({
-      state: nextState,
-      unlockedAt: nextState === "unlocked" ? nowIso() : gallery.unlockedAt,
-      updatedAt: nowIso(),
-    })
-    .where(eq(schema.galleries.id, gallery.id))
-    .run();
+  await qRun(
+    db
+      .update(schema.galleries)
+      .set({
+        state: nextState,
+        unlockedAt: nextState === "unlocked" ? nowIso() : gallery.unlockedAt,
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.galleries.id, gallery.id)),
+  );
 
-  db.update(schema.orders)
-    .set({
-      status: nextState === "unlocked" ? "delivered" : "delivered",
-      updatedAt: nowIso(),
-    })
-    .where(eq(schema.orders.id, orderId))
-    .run();
+  await qRun(
+    db
+      .update(schema.orders)
+      .set({
+        status: nextState === "unlocked" ? "delivered" : "delivered",
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.orders.id, orderId)),
+  );
 
-  return { ok: true as const, gallery: getGalleryById(gallery.id)! };
+  return { ok: true as const, gallery: (await getGalleryById(gallery.id))! };
 }
 
-export function createPaymentRecord(options: {
+export async function createPaymentRecord(options: {
   tenantId: string;
   gallery: Gallery;
   provider: "stripe" | "local_stub";
@@ -265,35 +278,39 @@ export function createPaymentRecord(options: {
     createdAt,
     updatedAt: createdAt,
   };
-  db.insert(schema.payments).values(row).run();
+  await qRun(db.insert(schema.payments).values(row));
   return row;
 }
 
-export function markPaymentPaidBySession(sessionId: string) {
+export async function markPaymentPaidBySession(sessionId: string) {
   const db = getDb();
-  const payment = db
-    .select()
-    .from(schema.payments)
-    .where(eq(schema.payments.providerSessionId, sessionId))
-    .get();
+  const payment = await qGet<{ id: string; galleryId: string }>(
+    db
+      .select()
+      .from(schema.payments)
+      .where(eq(schema.payments.providerSessionId, sessionId)),
+  );
   if (!payment) return { ok: false as const, error: "Payment not found." };
 
-  db.update(schema.payments)
-    .set({ status: "paid", updatedAt: nowIso() })
-    .where(eq(schema.payments.id, payment.id))
-    .run();
+  await qRun(
+    db
+      .update(schema.payments)
+      .set({ status: "paid", updatedAt: nowIso() })
+      .where(eq(schema.payments.id, payment.id)),
+  );
 
   return unlockGallery(payment.galleryId, { markOrderPaid: true });
 }
 
-export function listRecentGalleries(tenantId: string) {
+export async function listRecentGalleries(tenantId: string) {
   const db = getDb();
-  return db
-    .select()
-    .from(schema.galleries)
-    .where(eq(schema.galleries.tenantId, tenantId))
-    .orderBy(desc(schema.galleries.createdAt))
-    .all();
+  return qAll<Gallery>(
+    db
+      .select()
+      .from(schema.galleries)
+      .where(eq(schema.galleries.tenantId, tenantId))
+      .orderBy(desc(schema.galleries.createdAt)),
+  );
 }
 
 export function galleryPublicUrl(

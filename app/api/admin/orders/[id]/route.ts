@@ -15,7 +15,7 @@ export async function PATCH(
   context: { params: Promise<Params> },
 ) {
   const { id } = await context.params;
-  const order = getOrder(id);
+  const order = await getOrder(id);
   if (!order) {
     return NextResponse.json({ ok: false, error: "Order not found." }, { status: 404 });
   }
@@ -31,13 +31,13 @@ export async function PATCH(
     return NextResponse.json({ ok: false, error: "Invalid status." }, { status: 400 });
   }
 
-  const result = updateOrderStatus(id, parsed.data.status, order.tenantId);
+  const result = await updateOrderStatus(id, parsed.data.status, order.tenantId);
   if (!result.ok) {
     return NextResponse.json(result, { status: 404 });
   }
 
-  const tenant = getTenant(order.tenantId);
-  const gallery = getGalleryByOrderId(order.id, order.tenantId);
+  const tenant = await getTenant(order.tenantId);
+  const gallery = await getGalleryByOrderId(order.id, order.tenantId);
   const mail = orderStatusEmail({
     tenant,
     order: result.order,

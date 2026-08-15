@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   // Legacy: single password field maps to seeded owner when email omitted.
   if (!email && password) {
     const legacyEmail = process.env.SEED_OWNER_EMAIL ?? "ericguan.photo@gmail.com";
-    const result = authenticateUser(legacyEmail, password);
+    const result = await authenticateUser(legacyEmail, password);
     if (!result.ok) {
       return NextResponse.json(
         { ok: false, error: "Wrong email or password. Use /login with email." },
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, legacy: true });
   }
 
-  const result = authenticateUser(email, password);
+  const result = await authenticateUser(email, password);
   if (!result.ok) {
     return NextResponse.json(result, { status: 401 });
   }

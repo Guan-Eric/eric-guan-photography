@@ -3,10 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { parsePreferredSlotsJson } from "@/lib/preferred-slots";
+import { orderStatusLabel } from "@/lib/db/schema";
+import { formatSlotInZone, parsePreferredSlotsJson } from "@/lib/preferred-slots";
 import { getOrderForPublic } from "@/lib/orders";
 import { getTenant } from "@/lib/tenants";
-// Tenant resolved from the order after load (multi-tenant safe).
+import { getTenantRow } from "@/lib/tenant-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,17 +27,6 @@ function formatMoney(cents: number, currency: string) {
   }).format(cents / 100);
 }
 
-function formatSlot(iso: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Toronto",
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(iso));
-}
-
 export default async function ConfirmationPage({
   params,
   searchParams,
@@ -45,13 +35,15 @@ export default async function ConfirmationPage({
   searchParams: Promise<{ token?: string; local?: string }>;
 }) {
   const { id } = await params;
-  const { token, local } = await searchParams;
+  const { token } = await searchParams;
   if (!token) notFound();
 
-  const order = getOrderForPublic(id, token);
+  const order = await getOrderForPublic(id, token);
   if (!order) notFound();
 
-  const tenant = getTenant(order.tenantId);
+  const tenant = await getTenant(order.tenantId);
+  const row = await getTenantRow(order.tenantId);
+  const timeZone = row?.timezone ?? "America/Toronto";
   const preferredSlots = parsePreferredSlotsJson(order.preferredSlotsJson);
   const slotLines =
     preferredSlots.length > 0
@@ -59,9 +51,9 @@ export default async function ConfirmationPage({
           const rank = index === 0 ? "1st" : index === 1 ? "2nd" : "3rd";
           return `${rank}: ${slot.label}`;
         })
-      : [formatSlot(order.preferredStart)];
+      : [formatSlotInZone(order.preferredStart, timeZone)];
 
-  const emailStubbed = local === "1" || !process.env.RESEND_API_KEY;
+  const emailSent = Boolean(process.env.RESEND_API_KEY);
 
   return (
     <>
@@ -73,9 +65,9 @@ export default async function ConfirmationPage({
             <h1>Thanks, {order.agentName.split(" ")[0]}.</h1>
             <p className="section-copy">
               Your shoot request is saved
-              {emailStubbed
-                ? ". On this local setup, confirmation emails are logged in the server terminal instead of being sent — add a Resend API key to send real mail."
-                : ". A confirmation email is on the way, and I’ll confirm the slot shortly."}{" "}
+              {emailSent
+                ? ". A confirmation email is on the way, and we’ll confirm the slot shortly."
+                : `. We’ll follow up at ${order.agentEmail} to confirm the slot shortly.`}{" "}
               Meanwhile, send the seller prep checklist so the home is ready.
             </p>
             <div className="hero-actions">
@@ -100,7 +92,7 @@ export default async function ConfirmationPage({
                 </div>
                 <div>
                   <dt>Status</dt>
-                  <dd>{order.status}</dd>
+                  <dd>{orderStatusLabel(order.status)}</dd>
                 </div>
                 <div>
                   <dt>Property</dt>

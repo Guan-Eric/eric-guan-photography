@@ -17,7 +17,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
   const { slug, assetId } = await context.params;
-  const data = listingPageForPublic(tenant.id, slug);
+  const data = await listingPageForPublic(tenant.id, slug);
   if (!data) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
@@ -26,7 +26,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
 
-  const nodeStream = openMediaStream(asset.pathWeb);
+  const nodeStream = await openMediaStream(asset.pathWeb);
   const webStream = Readable.toWeb(nodeStream) as unknown as ReadableStream;
   return new NextResponse(webStream, {
     headers: {

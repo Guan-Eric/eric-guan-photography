@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const created = registerUser({ email, password, name });
+  const created = await registerUser({ email, password, name });
   if (!created.ok) {
     return NextResponse.json(created, { status: 400 });
   }
@@ -51,12 +51,12 @@ export async function POST(request: Request) {
   await createPhotographerSession(created.user.id);
 
   if (!invite && studioName.length >= 2) {
-    const provisioned = createTenantFromOnboarding({
+    const provisioned = await createTenantFromOnboarding({
       studioName,
       photographerName: name,
       email: created.user.email,
     });
-    createMembership({
+    await createMembership({
       userId: created.user.id,
       tenantId: provisioned.tenant.id,
       role: "owner",

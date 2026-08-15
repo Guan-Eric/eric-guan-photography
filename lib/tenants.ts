@@ -21,8 +21,8 @@ export const DEFAULT_TENANT_ID = ericGuan.id;
 export const TENANT_HEADER = "x-tenant-id";
 export const TENANT_SLUG_HEADER = "x-tenant-slug";
 
-export function getTenant(id: string = DEFAULT_TENANT_ID): Tenant {
-  const row = getTenantRow(id);
+export async function getTenant(id: string = DEFAULT_TENANT_ID): Promise<Tenant> {
+  const row = await getTenantRow(id);
   if (row) return tenantFromRow(row);
   if (id === ericGuan.id) return ericGuan;
   throw new Error(`Unknown tenant: ${id}`);
@@ -32,27 +32,27 @@ export function getTenant(id: string = DEFAULT_TENANT_ID): Tenant {
  * Resolve tenant from Host. Apex / localhost is the platform (null).
  * Subdomain match: `{slug}.{PLATFORM_ROOT_DOMAIN}` e.g. demo.localhost
  */
-export function getTenantByHost(host: string | null): Tenant | null {
+export async function getTenantByHost(host: string | null): Promise<Tenant | null> {
   if (!host) return null;
 
   const hostname = hostnameFromHost(host);
   if (isPlatformHostname(hostname)) return null;
 
-  const byDomain = getTenantRowByDomain(hostname);
+  const byDomain = await getTenantRowByDomain(hostname);
   if (byDomain) return tenantFromRow(byDomain);
 
   const root = (process.env.PLATFORM_ROOT_DOMAIN ?? "localhost").toLowerCase();
   if (hostname.endsWith(`.${root}`)) {
     const slug = hostname.slice(0, -(root.length + 1)).split(".")[0];
-    const bySlug = getTenantRowBySlug(slug);
+    const bySlug = await getTenantRowBySlug(slug);
     if (bySlug) return tenantFromRow(bySlug);
   }
 
   return null;
 }
 
-export function listTenants(): Tenant[] {
-  const rows = listTenantRows();
+export async function listTenants(): Promise<Tenant[]> {
+  const rows = await listTenantRows();
   if (rows.length === 0) return [ericGuan];
   return rows.map(tenantFromRow);
 }
@@ -76,14 +76,14 @@ export async function getRequestTenant(): Promise<Tenant | null> {
   const fromHeader = headerStore.get(TENANT_HEADER);
   if (fromHeader) {
     try {
-      return getTenant(fromHeader);
+      return await getTenant(fromHeader);
     } catch {
       // fall through
     }
   }
   const slugHint = headerStore.get(TENANT_SLUG_HEADER);
   if (slugHint) {
-    const bySlug = getTenantRowBySlug(slugHint);
+    const bySlug = await getTenantRowBySlug(slugHint);
     if (bySlug) return tenantFromRow(bySlug);
   }
   return getTenantByHost(host);

@@ -30,6 +30,7 @@ export default async function HomePage() {
               sizes="100vw"
               priority
               fetchPriority="high"
+              unoptimized={tenant.hero.src.startsWith("/api/")}
             />
           </div>
           <div className="hero-veil" aria-hidden="true" />
@@ -48,7 +49,9 @@ export default async function HomePage() {
             <ul className="hero-proof">
               <li>{tenant.turnaround} delivery</li>
               <li>MLS-ready sizes included</li>
-              {primaryArea ? <li>{primaryArea.city} and surrounding areas</li> : null}
+              {primaryArea?.city && primaryArea.city !== "Your market" ? (
+                <li>{primaryArea.city} and surrounding areas</li>
+              ) : null}
             </ul>
           </div>
         </section>
@@ -65,7 +68,7 @@ export default async function HomePage() {
             <p className="portfolio-note">Portfolio photos will appear here once uploaded.</p>
           )}
 
-          {!tenant.portfolioComplete ? (
+          {!tenant.portfolioComplete && tenant.gallery.length > 0 ? (
             <p className="portfolio-note">
               Placeholder images for layout — swap these for your listing photos
               when ready.

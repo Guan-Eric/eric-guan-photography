@@ -1,6 +1,6 @@
 -- Postgres RLS policies for a future DATABASE_URL swap.
--- Apply after migrating the SQLite schema to Postgres.
--- Every business table is isolated by tenant_id.
+-- Apply after scripts/postgres-schema.sql (or an equivalent migration).
+-- Every business table is isolated by tenant_id (tenants row by id).
 --
 -- Session variable: SET app.tenant_id = '<tenant-uuid>';
 -- Application should SET LOCAL this inside a transaction per request.
@@ -17,6 +17,7 @@ ALTER TABLE gallery_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE membership_invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE billing_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE upload_rate_limits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reminder_sends ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenants_isolation ON tenants
   USING (id = current_setting('app.tenant_id', true));
@@ -53,3 +54,9 @@ CREATE POLICY billing_events_isolation ON billing_events
 
 CREATE POLICY upload_rate_limits_isolation ON upload_rate_limits
   USING (tenant_id = current_setting('app.tenant_id', true));
+
+CREATE POLICY reminder_sends_isolation ON reminder_sends
+  USING (tenant_id = current_setting('app.tenant_id', true));
+
+-- users is global identity (email login across tenants); isolate via memberships.
+-- Optional: enable RLS on users only if you introduce a per-tenant user model.

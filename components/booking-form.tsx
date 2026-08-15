@@ -26,6 +26,8 @@ type Props = {
   packages: Package[];
   defaultPackageId?: string;
   email: string;
+  defaultCity?: string;
+  timeZone?: string;
 };
 
 type FieldKey =
@@ -73,7 +75,13 @@ function FieldLabel({
   );
 }
 
-export function BookingForm({ packages, defaultPackageId, email }: Props) {
+export function BookingForm({
+  packages,
+  defaultPackageId,
+  email,
+  defaultCity = "",
+  timeZone = "America/Toronto",
+}: Props) {
   const router = useRouter();
   const bookable = useMemo(
     () => packages.filter(isBookablePackage),
@@ -95,10 +103,11 @@ export function BookingForm({ packages, defaultPackageId, email }: Props) {
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [triedSubmit, setTriedSubmit] = useState(false);
+  const [showAccessDetails, setShowAccessDetails] = useState(false);
 
   const [propertyAddress, setPropertyAddress] = useState("");
   const [postalCode, setPostalCode] = useState("");
-  const [city, setCity] = useState("Montréal");
+  const [city, setCity] = useState(defaultCity);
   const [agentName, setAgentName] = useState("");
   const [agentEmail, setAgentEmail] = useState("");
   const [agentPhone, setAgentPhone] = useState("");
@@ -360,7 +369,7 @@ export function BookingForm({ packages, defaultPackageId, email }: Props) {
       </section>
 
       <section className="booking-card">
-        <h2>2. Property &amp; access</h2>
+        <h2>2. Property</h2>
         <div className="form-grid">
           <label
             className={`field field-span${fieldErrors.propertyAddress ? " is-invalid" : ""}`}
@@ -369,7 +378,7 @@ export function BookingForm({ packages, defaultPackageId, email }: Props) {
             <FieldLabel required>Property address</FieldLabel>
             <input
               value={propertyAddress}
-              placeholder="123 Rue Example"
+              placeholder="123 Main Street"
               aria-invalid={Boolean(fieldErrors.propertyAddress)}
               aria-describedby={
                 fieldErrors.propertyAddress ? "err-propertyAddress" : undefined
@@ -390,7 +399,7 @@ export function BookingForm({ packages, defaultPackageId, email }: Props) {
             className={`field${fieldErrors.postalCode ? " is-invalid" : ""}`}
             data-field="postalCode"
           >
-            <FieldLabel required>Postal code</FieldLabel>
+            <FieldLabel required>Postal / ZIP</FieldLabel>
             <input
               value={postalCode}
               placeholder="H2X 1Y4"
@@ -429,87 +438,105 @@ export function BookingForm({ packages, defaultPackageId, email }: Props) {
               </span>
             ) : null}
           </label>
-          <label className="field">
-            <FieldLabel required>Occupied or vacant</FieldLabel>
-            <select
-              value={access.occupancy}
-              onChange={(event) =>
-                setAccess((current) => ({
-                  ...current,
-                  occupancy: event.target.value as "vacant" | "occupied",
-                }))
-              }
-            >
-              <option value="vacant">Vacant</option>
-              <option value="occupied">Occupied</option>
-            </select>
-          </label>
-          <label className="field">
-            <FieldLabel required>Access</FieldLabel>
-            <select
-              value={access.accessType}
-              onChange={(event) =>
-                setAccess((current) => ({
-                  ...current,
-                  accessType: event.target.value as typeof access.accessType,
-                }))
-              }
-            >
-              <option value="lockbox">Lockbox / code</option>
-              <option value="meet">Someone meeting me</option>
-              <option value="key">Key pickup</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label className="field field-span">
-            <FieldLabel>Access notes (code, lockbox location, alarm)</FieldLabel>
-            <input
-              value={access.accessNotes}
-              onChange={(event) =>
-                setAccess((current) => ({
-                  ...current,
-                  accessNotes: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label className="field">
-            <FieldLabel>Pets</FieldLabel>
-            <input
-              value={access.pets}
-              onChange={(event) =>
-                setAccess((current) => ({ ...current, pets: event.target.value }))
-              }
-              placeholder="None / dog crated upstairs"
-            />
-          </label>
-          <label className="field">
-            <FieldLabel>Parking</FieldLabel>
-            <input
-              value={access.parkingNotes}
-              onChange={(event) =>
-                setAccess((current) => ({
-                  ...current,
-                  parkingNotes: event.target.value,
-                }))
-              }
-              placeholder="Street / driveway"
-            />
-          </label>
-          <label className="field field-span">
-            <FieldLabel>Who is meeting (if anyone)</FieldLabel>
-            <input
-              value={access.meetingContact}
-              onChange={(event) =>
-                setAccess((current) => ({
-                  ...current,
-                  meetingContact: event.target.value,
-                }))
-              }
-              placeholder="Name + phone"
-            />
-          </label>
         </div>
+
+        <button
+          type="button"
+          className="btn btn-outline booking-access-toggle"
+          aria-expanded={showAccessDetails}
+          onClick={() => setShowAccessDetails((open) => !open)}
+        >
+          {showAccessDetails ? "Hide access details" : "Add access details"}
+        </button>
+
+        {showAccessDetails ? (
+          <div className="form-grid booking-access-grid">
+            <label className="field">
+              <FieldLabel required>Occupied or vacant</FieldLabel>
+              <select
+                value={access.occupancy}
+                onChange={(event) =>
+                  setAccess((current) => ({
+                    ...current,
+                    occupancy: event.target.value as "vacant" | "occupied",
+                  }))
+                }
+              >
+                <option value="vacant">Vacant</option>
+                <option value="occupied">Occupied</option>
+              </select>
+            </label>
+            <label className="field">
+              <FieldLabel required>Access</FieldLabel>
+              <select
+                value={access.accessType}
+                onChange={(event) =>
+                  setAccess((current) => ({
+                    ...current,
+                    accessType: event.target.value as typeof access.accessType,
+                  }))
+                }
+              >
+                <option value="lockbox">Lockbox / code</option>
+                <option value="meet">Someone meeting me</option>
+                <option value="key">Key pickup</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label className="field field-span">
+              <FieldLabel>Access notes (code, lockbox location, alarm)</FieldLabel>
+              <input
+                value={access.accessNotes}
+                onChange={(event) =>
+                  setAccess((current) => ({
+                    ...current,
+                    accessNotes: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <label className="field">
+              <FieldLabel>Pets</FieldLabel>
+              <input
+                value={access.pets}
+                onChange={(event) =>
+                  setAccess((current) => ({ ...current, pets: event.target.value }))
+                }
+                placeholder="None / dog crated upstairs"
+              />
+            </label>
+            <label className="field">
+              <FieldLabel>Parking</FieldLabel>
+              <input
+                value={access.parkingNotes}
+                onChange={(event) =>
+                  setAccess((current) => ({
+                    ...current,
+                    parkingNotes: event.target.value,
+                  }))
+                }
+                placeholder="Street / driveway"
+              />
+            </label>
+            <label className="field field-span">
+              <FieldLabel>Who is meeting (if anyone)</FieldLabel>
+              <input
+                value={access.meetingContact}
+                onChange={(event) =>
+                  setAccess((current) => ({
+                    ...current,
+                    meetingContact: event.target.value,
+                  }))
+                }
+                placeholder="Name + phone"
+              />
+            </label>
+          </div>
+        ) : (
+          <p className="field-hint">
+            Optional for now — occupancy defaults to vacant with lockbox access.
+          </p>
+        )}
       </section>
 
       <section
@@ -530,6 +557,7 @@ export function BookingForm({ packages, defaultPackageId, email }: Props) {
             if (next.length > 0) clearFieldError("preferredSlots");
           }}
           email={email}
+          timeZone={timeZone}
           onError={setFormError}
           invalid={Boolean(fieldErrors.preferredSlots)}
           errorMessage={fieldErrors.preferredSlots}

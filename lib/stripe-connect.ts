@@ -15,7 +15,7 @@ export async function ensureConnectAccount(tenantId: string, email: string) {
     };
   }
 
-  const row = getTenantRow(tenantId);
+  const row = await getTenantRow(tenantId);
   if (!row) return { ok: false as const, error: "Tenant not found." };
 
   if (row.stripeConnectAccountId) {
@@ -36,7 +36,7 @@ export async function ensureConnectAccount(tenantId: string, email: string) {
     metadata: { tenantId },
   });
 
-  updateTenantConnect(tenantId, {
+  await updateTenantConnect(tenantId, {
     accountId: account.id,
     status: "pending",
   });
@@ -74,7 +74,7 @@ export async function createConnectOnboardingLink(options: {
 
 export async function refreshConnectStatus(tenantId: string) {
   const stripe = getStripe();
-  const row = getTenantRow(tenantId);
+  const row = await getTenantRow(tenantId);
   if (!stripe || !row?.stripeConnectAccountId) {
     return { ok: false as const, error: "Connect not started." };
   }
@@ -87,7 +87,7 @@ export async function refreshConnectStatus(tenantId: string) {
         ? "restricted"
         : "pending";
 
-  updateTenantConnect(tenantId, {
+  await updateTenantConnect(tenantId, {
     accountId: account.id,
     status,
   });

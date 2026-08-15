@@ -67,7 +67,10 @@ export function isLocalPlatform() {
 }
 
 export function cookieDomain() {
-  if (isLocalPlatform()) return "localhost";
+  // Local multi-tenant hosts are `{slug}.localhost`. A bare `Domain=localhost`
+  // is rejected on those hosts (not a domain-match), so the session never sticks.
+  // `.localhost` is accepted by Chromium for *.localhost sharing.
+  if (isLocalPlatform()) return ".localhost";
   return `.${platformRootDomain()}`;
 }
 

@@ -87,6 +87,7 @@ export function Gallery({ images }: { images: GalleryImage[] }) {
                 alt={image.alt}
                 width={image.width}
                 height={image.height}
+                unoptimized={image.src.startsWith("/api/")}
                 sizes={
                   image.wide
                     ? "(max-width: 1100px) 100vw, 1040px"
@@ -142,6 +143,7 @@ export function Gallery({ images }: { images: GalleryImage[] }) {
                 width={active.width}
                 height={active.height}
                 sizes="(max-width: 1100px) 100vw, 1100px"
+                unoptimized={active.src.startsWith("/api/")}
               />
               <figcaption>
                 {active.room} · {active.note}

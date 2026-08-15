@@ -17,6 +17,20 @@ export const ORDER_STATUSES = [
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  requested: "Requested",
+  confirmed: "Confirmed",
+  shot: "Shot",
+  editing: "Editing",
+  delivered: "Delivered",
+  paid: "Paid",
+  cancelled: "Cancelled",
+};
+
+export function orderStatusLabel(status: string) {
+  return ORDER_STATUS_LABELS[status as OrderStatus] ?? status;
+}
+
 export const GALLERY_STATES = ["proofing", "unlocked", "archived"] as const;
 export type GalleryState = (typeof GALLERY_STATES)[number];
 
@@ -55,6 +69,14 @@ export const users = sqliteTable("users", {
   name: text("name").notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+});
+
+export const passwordResetTokens = sqliteTable("password_reset_tokens", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  token: text("token").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull(),
 });
 
 /**

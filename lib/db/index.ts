@@ -1,20 +1,64 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import fs from "node:fs";
-import path from "node:path";
-import * as schema from "@/lib/db/schema";
+/**
+ * Local default: SQLite via better-sqlite3 (no DATABASE_URL).
+ * Production (Cloudflare Workers / Neon): set DATABASE_URL=postgres://…
+ * Apply migrations before deploy:
+ *   - scripts/postgres-schema.sql
+ *   - scripts/postgres-rls.sql
+ * Postgres skips auto-seed; seed locally or via SQL.
+ */
+import { neon } from "@neondatabase/serverless";
+import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
+import * as sqliteSchema from "./schema";
+import * as pgSchema from "./schema.pg";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DB_PATH = process.env.DATABASE_PATH ?? path.join(DATA_DIR, "platform.sqlite");
+export const schema = (
+  process.env.DATABASE_URL ? pgSchema : sqliteSchema
+) as typeof sqliteSchema;
 
-let sqlite: Database.Database | null = null;
+const usePostgres = Boolean(process.env.DATABASE_URL);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AppDb = any;
+
+let neonDb: AppDb | null = null;
+let sqliteDb: AppDb | null = null;
 let seeded = false;
 
 /**
- * Local default remains SQLite. Set DATABASE_URL=postgres://… later and swap
- * the Drizzle driver — table shapes stay the same.
+ * Unify SQLite (.all()) and Neon (Promise<T[]>) select results.
  */
-function ensureSchema(db: Database.Database) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function qAll<T>(built: any): Promise<T[]> {
+  if (built && typeof built.all === "function") return built.all() as T[];
+  return built as Promise<T[]>;
+}
+
+/**
+ * Unify SQLite (.get()) and Neon (Promise<T[]>) single-row selects.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function qGet<T>(built: any): Promise<T | undefined> {
+  if (built && typeof built.get === "function") return built.get() as T | undefined;
+  const rows = await (built as Promise<T[]>);
+  return Array.isArray(rows) ? rows[0] : undefined;
+}
+
+/**
+ * Unify SQLite (.run()) and Neon (Promise) mutations.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function qRun(built: any): Promise<void> {
+  if (built && typeof built.run === "function") {
+    built.run();
+    return;
+  }
+  await built;
+}
+
+/**
+ * Ensures SQLite tables/columns for local and single-node deploys.
+ */
+function ensureSchema(db: import("better-sqlite3").Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY NOT NULL,
@@ -23,6 +67,14 @@ function ensureSchema(db: Database.Database) {
       name TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY NOT NULL,
+      user_id TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS tenants (
@@ -263,7 +315,7 @@ function ensureSchema(db: Database.Database) {
 }
 
 function addColumnIfMissing(
-  db: Database.Database,
+  db: import("better-sqlite3").Database,
   table: string,
   name: string,
   ddl: string,
@@ -276,24 +328,49 @@ function addColumnIfMissing(
   }
 }
 
-export function getDb() {
-  if (!sqlite) {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    sqlite = new Database(DB_PATH);
-    sqlite.pragma("journal_mode = WAL");
-    sqlite.pragma("foreign_keys = ON");
-    ensureSchema(sqlite);
-  }
+function getSqliteDb(): AppDb {
+  if (sqliteDb) return sqliteDb;
 
-  const db = drizzle(sqlite, { schema });
+  // Lazy require so Cloudflare Workers (DATABASE_URL set) never load native sqlite.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Database = require("better-sqlite3") as typeof import("better-sqlite3");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { drizzle } = require("drizzle-orm/better-sqlite3") as typeof import("drizzle-orm/better-sqlite3");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require("node:fs") as typeof import("node:fs");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const path = require("node:path") as typeof import("node:path");
+
+  const dataDir = path.join(process.cwd(), "data");
+  const dbPath = process.env.DATABASE_PATH ?? path.join(dataDir, "platform.sqlite");
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  const sqlite = new Database(dbPath);
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("foreign_keys = ON");
+  ensureSchema(sqlite);
+
+  sqliteDb = drizzle(sqlite, { schema: sqliteSchema });
+
   if (!seeded) {
     seeded = true;
-    // Lazy import avoids circular init with tenant content.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { seedPlatform } = require("@/lib/platform-seed") as typeof import("@/lib/platform-seed");
-    seedPlatform(db);
+    seedPlatform(sqliteDb);
   }
-  return db;
+
+  return sqliteDb;
 }
 
-export { schema };
+function getNeonDb(): AppDb {
+  if (neonDb) return neonDb;
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is required for Postgres.");
+  const sql = neon(url);
+  neonDb = drizzleNeon(sql, { schema: pgSchema });
+  return neonDb;
+}
+
+export function getDb(): AppDb {
+  if (usePostgres) return getNeonDb();
+  return getSqliteDb();
+}

@@ -18,7 +18,7 @@ export async function POST(
   context: { params: Promise<Params> },
 ) {
   const { token } = await context.params;
-  const gallery = getGalleryByToken(token);
+  const gallery = await getGalleryByToken(token);
   if (!gallery || gallery.revokedAt) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
@@ -31,10 +31,10 @@ export async function POST(
   const successUrl = `${origin}/g/${token}?paid=1`;
   const cancelUrl = `${origin}/g/${token}?cancelled=1`;
 
-  const row = getTenantRow(gallery.tenantId);
+  const row = await getTenantRow(gallery.tenantId);
   const addOns: Array<{ name: string; amountCents: number }> = [];
   if (row && entitlements(row.plan).upsells && Array.isArray(body?.addOnIds)) {
-    const tenant = getTenant(gallery.tenantId);
+    const tenant = await getTenant(gallery.tenantId);
     for (const addOnId of body.addOnIds as string[]) {
       const pkg = tenant.packages.find(
         (item) => item.id === addOnId && item.upsell && item.priceCents,
@@ -44,7 +44,7 @@ export async function POST(
   }
 
   if (!stripeEnabled() || body?.stub === true) {
-    const result = localStubUnlock(gallery);
+    const result = await localStubUnlock(gallery);
     return NextResponse.json({
       ok: true,
       stubbed: true,

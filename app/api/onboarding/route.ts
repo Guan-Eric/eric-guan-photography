@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const created = createTenantFromOnboarding({
+  const created = await createTenantFromOnboarding({
     studioName,
     photographerName,
     email: session.user.email,
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     accent,
   });
 
-  createMembership({
+  await createMembership({
     userId: session.user.id,
     tenantId: created.tenant.id,
     role: "owner",

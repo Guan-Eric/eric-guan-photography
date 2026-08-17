@@ -277,12 +277,73 @@ export function photographerNotifyEmail(options: {
   orderId: string;
   agentName: string;
   agentEmail: string;
+  agentPhone?: string | null;
+  brokerage?: string | null;
   propertyAddress: string;
+  city?: string | null;
+  postalCode?: string | null;
   packageName: string;
   priceLabel: string;
   slotLabel: string;
+  squareFootage?: number | null;
+  occupancy?: string | null;
+  accessType?: string | null;
+  accessNotes?: string | null;
+  pets?: string | null;
+  parkingNotes?: string | null;
+  meetingContact?: string | null;
+  notes?: string | null;
   adminUrl: string;
 }) {
+  const details: DetailRow[] = [
+    { label: "Order", value: options.orderId },
+    { label: "Agent", value: `${options.agentName} <${options.agentEmail}>` },
+  ];
+  if (options.agentPhone?.trim()) {
+    details.push({ label: "Phone", value: options.agentPhone.trim() });
+  }
+  if (options.brokerage?.trim()) {
+    details.push({ label: "Brokerage", value: options.brokerage.trim() });
+  }
+  const propertyLine = [
+    options.propertyAddress,
+    options.city?.trim(),
+    options.postalCode?.trim(),
+  ]
+    .filter(Boolean)
+    .join(", ");
+  details.push({ label: "Property", value: propertyLine });
+  details.push({ label: "Package", value: options.packageName });
+  if (options.squareFootage) {
+    details.push({ label: "Size", value: `${options.squareFootage} sq ft` });
+  }
+  details.push({ label: "Quote", value: options.priceLabel });
+  details.push({ label: "Preferred times", value: options.slotLabel });
+  if (options.occupancy) {
+    details.push({ label: "Occupancy", value: options.occupancy });
+  }
+  if (options.accessType) {
+    details.push({ label: "Access", value: options.accessType });
+  }
+  if (options.accessNotes?.trim()) {
+    details.push({ label: "Access notes", value: options.accessNotes.trim() });
+  }
+  if (options.meetingContact?.trim()) {
+    details.push({
+      label: "Meeting contact",
+      value: options.meetingContact.trim(),
+    });
+  }
+  if (options.pets?.trim()) {
+    details.push({ label: "Pets", value: options.pets.trim() });
+  }
+  if (options.parkingNotes?.trim()) {
+    details.push({ label: "Parking", value: options.parkingNotes.trim() });
+  }
+  if (options.notes?.trim()) {
+    details.push({ label: "Notes", value: options.notes.trim() });
+  }
+
   return composeEmail(
     options.tenant.email,
     `New shoot request — ${options.propertyAddress}`,
@@ -292,14 +353,7 @@ export function photographerNotifyEmail(options: {
       intro: [
         "A new shoot request just came in. Review the details below and confirm a time from your admin board.",
       ],
-      details: [
-        { label: "Order", value: options.orderId },
-        { label: "Agent", value: `${options.agentName} <${options.agentEmail}>` },
-        { label: "Property", value: options.propertyAddress },
-        { label: "Package", value: options.packageName },
-        { label: "Quote", value: options.priceLabel },
-        { label: "Preferred times", value: options.slotLabel },
-      ],
+      details,
       cta: { label: "Open admin board", url: options.adminUrl },
       signoffName: platformName(),
     },

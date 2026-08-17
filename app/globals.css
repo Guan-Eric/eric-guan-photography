@@ -3155,10 +3155,11 @@ span.status-select--locked {
   margin: 0.25rem 0 0;
   padding: 0.35rem 0;
   list-style: none;
-  background: var(--paper);
+  /* Solid surface — --paper is translucent glass elsewhere on the site. */
+  background: #fcfdfa;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: 0 12px 32px rgba(23, 26, 23, 0.12);
+  box-shadow: 0 12px 32px rgba(23, 26, 23, 0.16);
   max-height: 16rem;
   overflow: auto;
 }
@@ -3170,6 +3171,20 @@ span.status-select--locked {
 
 .admin-address-edit .btn {
   justify-self: start;
+}
+
+.admin-order-meta {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  font-size: 0.92rem;
+}
+
+.admin-order-meta strong {
+  display: inline-block;
+  min-width: 7.5rem;
+  font-weight: 600;
+  color: var(--ink-soft);
 }
 
 .form-grid:has(.address-suggest),

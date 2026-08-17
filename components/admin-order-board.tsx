@@ -344,9 +344,16 @@ export function AdminOrderBoard({
       });
       input.value = "";
       setFileNames((current) => ({ ...current, [orderId]: "" }));
+      setNotice(
+        `Uploaded ${json.uploaded ?? 0} photo${(json.uploaded ?? 0) === 1 ? "" : "s"}.`,
+      );
       router.refresh();
-    } catch {
-      setError("Network error during upload.");
+    } catch (error) {
+      const message =
+        error instanceof Error && /abort|timeout/i.test(error.message)
+          ? "Upload timed out. Try fewer or smaller photos."
+          : "Network error during upload.";
+      setError(message);
     } finally {
       setBusyOrderId(null);
     }
@@ -699,9 +706,39 @@ export function AdminOrderBoard({
                             >
                               Save address
                             </button>
-                            <div className="muted">
-                              {order.occupancy} · {order.accessType}
-                              {order.accessNotes ? ` · ${order.accessNotes}` : ""}
+                            <div className="admin-order-meta">
+                              <div>
+                                <strong>Occupancy</strong> {order.occupancy}
+                              </div>
+                              <div>
+                                <strong>Access</strong> {order.accessType}
+                              </div>
+                              {order.accessNotes ? (
+                                <div>
+                                  <strong>Access notes</strong> {order.accessNotes}
+                                </div>
+                              ) : null}
+                              {order.meetingContact ? (
+                                <div>
+                                  <strong>Meeting contact</strong>{" "}
+                                  {order.meetingContact}
+                                </div>
+                              ) : null}
+                              {order.pets ? (
+                                <div>
+                                  <strong>Pets</strong> {order.pets}
+                                </div>
+                              ) : null}
+                              {order.parkingNotes ? (
+                                <div>
+                                  <strong>Parking</strong> {order.parkingNotes}
+                                </div>
+                              ) : null}
+                              {order.notes ? (
+                                <div>
+                                  <strong>Notes</strong> {order.notes}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         );
@@ -714,7 +751,12 @@ export function AdminOrderBoard({
                         <a href={`mailto:${order.agentEmail}`}>{order.agentEmail}</a>
                       </div>
                       {order.agentPhone ? (
-                        <div className="muted">{order.agentPhone}</div>
+                        <div className="muted">
+                          <a href={`tel:${order.agentPhone}`}>{order.agentPhone}</a>
+                        </div>
+                      ) : null}
+                      {order.brokerage ? (
+                        <div className="muted">{order.brokerage}</div>
                       ) : null}
                     </div>
                     <div>

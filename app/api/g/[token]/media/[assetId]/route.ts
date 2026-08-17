@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  galleryHasPaidAccess,
   getGalleryByToken,
   listMedia,
 } from "@/lib/galleries";
@@ -27,7 +28,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Asset not found." }, { status: 404 });
   }
 
-  const unlocked = gallery.state === "unlocked";
+  const unlocked = await galleryHasPaidAccess(gallery);
   if ((variant === "full" || variant === "mls") && !unlocked) {
     return NextResponse.json(
       { ok: false, error: "Full downloads unlock after payment." },

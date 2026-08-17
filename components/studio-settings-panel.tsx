@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 type ConnectState = {
   connectStatus: string;
@@ -121,6 +122,7 @@ export function StudioSettingsPanel() {
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Could not start Connect.");
+        toastError(json.error ?? "Could not start Connect.");
         return;
       }
       if (json.url) {
@@ -128,6 +130,7 @@ export function StudioSettingsPanel() {
         return;
       }
       setMessage("Connect link created.");
+      toastSuccess("Connect link created.");
     } finally {
       setBusy(false);
     }
@@ -146,6 +149,7 @@ export function StudioSettingsPanel() {
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Could not save domain.");
+        toastError(json.error ?? "Could not save domain.");
         if (json.note) setMessage(json.note);
         return;
       }
@@ -160,6 +164,7 @@ export function StudioSettingsPanel() {
                 ? "Saved with an error — check status below."
                 : "Domain saved.";
       setMessage(json.note ? `${status} ${json.note}` : status);
+      toastSuccess(json.note ? `${status} ${json.note}` : status);
       await load();
     } finally {
       setBusy(false);
@@ -216,6 +221,7 @@ export function StudioSettingsPanel() {
     try {
       await load();
       setMessage("Domain status refreshed.");
+      toastSuccess("Domain status refreshed.");
     } finally {
       setBusy(false);
     }
@@ -244,6 +250,7 @@ export function StudioSettingsPanel() {
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Checkout failed.");
+        toastError(json.error ?? "Checkout failed.");
         return;
       }
       if (json.url) {
@@ -251,6 +258,7 @@ export function StudioSettingsPanel() {
         return;
       }
       setMessage(json.stubbed ? `Local plan set to ${plan}.` : "Checkout started.");
+      toastSuccess(json.stubbed ? `Local plan set to ${plan}.` : "Opening checkout…");
       await load();
     } finally {
       setBusy(false);
@@ -265,6 +273,7 @@ export function StudioSettingsPanel() {
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Billing portal unavailable.");
+        toastError(json.error ?? "Billing portal unavailable.");
         return;
       }
       if (json.url) window.location.href = json.url;
@@ -286,9 +295,11 @@ export function StudioSettingsPanel() {
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Could not invite.");
+        toastError(json.error ?? "Could not invite.");
         return;
       }
       setMessage(`Invite sent to ${inviteEmail}.`);
+      toastSuccess(`Invite sent to ${inviteEmail}.`);
       setInviteEmail("");
       await load();
     } finally {
@@ -427,8 +438,8 @@ export function StudioSettingsPanel() {
           at {usd(billing?.metering.unitUsd ?? 5)}. Flat plans include a listing
           allowance and only meter what you shoot beyond it.
         </p>
-        <button type="button" className="btn btn-outline" disabled={busy} onClick={openPortal}>
-          Manage billing
+        <button type="button" className={`btn btn-outline${busy ? " is-busy" : ""}`} disabled={busy} onClick={openPortal}>
+          {busy ? "Opening…" : "Manage billing"}
         </button>
       </section>
 
@@ -438,7 +449,7 @@ export function StudioSettingsPanel() {
         <p className="field-hint">
           Connect Stripe so gallery payments land in your account.
         </p>
-        <button type="button" className="btn btn-solid" disabled={busy} onClick={startConnect}>
+        <button type="button" className={`btn btn-solid${busy ? " is-busy" : ""}`} disabled={busy} onClick={startConnect}>
           {busy ? "Working…" : state?.connectStatus === "complete" ? "Update payouts" : "Connect payouts"}
         </button>
       </section>
@@ -514,20 +525,20 @@ export function StudioSettingsPanel() {
         <div className="domain-actions">
           <button
             type="button"
-            className="btn btn-outline"
+            className={`btn btn-outline${busy ? " is-busy" : ""}`}
             disabled={busy || !state?.canCustomDomain}
             onClick={saveDomain}
           >
-            Save domain
+            {busy ? "Saving…" : "Save domain"}
           </button>
           {state?.canCustomDomain && state.domain ? (
             <button
               type="button"
-              className="btn btn-outline"
+              className={`btn btn-outline${busy ? " is-busy" : ""}`}
               disabled={busy}
               onClick={checkDomainStatus}
             >
-              Check status
+              {busy ? "Checking…" : "Check status"}
             </button>
           ) : null}
         </div>
@@ -549,8 +560,8 @@ export function StudioSettingsPanel() {
             placeholder="editor@studio.com"
           />
         </label>
-        <button type="button" className="btn btn-outline" disabled={busy} onClick={invite}>
-          Send invite
+        <button type="button" className={`btn btn-outline${busy ? " is-busy" : ""}`} disabled={busy} onClick={invite}>
+          {busy ? "Sending…" : "Send invite"}
         </button>
         {invites.length > 0 ? (
           <ul className="settings-invite-list">

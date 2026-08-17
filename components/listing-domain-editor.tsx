@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 type DomainState = {
   hostname: string;
@@ -12,7 +13,7 @@ type DomainState = {
 export function ListingDomainEditor({ pageId }: { pageId: string }) {
   const [hostname, setHostname] = useState("");
   const [state, setState] = useState<DomainState | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"save" | "clear" | "refresh" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
@@ -35,7 +36,7 @@ export function ListingDomainEditor({ pageId }: { pageId: string }) {
   }, [pageId]);
 
   async function save(action: "save" | "clear" | "refresh") {
-    setBusy(true);
+    setBusy(action);
     setError(null);
     try {
       const response = await fetch(`/api/admin/listings/${pageId}/domain`, {
@@ -45,12 +46,24 @@ export function ListingDomainEditor({ pageId }: { pageId: string }) {
       });
       const json = await response.json().catch(() => null);
       if (!json?.ok) {
-        setError(json?.error ?? "Could not save the domain.");
+        const message = json?.error ?? "Could not save the domain.";
+        setError(message);
+        toastError(message);
         return;
       }
       await load();
+      toastSuccess(
+        action === "clear"
+          ? "Listing domain removed."
+          : action === "refresh"
+            ? "Domain status updated."
+            : "Listing domain saved.",
+      );
+    } catch {
+      setError("Network error.");
+      toastError("Network error.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -81,27 +94,27 @@ export function ListingDomainEditor({ pageId }: { pageId: string }) {
       <div className="listing-index-actions">
         <button
           type="button"
-          className="btn btn-solid"
-          disabled={busy}
+          className={`btn btn-solid${busy === "save" ? " is-busy" : ""}`}
+          disabled={busy !== null}
           onClick={() => save("save")}
         >
-          Save domain
+          {busy === "save" ? "Saving…" : "Save domain"}
         </button>
         <button
           type="button"
-          className="btn btn-outline"
-          disabled={busy}
+          className={`btn btn-outline${busy === "refresh" ? " is-busy" : ""}`}
+          disabled={busy !== null}
           onClick={() => save("refresh")}
         >
-          Check status
+          {busy === "refresh" ? "Checking…" : "Check status"}
         </button>
         <button
           type="button"
           className="text-link"
-          disabled={busy}
+          disabled={busy !== null}
           onClick={() => save("clear")}
         >
-          Remove
+          {busy === "clear" ? "Removing…" : "Remove"}
         </button>
       </div>
     </section>

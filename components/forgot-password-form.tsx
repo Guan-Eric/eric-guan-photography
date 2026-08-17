@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("");
@@ -21,12 +22,16 @@ export function ForgotPasswordForm() {
       });
       const json = await response.json();
       if (!json.ok) {
-        setError(json.error ?? "Could not send reset email.");
+        const message = json.error ?? "Could not send reset email.";
+        setError(message);
+        toastError(message);
         return;
       }
       setMessage(json.message);
+      toastSuccess(json.message ?? "If that account exists, a reset link is on its way.");
     } catch {
       setError("Network error.");
+      toastError("Network error.");
     } finally {
       setLoading(false);
     }
@@ -51,7 +56,11 @@ export function ForgotPasswordForm() {
       </label>
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      <button className="btn btn-solid" type="submit" disabled={loading}>
+      <button
+        className={`btn btn-solid${loading ? " is-busy" : ""}`}
+        type="submit"
+        disabled={loading}
+      >
         {loading ? "Sending…" : "Send reset link"}
       </button>
       <p className="auth-form-foot">

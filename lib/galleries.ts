@@ -16,6 +16,17 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+export async function galleryHasPaidAccess(gallery: Gallery) {
+  const db = getDb();
+  const order = await qGet<Pick<Order, "status">>(
+    db
+      .select({ status: schema.orders.status })
+      .from(schema.orders)
+      .where(eq(schema.orders.id, gallery.orderId)),
+  );
+  return order?.status === "paid";
+}
+
 export async function resolveTrustTier(tenantId: string, agentEmail: string): Promise<TrustTier> {
   const db = getDb();
   const priorPaid = await qAll<Order>(
@@ -84,7 +95,7 @@ export async function ensureGalleryForOrder(order: Order, tenant: Tenant) {
   const trustTier = await resolveTrustTier(order.tenantId, order.agentEmail);
   const createdAt = nowIso();
   const id = `gal_${galleryId()}`;
-  const state: GalleryState = trustTier === "net7" ? "unlocked" : "proofing";
+  const state: GalleryState = "proofing";
 
   const row = {
     id,
@@ -106,10 +117,6 @@ export async function ensureGalleryForOrder(order: Order, tenant: Tenant) {
 
   await qRun(db.insert(schema.galleries).values(row));
   await ensureGalleryDir(order.tenantId, id);
-
-  if (state === "unlocked") {
-    // Net-7 agents see full files immediately on delivery publish.
-  }
 
   void tenant;
   return (await getGalleryById(id))!;
@@ -242,29 +249,31 @@ export async function publishDelivery(orderId: string, tenantId?: string) {
     return { ok: false as const, error: "Upload at least one photo before publishing." };
   }
 
-  const nextState: GalleryState =
-    gallery.trustTier === "net7" ? "unlocked" : "proofing";
+  const paid = await galleryHasPaidAccess(gallery);
+  const nextState: GalleryState = paid ? "unlocked" : "proofing";
 
   await qRun(
     db
       .update(schema.galleries)
       .set({
         state: nextState,
-        unlockedAt: nextState === "unlocked" ? nowIso() : gallery.unlockedAt,
+        unlockedAt: nextState === "unlocked" ? gallery.unlockedAt ?? nowIso() : gallery.unlockedAt,
         updatedAt: nowIso(),
       })
       .where(eq(schema.galleries.id, gallery.id)),
   );
 
-  await qRun(
-    db
-      .update(schema.orders)
-      .set({
-        status: nextState === "unlocked" ? "delivered" : "delivered",
-        updatedAt: nowIso(),
-      })
-      .where(eq(schema.orders.id, orderId)),
-  );
+  if (!paid) {
+    await qRun(
+      db
+        .update(schema.orders)
+        .set({
+          status: "delivered",
+          updatedAt: nowIso(),
+        })
+        .where(eq(schema.orders.id, orderId)),
+    );
+  }
 
   return { ok: true as const, gallery: (await getGalleryById(gallery.id))! };
 }
@@ -301,6 +310,7 @@ export async function markPaymentPaidBySession(sessionId: string) {
     id: string;
     galleryId: string;
     tenantId: string;
+    orderId: string;
     status: string;
   }>(
     db
@@ -319,8 +329,16 @@ export async function markPaymentPaidBySession(sessionId: string) {
     );
   }
 
+  const order = await qGet<Pick<Order, "status">>(
+    db
+      .select({ status: schema.orders.status })
+      .from(schema.orders)
+      .where(eq(schema.orders.id, payment.orderId)),
+  );
+  const alreadyPaid = order?.status === "paid";
+
   const unlocked = await unlockGallery(payment.galleryId, { markOrderPaid: true });
-  if (unlocked.ok && !("alreadyUnlocked" in unlocked && unlocked.alreadyUnlocked)) {
+  if (unlocked.ok && !alreadyPaid) {
     const { notifyGalleryPaid } = await import("@/lib/order-notify");
     await notifyGalleryPaid({
       tenantId: payment.tenantId,

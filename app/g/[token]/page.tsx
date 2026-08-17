@@ -5,6 +5,7 @@ import { entitlements } from "@/lib/billing";
 import { recordGalleryEvent } from "@/lib/gallery-analytics";
 import {
   confirmCheckoutSessionForGallery,
+  galleryHasPaidAccess,
   getGalleryByToken,
   listMedia,
 } from "@/lib/galleries";
@@ -54,7 +55,7 @@ export default async function GalleryPage({
 
   // Stripe success return often beats the webhook — unlock from session_id here.
   if (
-    gallery.state !== "unlocked" &&
+    !(await galleryHasPaidAccess(gallery)) &&
     typeof query.session_id === "string" &&
     query.session_id.startsWith("cs_")
   ) {
@@ -65,6 +66,8 @@ export default async function GalleryPage({
     });
     gallery = (await getGalleryByToken(token)) ?? gallery;
   }
+
+  const paidAccess = await galleryHasPaidAccess(gallery);
 
   await recordGalleryEvent({
     tenantId: gallery.tenantId,
@@ -109,7 +112,7 @@ export default async function GalleryPage({
       propertyAddress={gallery.propertyAddress}
       amountCents={gallery.amountCents}
       currency={gallery.currency}
-      state={gallery.state}
+      state={paidAccess ? "unlocked" : "proofing"}
       branded={branded}
       studioName={tenant.studioName}
       photographerName={tenant.photographerName}

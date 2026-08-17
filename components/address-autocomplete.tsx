@@ -28,6 +28,8 @@ export function AddressAutocomplete({
   const [open, setOpen] = useState(false);
   const [disabled, setDisabled] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [active, setActive] = useState(0);
   const [sessionToken, setSessionToken] = useState(newPlacesSessionToken);
@@ -56,6 +58,7 @@ export function AddressAutocomplete({
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
+    setSearching(true);
     try {
       const response = await fetch("/api/geo/suggest", {
         method: "POST",
@@ -90,6 +93,8 @@ export function AddressAutocomplete({
       if ((error as { name?: string }).name === "AbortError") return;
       setSuggestions([]);
       setOpen(false);
+    } finally {
+      if (!controller.signal.aborted) setSearching(false);
     }
   }
 
@@ -97,18 +102,23 @@ export function AddressAutocomplete({
     setOpen(false);
     setHint(null);
     onChange(suggestion.primary);
-    const response = await fetch("/api/geo/resolve", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ placeId: suggestion.placeId, sessionToken }),
-    });
-    const json = await response.json().catch(() => null);
-    setSessionToken(newPlacesSessionToken());
-    if (!json?.ok || !json.address) {
-      setHint("Could not fill city and postal — enter them manually.");
-      return;
+    setResolving(true);
+    try {
+      const response = await fetch("/api/geo/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placeId: suggestion.placeId, sessionToken }),
+      });
+      const json = await response.json().catch(() => null);
+      setSessionToken(newPlacesSessionToken());
+      if (!json?.ok || !json.address) {
+        setHint("Could not fill city and postal — enter them manually.");
+        return;
+      }
+      onResolved(json.address as ResolvedAddress);
+    } finally {
+      setResolving(false);
     }
-    onResolved(json.address as ResolvedAddress);
   }
 
   return (
@@ -175,6 +185,12 @@ export function AddressAutocomplete({
             Powered by Google
           </li>
         </ul>
+      ) : null}
+      {searching && !hint ? (
+        <span className="field-hint">Searching addresses…</span>
+      ) : null}
+      {resolving ? (
+        <span className="field-hint">Filling city and postal…</span>
       ) : null}
       {hint ? <span className="field-hint">{hint}</span> : null}
     </div>

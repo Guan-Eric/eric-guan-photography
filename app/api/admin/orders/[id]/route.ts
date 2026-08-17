@@ -12,6 +12,7 @@ import {
   getOrder,
   updateOrderAddress,
   updateOrderPrice,
+  updateOrderSchedule,
   updateOrderStatus,
 } from "@/lib/orders";
 import { getTenantRow } from "@/lib/tenant-store";
@@ -115,11 +116,31 @@ export async function PATCH(
     }
   }
 
+  if (parsed.data.preferredStart != null && parsed.data.preferredEnd != null) {
+    const scheduled = await updateOrderSchedule(
+      id,
+      {
+        start: parsed.data.preferredStart,
+        end: parsed.data.preferredEnd,
+      },
+      order.tenantId,
+    );
+    if (!scheduled.ok) {
+      return NextResponse.json(scheduled, { status: 400 });
+    }
+    current = scheduled.order;
+  }
+
   if (parsed.data.status == null) {
     return NextResponse.json({ ok: true as const, order: current });
   }
 
-  const result = await updateOrderStatus(id, parsed.data.status, order.tenantId);
+  const result = await updateOrderStatus(
+    id,
+    parsed.data.status,
+    order.tenantId,
+    { selectedSlotStart: parsed.data.preferredStart },
+  );
   if (!result.ok) {
     return NextResponse.json(result, { status: 404 });
   }

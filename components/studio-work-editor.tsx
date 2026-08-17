@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { GalleryImage, Tenant } from "@/lib/tenant-schema";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 function emptyImage(): GalleryImage {
   return {
@@ -81,8 +82,11 @@ export function StudioWorkEditor({
       setHeroHeight(json.height);
       if (!heroAlt.trim()) setHeroAlt(json.alt ?? "");
       setMessage("Hero uploaded — click Save work to publish.");
+      toastSuccess("Hero uploaded — click Save work to publish.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      const message = err instanceof Error ? err.message : "Upload failed.";
+      setError(message);
+      toastError(message);
     } finally {
       setUploading(null);
     }
@@ -111,8 +115,13 @@ export function StudioWorkEditor({
       setMessage(
         `${uploaded.length} photo${uploaded.length === 1 ? "" : "s"} uploaded — click Save work to publish.`,
       );
+      toastSuccess(
+        `${uploaded.length} photo${uploaded.length === 1 ? "" : "s"} uploaded — click Save work to publish.`,
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      const message = err instanceof Error ? err.message : "Upload failed.";
+      setError(message);
+      toastError(message);
     } finally {
       setUploading(null);
     }
@@ -147,12 +156,15 @@ export function StudioWorkEditor({
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Could not save.");
+        toastError(json.error ?? "Could not save.");
         return;
       }
       setGallery(cleaned.length > 0 ? cleaned : []);
       setMessage("Work page saved.");
+      toastSuccess("Work page saved.");
     } catch {
       setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -214,7 +226,7 @@ export function StudioWorkEditor({
           />
           <button
             type="button"
-            className="btn btn-solid"
+            className={`btn btn-solid${uploading === "hero" ? " is-busy" : ""}`}
             disabled={Boolean(uploading)}
             onClick={() => heroInputRef.current?.click()}
           >
@@ -266,7 +278,7 @@ export function StudioWorkEditor({
           />
           <button
             type="button"
-            className="btn btn-solid"
+            className={`btn btn-solid${uploading === "gallery" ? " is-busy" : ""}`}
             disabled={Boolean(uploading)}
             onClick={() => galleryInputRef.current?.click()}
           >
@@ -382,7 +394,7 @@ export function StudioWorkEditor({
 
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      <button className="btn btn-solid" type="submit" disabled={busy || Boolean(uploading)}>
+      <button className={`btn btn-solid${busy || uploading ? " is-busy" : ""}`} type="submit" disabled={busy || Boolean(uploading)}>
         {busy ? "Saving…" : uploading ? "Uploading…" : "Save work"}
       </button>
     </form>

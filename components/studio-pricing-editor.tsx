@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { normalizeStudioCurrency } from "@/lib/currency";
+import { toastError, toastSuccess } from "@/lib/toast";
 import type { Package, PriceBand, Tenant } from "@/lib/tenant-schema";
 
 type PricingMode = "set_price" | "quote_later" | "email_only";
@@ -113,11 +114,14 @@ export function StudioPricingEditor({
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Could not save.");
+        toastError(json.error ?? "Could not save.");
         return;
       }
       setMessage("Pricing saved.");
+      toastSuccess("Pricing saved.");
     } catch {
       setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -369,7 +373,7 @@ export function StudioPricingEditor({
 
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      <button className="btn btn-solid" type="submit" disabled={busy}>
+      <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy}>
         {busy ? "Saving…" : "Save pricing"}
       </button>
     </form>

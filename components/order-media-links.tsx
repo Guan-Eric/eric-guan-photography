@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { kindLabel, parseEmbed, providerLabel } from "@/lib/embeds";
 import type { EmbedProvider, MediaLinkKind } from "@/lib/embeds";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 type LinkRow = {
   id: string;
@@ -58,12 +59,17 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
       const json = await response.json().catch(() => null);
       if (!json?.ok) {
         setError(json?.error ?? "Could not add that link.");
+        toastError(json?.error ?? "Could not add that link.");
         return;
       }
       setLinks((current) => [...current, json.link]);
       setUrl("");
       setTitle("");
       setNotice("Added.");
+      toastSuccess("Media link added.");
+    } catch {
+      setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -73,6 +79,7 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
     const file = fileRef.current?.files?.[0];
     if (!file) {
       setError("Choose a PDF floor plan first.");
+      toastError("Choose a PDF floor plan first.");
       return;
     }
     setBusy(true);
@@ -91,12 +98,17 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
       const json = await response.json().catch(() => null);
       if (!json?.ok) {
         setError(json?.error ?? "Upload failed.");
+        toastError(json?.error ?? "Upload failed.");
         return;
       }
       setLinks((current) => [...current, json.link]);
       if (fileRef.current) fileRef.current.value = "";
       setTitle("");
       setNotice("Floor plan uploaded.");
+      toastSuccess("Floor plan uploaded.");
+    } catch {
+      setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -113,9 +125,14 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
       const json = await response.json().catch(() => null);
       if (!json?.ok) {
         setError(json?.error ?? "Could not remove that item.");
+        toastError(json?.error ?? "Could not remove that item.");
         return;
       }
       setLinks((current) => current.filter((link) => link.id !== linkId));
+      toastSuccess("Media link removed.");
+    } catch {
+      setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -163,8 +180,13 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
             <option value="unbranded">MLS only</option>
           </select>
         </label>
-        <button type="button" className="btn btn-solid" disabled={busy} onClick={addLink}>
-          Add
+        <button
+          type="button"
+          className={`btn btn-solid${busy ? " is-busy" : ""}`}
+          disabled={busy}
+          onClick={addLink}
+        >
+          {busy ? "Adding…" : "Add"}
         </button>
       </div>
 
@@ -182,8 +204,13 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
           <span>Floor plan PDF</span>
           <input ref={fileRef} type="file" accept="application/pdf,.pdf" />
         </label>
-        <button type="button" className="btn btn-outline" disabled={busy} onClick={uploadPdf}>
-          Upload PDF
+        <button
+          type="button"
+          className={`btn btn-outline${busy ? " is-busy" : ""}`}
+          disabled={busy}
+          onClick={uploadPdf}
+        >
+          {busy ? "Uploading…" : "Upload PDF"}
         </button>
       </div>
 

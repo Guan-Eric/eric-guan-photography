@@ -5,15 +5,16 @@ import { useEffect, useRef, useState } from "react";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import type { Order, OrderStatus } from "@/lib/db/schema";
 import {
-  MANUAL_ORDER_STATUSES,
   ORDER_STATUSES,
   isManualOrderStatus,
   orderStatusLabel,
 } from "@/lib/db/schema";
 import type { GallerySummary } from "@/lib/galleries";
+import { allowedManualStatuses, confirmBlockers } from "@/lib/order-flow";
 import { parsePreferredSlotsJson } from "@/lib/preferred-slots";
 import { AdminGettingStarted } from "@/components/admin-getting-started";
 import { OrderMediaLinks } from "@/components/order-media-links";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 const VIEW_KEY = "sf_board_view";
 type BoardView = "grid" | "list";
@@ -48,7 +49,6 @@ function mediaBadges(gallery: GallerySummary | null) {
   if (gallery.tourCount > 0) badges.push(`${gallery.tourCount} tour`);
   if (gallery.floorPlanCount > 0) badges.push(`${gallery.floorPlanCount} floor plan`);
   if (gallery.brandMode === "unbranded") badges.push("unbranded");
-  if (gallery.trustTier === "net7") badges.push("net 7");
   return badges;
 }
 
@@ -56,7 +56,7 @@ function deliveryPhase(
   gallery: GallerySummary | null,
   orderStatus: OrderStatus,
 ): 1 | 2 | 3 | 4 {
-  if (orderStatus === "paid" || gallery?.state === "unlocked") return 4;
+  if (orderStatus === "paid") return 4;
   if (orderStatus === "delivered") return 3;
   if (gallery && gallery.mediaCount > 0) return 2;
   return 1;
@@ -91,6 +91,7 @@ export function AdminOrderBoard({
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [slotDrafts, setSlotDrafts] = useState<Record<string, string>>({});
   const [addressDrafts, setAddressDrafts] = useState<
     Record<
       string,
@@ -107,7 +108,15 @@ export function AdminOrderBoard({
   const [view, setView] = useState<BoardView>("grid");
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const siteBase = siteUrl.replace(/\/$/, "");
+  function fail(message: string) {
+    setError(message);
+    toastError(message);
+  }
+
+  function ok(message: string) {
+    setNotice(message);
+    toastSuccess(message);
+  }
 
   function addressDraft(order: Order) {
     return (
@@ -201,9 +210,10 @@ export function AdminOrderBoard({
     try {
       await navigator.clipboard.writeText(value);
       setCopiedKey(key);
+      ok("Copied to clipboard.");
       window.setTimeout(() => setCopiedKey(null), 1500);
     } catch {
-      setError("Could not copy to clipboard.");
+      fail("Could not copy to clipboard.");
     }
   }
 
@@ -211,50 +221,74 @@ export function AdminOrderBoard({
     return galleries.find((gallery) => gallery.orderId === orderId) ?? null;
   }
 
-  async function setStatus(orderId: string, status: OrderStatus) {
+  async function setStatus(
+    orderId: string,
+    status: OrderStatus,
+    extra?: Record<string, unknown>,
+  ) {
     setError(null);
-    const response = await fetch(`/api/admin/orders/${orderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    const json = await response.json();
-    if (!json.ok) {
-      setError(json.error ?? "Could not update status.");
-      return;
+    setBusyOrderId(orderId);
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, ...extra }),
+      });
+      const json = await response.json();
+      if (!json.ok) {
+        fail(json.error ?? "Could not update status.");
+        return;
+      }
+      setOrders((current) =>
+        current.map((order) => (order.id === orderId ? json.order : order)),
+      );
+      ok("Status updated.");
+    } catch {
+      fail("Network error updating status.");
+    } finally {
+      setBusyOrderId(null);
     }
-    setOrders((current) =>
-      current.map((order) => (order.id === orderId ? json.order : order)),
-    );
   }
 
   async function savePrice(orderId: string) {
     setError(null);
-    const raw = priceDrafts[orderId];
+    const order = orders.find((row) => row.id === orderId);
+    const raw =
+      priceDrafts[orderId] ??
+      (order && order.priceCents > 0
+        ? String(Math.round(order.priceCents / 100))
+        : "");
     const dollars = Number(raw);
     if (!Number.isFinite(dollars) || dollars <= 0) {
-      setError("Enter a price greater than zero.");
+      fail("Enter a price greater than zero.");
       return;
     }
-    const response = await fetch(`/api/admin/orders/${orderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceCents: Math.round(dollars * 100) }),
-    });
-    const json = await response.json();
-    if (!json.ok) {
-      setError(json.error ?? "Could not update price.");
-      return;
+    setBusyOrderId(orderId);
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceCents: Math.round(dollars * 100) }),
+      });
+      const json = await response.json();
+      if (!json.ok) {
+        fail(json.error ?? "Could not update price.");
+        return;
+      }
+      setOrders((current) =>
+        current.map((order) => (order.id === orderId ? json.order : order)),
+      );
+      ok("Price saved.");
+      setPriceDrafts((current) => {
+        const next = { ...current };
+        delete next[orderId];
+        return next;
+      });
+    } catch {
+      fail("Network error saving price.");
+    } finally {
+      setBusyOrderId(null);
     }
-    setOrders((current) =>
-      current.map((order) => (order.id === orderId ? json.order : order)),
-    );
-    setNotice("Price saved.");
-    setPriceDrafts((current) => {
-      const next = { ...current };
-      delete next[orderId];
-      return next;
-    });
   }
 
   async function saveAddress(orderId: string) {
@@ -262,38 +296,45 @@ export function AdminOrderBoard({
     if (!order) return;
     const draft = addressDraft(order);
     setError(null);
-    const response = await fetch(`/api/admin/orders/${orderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        propertyAddress: draft.propertyAddress,
-        postalCode: draft.postalCode,
-        city: draft.city || undefined,
-        placeId: draft.placeId || null,
-        mapLat: draft.mapLat || null,
-        mapLng: draft.mapLng || null,
-      }),
-    });
-    const json = await response.json();
-    if (!json.ok) {
-      setError(json.error ?? "Could not update address.");
-      return;
+    setBusyOrderId(orderId);
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          propertyAddress: draft.propertyAddress,
+          postalCode: draft.postalCode,
+          city: draft.city || undefined,
+          placeId: draft.placeId || null,
+          mapLat: draft.mapLat || null,
+          mapLng: draft.mapLng || null,
+        }),
+      });
+      const json = await response.json();
+      if (!json.ok) {
+        fail(json.error ?? "Could not update address.");
+        return;
+      }
+      setOrders((current) =>
+        current.map((row) => (row.id === orderId ? json.order : row)),
+      );
+      setAddressDrafts((current) => {
+        const next = { ...current };
+        delete next[orderId];
+        return next;
+      });
+      ok("Address saved.");
+    } catch {
+      fail("Network error saving address.");
+    } finally {
+      setBusyOrderId(null);
     }
-    setOrders((current) =>
-      current.map((row) => (row.id === orderId ? json.order : row)),
-    );
-    setAddressDrafts((current) => {
-      const next = { ...current };
-      delete next[orderId];
-      return next;
-    });
-    setNotice("Address saved.");
   }
 
   async function uploadPhotos(orderId: string) {
     const input = fileRefs.current[orderId];
     if (!input?.files?.length) {
-      setError("Choose one or more photos to upload.");
+      fail("Choose one or more photos to upload.");
       return;
     }
 
@@ -316,7 +357,7 @@ export function AdminOrderBoard({
         uploaded?: number;
       } | null;
       if (!response.ok || !json?.ok) {
-        setError(json?.error ?? `Upload failed (${response.status}).`);
+        fail(json?.error ?? `Upload failed (${response.status}).`);
         return;
       }
 
@@ -344,7 +385,7 @@ export function AdminOrderBoard({
       });
       input.value = "";
       setFileNames((current) => ({ ...current, [orderId]: "" }));
-      setNotice(
+      ok(
         `Uploaded ${json.uploaded ?? 0} photo${(json.uploaded ?? 0) === 1 ? "" : "s"}.`,
       );
       router.refresh();
@@ -353,7 +394,7 @@ export function AdminOrderBoard({
         error instanceof Error && /abort|timeout/i.test(error.message)
           ? "Upload timed out. Try fewer or smaller photos."
           : "Network error during upload.";
-      setError(message);
+      fail(message);
     } finally {
       setBusyOrderId(null);
     }
@@ -371,7 +412,7 @@ export function AdminOrderBoard({
       });
       const json = await response.json();
       if (!json.ok) {
-        setError(json.error ?? "Could not publish.");
+        fail(json.error ?? "Could not publish.");
         return;
       }
       setGalleries((current) =>
@@ -400,13 +441,13 @@ export function AdminOrderBoard({
         ),
       );
       if (json.emailError) {
-        setError(`Gallery published, but email failed: ${json.emailError}`);
+        fail(`Gallery published, but email failed: ${json.emailError}`);
       } else if (json.emailStubbed) {
-        setNotice("Gallery published. Email was logged locally (no RESEND_API_KEY).");
+        ok("Gallery published. Email was logged locally (no RESEND_API_KEY).");
       } else if (json.emailSent) {
-        setNotice("Gallery published and email sent to the agent.");
+        ok("Gallery published and email sent to the agent.");
       } else {
-        setNotice("Gallery published.");
+        ok("Gallery published.");
       }
     } finally {
       setBusyOrderId(null);
@@ -424,7 +465,7 @@ export function AdminOrderBoard({
       });
       const json = await response.json();
       if (!json.ok) {
-        setError(json.error ?? "Could not unlock.");
+        fail(json.error ?? "Could not unlock.");
         return;
       }
       setGalleries((current) =>
@@ -533,15 +574,28 @@ export function AdminOrderBoard({
                 orderLinks?.unbranded ??
                 (gallery ? galleryUrl(gallery.publicToken, "unbranded") : null);
               const published =
-                order.status === "delivered" ||
-                order.status === "paid" ||
-                gallery?.state === "unlocked";
-              const paid =
-                order.status === "paid" || gallery?.state === "unlocked";
+                order.status === "delivered" || order.status === "paid";
+              const paid = order.status === "paid";
               const expanded = isExpanded(order.id);
               const preferred = parsePreferredSlotsJson(order.preferredSlotsJson);
+              const selectedStart =
+                slotDrafts[order.id] ??
+                (preferred.length <= 1 ? order.preferredStart : "");
+              const selectedSlot =
+                preferred.find((slot) => slot.start === selectedStart) ??
+                (preferred.length <= 1
+                  ? preferred[0]
+                  : {
+                      start: order.preferredStart,
+                      end: order.preferredEnd,
+                      label: formatSlot(order.preferredStart),
+                    });
+              const blockers = confirmBlockers(order, selectedStart || null);
+              const nextStatuses = allowedManualStatuses(order.status);
               const primarySlot =
-                preferred[0]?.label ?? formatSlot(order.preferredStart);
+                preferred.find((slot) => slot.start === order.preferredStart)?.label ??
+                preferred[0]?.label ??
+                formatSlot(order.preferredStart);
 
               const badges = mediaBadges(gallery);
               const coverUrl =
@@ -602,10 +656,14 @@ export function AdminOrderBoard({
                     </button>
                     <label className="admin-status-label admin-status-label--inline">
                       <span className="visually-hidden">Status</span>
-                      {order.status === "delivered" || order.status === "paid" ? (
+                      {nextStatuses.length === 0 || order.status === "requested" ? (
                         <span
                           className="status-select status-select--locked"
-                          title="Set by Publish or Unlock — not editable here"
+                          title={
+                            order.status === "requested"
+                              ? "Confirm from the review checklist below"
+                              : "Set by Publish or Unlock — not editable here"
+                          }
                         >
                           {orderStatusLabel(order.status)}
                         </span>
@@ -613,14 +671,19 @@ export function AdminOrderBoard({
                         <select
                           className="status-select"
                           value={order.status}
+                          disabled={busy}
                           onClick={(event) => event.stopPropagation()}
                           onChange={(event) => {
                             const next = event.target.value as OrderStatus;
                             if (!isManualOrderStatus(next)) return;
+                            if (next === order.status) return;
                             void setStatus(order.id, next);
                           }}
                         >
-                          {MANUAL_ORDER_STATUSES.map((status) => (
+                          <option value={order.status}>
+                            {orderStatusLabel(order.status)}
+                          </option>
+                          {nextStatuses.map((status) => (
                             <option key={status} value={status}>
                               {orderStatusLabel(status)}
                             </option>
@@ -637,11 +700,44 @@ export function AdminOrderBoard({
                       <p className="eyebrow">Preferred times</p>
                       {preferred.length === 0 ? (
                         <div>{formatSlot(order.preferredStart)}</div>
+                      ) : order.status === "requested" ? (
+                        <fieldset className="order-slot-pick">
+                          <legend className="visually-hidden">
+                            Pick the shoot time to confirm
+                          </legend>
+                          {preferred.map((slot, index) => (
+                            <label key={slot.start}>
+                              <input
+                                type="radio"
+                                name={`slot-${order.id}`}
+                                checked={selectedStart === slot.start}
+                                onChange={() =>
+                                  setSlotDrafts((current) => ({
+                                    ...current,
+                                    [order.id]: slot.start,
+                                  }))
+                                }
+                              />
+                              <span>
+                                {index === 0 ? "1st" : index === 1 ? "2nd" : "3rd"}:{" "}
+                                {slot.label}
+                              </span>
+                            </label>
+                          ))}
+                        </fieldset>
                       ) : (
                         preferred.map((slot, index) => (
-                          <div key={slot.start}>
+                          <div
+                            key={slot.start}
+                            className={
+                              slot.start === order.preferredStart
+                                ? "is-booked-slot"
+                                : undefined
+                            }
+                          >
                             {index === 0 ? "1st" : index === 1 ? "2nd" : "3rd"}:{" "}
                             {slot.label}
+                            {slot.start === order.preferredStart ? " · booked" : ""}
                           </div>
                         ))
                       )}
@@ -701,10 +797,11 @@ export function AdminOrderBoard({
                             </div>
                             <button
                               type="button"
-                              className="btn btn-outline"
+                              className={`btn btn-outline${busy ? " is-busy" : ""}`}
+                              disabled={busy}
                               onClick={() => void saveAddress(order.id)}
                             >
-                              Save address
+                              {busy ? "Saving…" : order.status === "requested" ? "Confirm address" : "Save address"}
                             </button>
                             <div className="admin-order-meta">
                               <div>
@@ -766,15 +863,24 @@ export function AdminOrderBoard({
                         {formatMoney(order.priceCents, order.currency)} ·{" "}
                         {order.squareFootage} sq ft · {order.durationMinutes} min
                       </div>
-                      {order.priceCents <= 0 ? (
+                      {order.priceCents <= 0 || order.status === "requested" ? (
                         <div className="admin-quote-price">
                           <label className="field">
-                            <span>Set price (dollars)</span>
+                            <span>
+                              {order.priceCents <= 0
+                                ? "Set price (dollars)"
+                                : "Confirm price (dollars)"}
+                            </span>
                             <input
                               type="number"
                               min={1}
                               step="1"
-                              value={priceDrafts[order.id] ?? ""}
+                              value={
+                                priceDrafts[order.id] ??
+                                (order.priceCents > 0
+                                  ? String(Math.round(order.priceCents / 100))
+                                  : "")
+                              }
                               onChange={(event) =>
                                 setPriceDrafts((current) => ({
                                   ...current,
@@ -786,15 +892,64 @@ export function AdminOrderBoard({
                           </label>
                           <button
                             type="button"
-                            className="btn btn-outline"
+                            className={`btn btn-outline${busy ? " is-busy" : ""}`}
+                            disabled={busy}
                             onClick={() => void savePrice(order.id)}
                           >
-                            Save price
+                            {busy ? "Saving…" : "Save price"}
                           </button>
                         </div>
                       ) : null}
                     </div>
                   </div>
+
+                  {order.status === "requested" ? (
+                    <div className="confirm-checklist">
+                      <p className="eyebrow">Before you confirm</p>
+                      <ul>
+                        <li className={order.propertyAddress && order.postalCode && order.city ? "is-ready" : undefined}>
+                          Address{order.city ? ` · ${order.city}` : " — add city"}
+                        </li>
+                        <li className={selectedStart ? "is-ready" : undefined}>
+                          Time{selectedStart && selectedSlot ? ` · ${selectedSlot.label}` : " — pick a preferred time"}
+                        </li>
+                        <li className={order.priceCents > 0 ? "is-ready" : undefined}>
+                          Price{order.priceCents > 0 ? ` · ${formatMoney(order.priceCents, order.currency)}` : " — set a price"}
+                        </li>
+                      </ul>
+                      {blockers.length > 0 ? (
+                        <p className="muted">{blockers[0]}</p>
+                      ) : null}
+                      <div className="listing-index-actions">
+                        <button
+                          type="button"
+                          className={`btn btn-solid${busy ? " is-busy" : ""}`}
+                          disabled={busy || blockers.length > 0}
+                          onClick={() => {
+                            const slot =
+                              preferred.find((item) => item.start === selectedStart) ??
+                              preferred[0];
+                            void setStatus(order.id, "confirmed", slot
+                              ? {
+                                  preferredStart: slot.start,
+                                  preferredEnd: slot.end,
+                                }
+                              : undefined);
+                          }}
+                        >
+                          {busy ? "Confirming…" : "Confirm shoot"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          disabled={busy}
+                          onClick={() => void setStatus(order.id, "cancelled")}
+                        >
+                          Cancel request
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div className="admin-delivery">
                     <div className="delivery-flow-head">
@@ -844,7 +999,7 @@ export function AdminOrderBoard({
                             </label>
                             <button
                               type="button"
-                              className="btn btn-solid"
+                              className={`btn btn-solid${busy ? " is-busy" : ""}`}
                               disabled={busy}
                               onClick={() => uploadPhotos(order.id)}
                             >
@@ -888,7 +1043,7 @@ export function AdminOrderBoard({
                             ) : null}
                             <button
                               type="button"
-                              className="btn btn-solid"
+                              className={`btn btn-solid${busy && phase === 2 ? " is-busy" : ""}`}
                               disabled={
                                 busy || !gallery || gallery.mediaCount === 0
                               }
@@ -1010,11 +1165,15 @@ export function AdminOrderBoard({
                           <div className="delivery-step-actions">
                             <button
                               type="button"
-                              className="btn btn-outline"
+                              className={`btn btn-outline${busy && phase === 4 ? " is-busy" : ""}`}
                               disabled={busy || !gallery || paid}
                               onClick={() => forceUnlock(order.id)}
                             >
-                              {paid ? "Already unlocked" : "Mark paid & unlock"}
+                              {busy && phase === 4
+                                ? "Unlocking…"
+                                : paid
+                                  ? "Already unlocked"
+                                  : "Mark paid & unlock"}
                             </button>
                           </div>
                         </div>

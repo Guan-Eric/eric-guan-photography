@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree, Syne } from "next/font/google";
+import { ActionToastHost } from "@/components/action-toast";
 import {
   platformName,
   platformPublicUrl,
@@ -97,6 +98,7 @@ export default async function RootLayout({
         </a>
         <div className="noise" aria-hidden="true" />
         {children}
+        <ActionToastHost />
       </body>
     </html>
   );

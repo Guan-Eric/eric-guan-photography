@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toastSuccess } from "@/lib/toast";
 
 type ChecklistGroup = {
   title: string;
@@ -41,6 +42,7 @@ export function PrepChecklist({
 
   function clearAll() {
     setChecked({});
+    toastSuccess("Checklist cleared.");
   }
 
   const total = groups.reduce((sum, group) => sum + group.items.length, 0);

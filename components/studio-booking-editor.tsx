@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CurrencySelect } from "@/components/currency-select";
 import { normalizeStudioCurrency } from "@/lib/currency";
+import { toastError, toastSuccess } from "@/lib/toast";
 import type { Tenant } from "@/lib/tenant-schema";
 
 export function StudioBookingEditor({
@@ -55,11 +56,14 @@ export function StudioBookingEditor({
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Could not save.");
+        toastError(json.error ?? "Could not save.");
         return;
       }
       setMessage("Booking settings saved.");
+      toastSuccess("Booking settings saved.");
     } catch {
       setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -154,7 +158,7 @@ export function StudioBookingEditor({
 
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      <button className="btn btn-solid" type="submit" disabled={busy}>
+      <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy}>
         {busy ? "Saving…" : "Save booking"}
       </button>
     </form>

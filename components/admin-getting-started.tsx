@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 const STEPS = [
   {
@@ -58,18 +59,23 @@ export function AdminGettingStarted({
       });
       const json = await response.json();
       if (!json.ok) {
-        setBillingError(json.error ?? "Could not start checkout.");
+        const message = json.error ?? "Could not start checkout.";
+        setBillingError(message);
+        toastError(message);
         return;
       }
       if (json.url) {
+        toastSuccess("Opening checkout…");
         window.location.href = json.url;
         return;
       }
-      setBillingError(
-        "Billing is not configured yet — you can start your trial from Settings.",
-      );
+      const fallback =
+        "Billing is not configured yet — you can start your trial from Settings.";
+      setBillingError(fallback);
+      toastError(fallback);
     } catch {
       setBillingError("Network error.");
+      toastError("Network error.");
     } finally {
       setBillingBusy(false);
     }
@@ -104,7 +110,7 @@ export function AdminGettingStarted({
         {showPlanCheckout ? (
           <button
             type="button"
-            className="btn btn-outline"
+            className={`btn btn-outline${billingBusy ? " is-busy" : ""}`}
             disabled={billingBusy}
             onClick={() => void startCheckout()}
           >

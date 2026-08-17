@@ -9,6 +9,7 @@ import { resolveSchedule, scheduleTimeOptions, weekdayLabel } from "@/lib/schedu
 import type { DaySchedule, WeekdayKey, WeeklySchedule } from "@/lib/tenant-schema";
 import { WEEKDAY_KEYS } from "@/lib/tenant-schema";
 import { normalizeTimeZone } from "@/lib/timezones";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 function formatWhen(iso: string, timeZone: string) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -64,11 +65,14 @@ export function StudioScheduleEditor({
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Could not save.");
+        toastError(json.error ?? "Could not save.");
         return;
       }
       setMessage("Schedule saved. Booking slots update immediately.");
+      toastSuccess("Schedule saved.");
     } catch {
       setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -205,7 +209,7 @@ export function StudioScheduleEditor({
 
         {message ? <p className="form-success">{message}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
-        <button className="btn btn-solid" type="submit" disabled={busy}>
+        <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy}>
           {busy ? "Saving…" : "Save schedule"}
         </button>
       </form>

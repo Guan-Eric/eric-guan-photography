@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { entitlements } from "@/lib/billing";
-import { getGalleryByToken } from "@/lib/galleries";
+import { getGalleryByToken, galleryHasPaidAccess } from "@/lib/galleries";
 import {
   createGalleryCheckoutSession,
   localStubUnlock,
@@ -22,7 +22,7 @@ export async function POST(
   if (!gallery || gallery.revokedAt) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
-  if (gallery.state === "unlocked") {
+  if (await galleryHasPaidAccess(gallery)) {
     return NextResponse.json({ ok: true, alreadyUnlocked: true });
   }
 

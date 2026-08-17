@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { CoachTour, type CoachStep } from "@/components/coach-tour";
+import { toastSuccess } from "@/lib/toast";
 
 const NAV = [
   {
@@ -109,9 +110,14 @@ export function StudioAppShell({
 
   async function logout() {
     setSigningOut(true);
-    await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+      toastSuccess("Signed out.");
+      router.push("/login");
+      router.refresh();
+    } catch {
+      setSigningOut(false);
+    }
   }
 
   return (

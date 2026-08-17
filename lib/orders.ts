@@ -5,7 +5,7 @@ import {
 } from "@/lib/availability";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { Appointment, Order, OrderStatus } from "@/lib/db/schema";
-import { ORDER_STATUSES } from "@/lib/db/schema";
+import { isManualOrderStatus, ORDER_STATUSES } from "@/lib/db/schema";
 import {
   bookingConfirmationEmail,
   newAppointmentId,
@@ -27,6 +27,11 @@ import {
   assertCanCreateListing,
   incrementListingUsage,
 } from "@/lib/billing";
+import {
+  canSetManualStatus,
+  confirmBlockers,
+} from "@/lib/order-flow";
+import { parsePreferredSlotsJson } from "@/lib/preferred-slots";
 import type { Tenant } from "@/lib/tenant-schema";
 
 export type BookingInput = {
@@ -334,19 +339,76 @@ async function ensureAppointmentForOrder(order: Order) {
   );
 }
 
+export async function updateOrderSchedule(
+  orderId: string,
+  slot: { start: string; end: string },
+  tenantId?: string,
+) {
+  const existing = await getOrder(orderId, tenantId);
+  if (!existing) return { ok: false as const, error: "Order not found." };
+
+  const slots = parsePreferredSlotsJson(existing.preferredSlotsJson);
+  const match =
+    slots.find((item) => item.start === slot.start && item.end === slot.end) ??
+    (existing.preferredStart === slot.start && existing.preferredEnd === slot.end
+      ? { start: slot.start, end: slot.end, label: "" }
+      : null);
+  if (!match) {
+    return {
+      ok: false as const,
+      error: "Pick one of the agent's preferred times.",
+    };
+  }
+
+  const db = getDb();
+  await qRun(
+    db
+      .update(schema.orders)
+      .set({
+        preferredStart: slot.start,
+        preferredEnd: slot.end,
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.orders.id, orderId)),
+  );
+
+  return { ok: true as const, order: (await getOrder(orderId, tenantId))! };
+}
+
 export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus,
   tenantId?: string,
+  options?: { selectedSlotStart?: string },
 ) {
   if (!ORDER_STATUSES.includes(status)) {
     return { ok: false as const, error: "Unknown status." };
   }
 
-  const db = getDb();
   const existing = await getOrder(orderId, tenantId);
   if (!existing) return { ok: false as const, error: "Order not found." };
 
+  if (status !== existing.status) {
+    if (!isManualOrderStatus(status) || !canSetManualStatus(existing.status, status)) {
+      return {
+        ok: false as const,
+        error: `Status can only move forward from ${existing.status}.`,
+      };
+    }
+  }
+
+  if (status === "confirmed") {
+    const slots = parsePreferredSlotsJson(existing.preferredSlotsJson);
+    const selectedStart =
+      options?.selectedSlotStart ??
+      (slots.length <= 1 ? existing.preferredStart : undefined);
+    const blockers = confirmBlockers(existing, selectedStart ?? null);
+    if (blockers.length > 0) {
+      return { ok: false as const, error: blockers[0] };
+    }
+  }
+
+  const db = getDb();
   await qRun(
     db
       .update(schema.orders)
@@ -359,7 +421,8 @@ export async function updateOrderStatus(
       db.delete(schema.appointments).where(eq(schema.appointments.orderId, orderId)),
     );
   } else if (status === "confirmed") {
-    await ensureAppointmentForOrder(existing);
+    const latest = (await getOrder(orderId, tenantId))!;
+    await ensureAppointmentForOrder(latest);
   }
 
   return { ok: true as const, order: (await getOrder(orderId, tenantId))! };
@@ -418,6 +481,9 @@ export async function updateOrderAddress(
   }
   if (postalCode.length < 3) {
     return { ok: false as const, error: "Enter a postal or ZIP code." };
+  }
+  if (!input.city?.trim()) {
+    return { ok: false as const, error: "Enter the city." };
   }
 
   const db = getDb();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 /** Enquiry form on a listing page; posts to the tenant-scoped lead route. */
 export function ListingLeadForm({ slug, agentName }: { slug: string; agentName: string }) {
@@ -24,10 +25,16 @@ export function ListingLeadForm({ slug, agentName }: { slug: string; agentName: 
       });
       const json = await response.json().catch(() => null);
       if (!json?.ok) {
-        setError(json?.error ?? "Could not send that. Try again.");
+        const message = json?.error ?? "Could not send that. Try again.";
+        setError(message);
+        toastError(message);
         return;
       }
       setSent(true);
+      toastSuccess("Message sent.");
+    } catch {
+      setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -83,7 +90,11 @@ export function ListingLeadForm({ slug, agentName }: { slug: string; agentName: 
           />
         </label>
         {error ? <p className="form-error">{error}</p> : null}
-        <button type="submit" className="btn btn-solid" disabled={busy}>
+        <button
+          type="submit"
+          className={`btn btn-solid${busy ? " is-busy" : ""}`}
+          disabled={busy}
+        >
           {busy ? "Sending…" : `Message ${agentName.split(" ")[0]}`}
         </button>
       </form>

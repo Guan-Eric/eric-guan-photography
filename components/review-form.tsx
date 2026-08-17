@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 export function ReviewForm({ token, propertyAddress }: { token: string; propertyAddress: string }) {
   const [body, setBody] = useState("");
@@ -21,10 +22,16 @@ export function ReviewForm({ token, propertyAddress }: { token: string; property
       });
       const json = await response.json().catch(() => null);
       if (!json?.ok) {
-        setError(json?.error ?? "Could not save the review.");
+        const message = json?.error ?? "Could not save the review.";
+        setError(message);
+        toastError(message);
         return;
       }
       setDone(true);
+      toastSuccess("Review submitted. Thank you.");
+    } catch {
+      setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -59,7 +66,11 @@ export function ReviewForm({ token, propertyAddress }: { token: string; property
         />
       </label>
       {error ? <p className="form-error">{error}</p> : null}
-      <button className="btn btn-solid" type="submit" disabled={busy}>
+      <button
+        className={`btn btn-solid${busy ? " is-busy" : ""}`}
+        type="submit"
+        disabled={busy}
+      >
         {busy ? "Sending…" : "Submit review"}
       </button>
     </form>

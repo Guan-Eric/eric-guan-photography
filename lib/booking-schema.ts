@@ -54,19 +54,29 @@ export const statusUpdateSchema = z
     placeId: z.string().trim().max(256).nullable().optional(),
     mapLat: z.string().trim().max(32).nullable().optional(),
     mapLng: z.string().trim().max(32).nullable().optional(),
+    preferredStart: z.string().datetime().optional(),
+    preferredEnd: z.string().datetime().optional(),
   })
   .refine(
     (value) =>
       value.status != null ||
       value.priceCents != null ||
-      value.propertyAddress != null,
+      value.propertyAddress != null ||
+      value.preferredStart != null,
     {
-      message: "Provide a status, price, or address.",
+      message: "Provide a status, price, address, or time.",
     },
   )
   .refine(
     (value) =>
+      (value.preferredStart == null) === (value.preferredEnd == null),
+    { message: "Shoot start and end times must be sent together." },
+  )
+  .refine(
+    (value) =>
       value.propertyAddress == null ||
-      (value.postalCode != null && value.postalCode.length >= 3),
-    { message: "Postal or ZIP is required with an address." },
+      (value.postalCode != null &&
+        value.postalCode.length >= 3 &&
+        Boolean(value.city?.trim())),
+    { message: "Postal or ZIP and city are required with an address." },
   );

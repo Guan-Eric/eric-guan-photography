@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Testimonial } from "@/lib/db/schema";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 export function ReviewsAdmin({ items }: { items: Testimonial[] }) {
   const router = useRouter();
@@ -10,13 +11,24 @@ export function ReviewsAdmin({ items }: { items: Testimonial[] }) {
 
   async function setApproved(id: string, approved: boolean) {
     setBusy(id);
-    await fetch("/api/admin/reviews", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, approved }),
-    });
-    setBusy(null);
-    router.refresh();
+    try {
+      const response = await fetch("/api/admin/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, approved }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || json?.ok === false) {
+        toastError(json?.error ?? "Could not update that review.");
+        return;
+      }
+      toastSuccess(approved ? "Review approved." : "Review hidden.");
+      router.refresh();
+    } catch {
+      toastError("Network error updating review.");
+    } finally {
+      setBusy(null);
+    }
   }
 
   return (
@@ -48,11 +60,15 @@ export function ReviewsAdmin({ items }: { items: Testimonial[] }) {
               <div className="listing-index-actions">
                 <button
                   type="button"
-                  className="btn btn-outline"
+                  className={`btn btn-outline${busy === item.id ? " is-busy" : ""}`}
                   disabled={busy !== null}
                   onClick={() => setApproved(item.id, !item.approvedAt)}
                 >
-                  {item.approvedAt ? "Hide" : "Approve"}
+                  {busy === item.id
+                    ? "Saving…"
+                    : item.approvedAt
+                      ? "Hide"
+                      : "Approve"}
                 </button>
               </div>
             </li>

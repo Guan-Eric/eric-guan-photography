@@ -3,8 +3,9 @@ import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 /**
  * Order statuses for the photographer admin board.
  * Flow: requested → confirmed → shot → editing → delivered → paid
- * `cancelled` is a terminal escape hatch from any pre-delivery state.
- * `delivered` / `paid` are set by Publish / Unlock (or Stripe), not the status dropdown.
+ * Confirm is blocked until address, city, price, and shoot time are verified.
+ * `cancelled` is allowed until delivery. `delivered` / `paid` are set by
+ * Publish / Unlock (or Stripe), not the status dropdown.
  */
 export const ORDER_STATUSES = [
   "requested",

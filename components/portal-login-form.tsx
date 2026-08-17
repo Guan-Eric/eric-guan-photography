@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 export function PortalLoginForm() {
   const [email, setEmail] = useState("");
@@ -20,10 +21,16 @@ export function PortalLoginForm() {
       });
       const json = await response.json().catch(() => null);
       if (!json?.ok) {
-        setError(json?.error ?? "Could not send the link.");
+        const message = json?.error ?? "Could not send the link.";
+        setError(message);
+        toastError(message);
         return;
       }
       setSent(true);
+      toastSuccess("If we have listings for that email, a sign-in link is on its way.");
+    } catch {
+      setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -50,7 +57,11 @@ export function PortalLoginForm() {
         />
       </label>
       {error ? <p className="form-error">{error}</p> : null}
-      <button className="btn btn-solid" type="submit" disabled={busy}>
+      <button
+        className={`btn btn-solid${busy ? " is-busy" : ""}`}
+        type="submit"
+        disabled={busy}
+      >
         {busy ? "Sending…" : "Email me a link"}
       </button>
     </form>

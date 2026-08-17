@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 export function AdminLoginForm() {
   const [email, setEmail] = useState("");
@@ -20,14 +21,18 @@ export function AdminLoginForm() {
       });
       const json = await response.json();
       if (!json.ok) {
-        setError(json.error ?? "Login failed.");
+        const message = json.error ?? "Login failed.";
+        setError(message);
+        toastError(message);
         return;
       }
+      toastSuccess("Signed in.");
       // Hard navigate so the new session cookie is always sent (soft push can race).
       window.location.assign(json.hasStudio ? "/admin" : "/onboarding");
       return;
     } catch {
       setError("Network error.");
+      toastError("Network error.");
     } finally {
       setLoading(false);
     }
@@ -61,7 +66,11 @@ export function AdminLoginForm() {
         />
       </label>
       {error ? <p className="form-error">{error}</p> : null}
-      <button className="btn btn-solid" type="submit" disabled={loading}>
+      <button
+        className={`btn btn-solid${loading ? " is-busy" : ""}`}
+        type="submit"
+        disabled={loading}
+      >
         {loading ? "Signing in…" : "Sign in"}
       </button>
       <p className="auth-form-foot">

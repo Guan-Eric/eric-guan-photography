@@ -8,6 +8,7 @@ import { CoachTour, type CoachStep } from "@/components/coach-tour";
 import type { PreferredSlot } from "@/lib/preferred-slots";
 import { isInServiceArea, normalizePostalCode } from "@/lib/service-area";
 import { isBookablePackage } from "@/lib/quoting";
+import { toastError, toastSuccess } from "@/lib/toast";
 import type { Package, ServiceAreaGate } from "@/lib/tenant-schema";
 
 type Slot = { start: string; end: string; label: string };
@@ -276,6 +277,7 @@ export function BookingForm({
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       setFormError("Check the highlighted fields.");
+      toastError("Check the highlighted fields.");
       const firstKey = Object.keys(errors)[0];
       const el = document.querySelector(`[data-field="${firstKey}"]`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -316,6 +318,7 @@ export function BookingForm({
       if (!json.ok) {
         const message = json.error ?? "Could not submit the booking.";
         setFormError(message);
+        toastError(message);
         if (/postal/i.test(message) || /Montréal|Montreal|cover/i.test(message)) {
           setFieldErrors({ postalCode: message });
         } else if (/time|slot|preferred/i.test(message)) {
@@ -324,6 +327,7 @@ export function BookingForm({
         return;
       }
 
+      toastSuccess("Request sent.");
       router.push(
         `/book/confirmation/${json.orderId}?token=${encodeURIComponent(json.publicToken)}${
           json.emailStubbed ? "&local=1" : ""
@@ -331,6 +335,7 @@ export function BookingForm({
       );
     } catch {
       setFormError("Network error — try again in a moment.");
+      toastError("Network error — try again in a moment.");
     } finally {
       setSubmitting(false);
     }
@@ -719,7 +724,7 @@ export function BookingForm({
       ) : null}
 
       <button
-        className="btn btn-solid"
+        className={`btn btn-solid${submitting ? " is-busy" : ""}`}
         type="submit"
         disabled={submitting}
         data-tour="book-submit"

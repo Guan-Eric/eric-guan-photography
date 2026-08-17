@@ -5,6 +5,7 @@ import { useState } from "react";
 import { CurrencySelect } from "@/components/currency-select";
 import { TimezoneSelect } from "@/components/timezone-select";
 import { DEFAULT_STUDIO_CURRENCY } from "@/lib/currency";
+import { toastError, toastSuccess } from "@/lib/toast";
 import { DEFAULT_STUDIO_TIMEZONE } from "@/lib/timezones";
 
 export function OnboardingForm({ defaultName }: { defaultName: string }) {
@@ -35,13 +36,17 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
       });
       const json = await response.json();
       if (!json.ok) {
-        setError(json.error ?? "Could not create studio.");
+        const message = json.error ?? "Could not create studio.";
+        setError(message);
+        toastError(message);
         return;
       }
+      toastSuccess("Studio created.");
       router.push("/admin");
       router.refresh();
     } catch {
       setError("Network error.");
+      toastError("Network error.");
     } finally {
       setLoading(false);
     }
@@ -102,7 +107,11 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
         </span>
       </label>
       {error ? <p className="form-error">{error}</p> : null}
-      <button className="btn btn-solid" type="submit" disabled={loading}>
+      <button
+        className={`btn btn-solid${loading ? " is-busy" : ""}`}
+        type="submit"
+        disabled={loading}
+      >
         {loading ? "Creating…" : "Open studio"}
       </button>
     </form>

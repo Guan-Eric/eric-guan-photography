@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { PASSWORD_RULES, passwordIsValid } from "@/lib/password-rules";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 /** Kept local so the client bundle never pulls in the Drizzle schema. */
 const PLAN_PARAMS = ["payg", "starter", "growth", "studio"];
@@ -28,6 +29,7 @@ export function SignupForm() {
     event.preventDefault();
     if (password !== confirm) {
       setError("Passwords do not match.");
+      toastError("Passwords do not match.");
       return;
     }
     setLoading(true);
@@ -47,9 +49,12 @@ export function SignupForm() {
       });
       const json = await response.json();
       if (!json.ok) {
-        setError(json.error ?? "Could not create account.");
+        const message = json.error ?? "Could not create account.";
+        setError(message);
+        toastError(message);
         return;
       }
+      toastSuccess("Account created.");
       if (invite) {
         router.push(`/invite/${invite}`);
       } else if (json.hasStudio) {
@@ -64,6 +69,7 @@ export function SignupForm() {
       router.refresh();
     } catch {
       setError("Network error.");
+      toastError("Network error.");
     } finally {
       setLoading(false);
     }
@@ -161,7 +167,11 @@ export function SignupForm() {
 
       {error ? <p className="form-error">{error}</p> : null}
 
-      <button className="btn btn-solid" type="submit" disabled={!canSubmit}>
+      <button
+        className={`btn btn-solid${loading ? " is-busy" : ""}`}
+        type="submit"
+        disabled={!canSubmit}
+      >
         {loading ? "Creating…" : "Create account"}
       </button>
 

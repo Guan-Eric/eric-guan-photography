@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildGalleryZip } from "@/lib/gallery-zip";
 import { recordGalleryEvent } from "@/lib/gallery-analytics";
-import { getGalleryByToken, listMedia } from "@/lib/galleries";
+import { galleryHasPaidAccess, getGalleryByToken, listMedia } from "@/lib/galleries";
 
 export const runtime = "nodejs";
 
@@ -16,7 +16,7 @@ export async function GET(
   if (!gallery || gallery.revokedAt) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
-  if (gallery.state !== "unlocked") {
+  if (!(await galleryHasPaidAccess(gallery))) {
     return NextResponse.json(
       { ok: false, error: "Downloads unlock after payment." },
       { status: 402 },

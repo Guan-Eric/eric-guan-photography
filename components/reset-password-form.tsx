@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { PASSWORD_RULES, passwordIsValid } from "@/lib/password-rules";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -20,10 +21,12 @@ export function ResetPasswordForm() {
     event.preventDefault();
     if (!token) {
       setError("Missing reset token.");
+      toastError("Missing reset token.");
       return;
     }
     if (password !== confirm) {
       setError("Passwords do not match.");
+      toastError("Passwords do not match.");
       return;
     }
     setLoading(true);
@@ -36,13 +39,17 @@ export function ResetPasswordForm() {
       });
       const json = await response.json();
       if (!json.ok) {
-        setError(json.error ?? "Could not reset password.");
+        const message = json.error ?? "Could not reset password.";
+        setError(message);
+        toastError(message);
         return;
       }
+      toastSuccess("Password updated. Sign in with your new password.");
       router.push("/login");
       router.refresh();
     } catch {
       setError("Network error.");
+      toastError("Network error.");
     } finally {
       setLoading(false);
     }
@@ -85,7 +92,7 @@ export function ResetPasswordForm() {
       </ul>
       {error ? <p className="form-error">{error}</p> : null}
       <button
-        className="btn btn-solid"
+        className={`btn btn-solid${loading ? " is-busy" : ""}`}
         type="submit"
         disabled={loading || !token || !passwordReady || confirmMismatch}
       >

@@ -9,6 +9,7 @@ import {
   listingThemeStyle,
 } from "@/lib/listing-themes";
 import { ListingDomainEditor } from "@/components/listing-domain-editor";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 type EditorState = {
   title: string;
@@ -73,9 +74,14 @@ export function ListingPageEditor({
       const json = await response.json().catch(() => null);
       if (!json?.ok) {
         setError(json?.error ?? "Could not save this page.");
+        toastError(json?.error ?? "Could not save this page.");
         return;
       }
       setNotice("Saved.");
+      toastSuccess("Listing page saved.");
+    } catch {
+      setError("Network error.");
+      toastError("Network error.");
     } finally {
       setBusy(false);
     }
@@ -95,7 +101,7 @@ export function ListingPageEditor({
             </a>
           </p>
         </div>
-        <button type="button" className="btn btn-solid" disabled={busy} onClick={save}>
+        <button type="button" className={`btn btn-solid${busy ? " is-busy" : ""}`} disabled={busy} onClick={save}>
           {busy ? "Saving…" : "Save page"}
         </button>
       </div>
@@ -339,7 +345,7 @@ export function ListingPageEditor({
             <option value="unbranded">Unbranded (MLS safe)</option>
           </select>
         </label>
-        <button type="button" className="btn btn-solid" disabled={busy} onClick={save}>
+        <button type="button" className={`btn btn-solid${busy ? " is-busy" : ""}`} disabled={busy} onClick={save}>
           {busy ? "Saving…" : "Save page"}
         </button>
       </section>

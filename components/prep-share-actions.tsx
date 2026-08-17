@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 export function PrepShareActions({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
@@ -9,9 +10,11 @@ export function PrepShareActions({ url }: { url: string }) {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      toastSuccess("Link copied.");
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
       setCopied(false);
+      toastError("Could not copy the link.");
     }
   }
 

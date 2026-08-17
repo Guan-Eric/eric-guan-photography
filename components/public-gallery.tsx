@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CoachTour, type CoachStep } from "@/components/coach-tour";
 import { MediaEmbeds, type EmbedItem } from "@/components/media-embeds";
+import { toastError, toastSuccess } from "@/lib/toast";
 
 type GalleryMedia = {
   id: string;
@@ -121,20 +122,26 @@ export function PublicGallery({
         url?: string | null;
       } | null;
       if (!json || !json.ok) {
-        setError(json?.error ?? "Checkout failed.");
+        const message = json?.error ?? "Checkout failed.";
+        setError(message);
+        toastError(message);
         return;
       }
       if (json.alreadyUnlocked || json.stubbed) {
+        toastSuccess("Gallery unlocked.");
         router.refresh();
         return;
       }
       if (json.url) {
+        toastSuccess("Opening checkout…");
         window.location.href = json.url;
         return;
       }
       setError("Checkout started but no payment link was returned.");
+      toastError("Checkout started but no payment link was returned.");
     } catch {
       setError("Network error starting checkout.");
+      toastError("Network error starting checkout.");
     } finally {
       setBusy(false);
     }
@@ -196,7 +203,7 @@ export function PublicGallery({
               <div className="delivery-download-row">
                 <button
                   type="button"
-                  className="btn"
+                  className={`btn${busy ? " is-busy" : ""}`}
                   disabled={busy}
                   onClick={() => checkout(false)}
                 >
@@ -205,11 +212,11 @@ export function PublicGallery({
                 {allowStubUnlock ? (
                   <button
                     type="button"
-                    className="btn btn-outline"
+                    className={`btn btn-outline${busy ? " is-busy" : ""}`}
                     disabled={busy}
                     onClick={() => checkout(true)}
                   >
-                    Dev stub unlock
+                    {busy ? "Unlocking…" : "Dev stub unlock"}
                   </button>
                 ) : null}
               </div>

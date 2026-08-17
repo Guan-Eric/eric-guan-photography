@@ -87,7 +87,7 @@ export default async function ListingPage({
           <img
             className="listing-hero-image"
             src={`/api/p/${slug}/media/${hero.id}`}
-            alt={hero.roomLabel ?? page.propertyAddress}
+            alt={hero.roomLabel || page.propertyAddress}
             width={hero.width}
             height={hero.height}
           />
@@ -114,12 +114,14 @@ export default async function ListingPage({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/api/p/${slug}/media/${asset.id}`}
-                alt={asset.roomLabel ?? asset.originalName}
+                alt={asset.roomLabel || page.propertyAddress}
                 width={asset.width}
                 height={asset.height}
                 loading="lazy"
               />
-              <figcaption>{asset.roomLabel ?? asset.originalName}</figcaption>
+              {asset.roomLabel ? (
+                <figcaption>{asset.roomLabel}</figcaption>
+              ) : null}
             </figure>
           ))}
         </div>

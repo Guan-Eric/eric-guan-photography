@@ -5,6 +5,15 @@ import { useState } from "react";
 import type { Appointment, Order } from "@/lib/db/schema";
 import { toastError, toastSuccess } from "@/lib/toast";
 
+type Milestone = "onMyWayAt" | "arrivedAt" | "completedAt";
+
+function nextMilestone(appointment: Appointment): Milestone | null {
+  if (!appointment.onMyWayAt) return "onMyWayAt";
+  if (!appointment.arrivedAt) return "arrivedAt";
+  if (!appointment.completedAt) return "completedAt";
+  return null;
+}
+
 export function ShootDayBoard({
   timezone,
   items,
@@ -19,8 +28,8 @@ export function ShootDayBoard({
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function mark(appointmentId: string, milestone: "onMyWayAt" | "arrivedAt" | "completedAt") {
-    setBusy(appointmentId + milestone);
+  async function mark(appointmentId: string, milestone: Milestone) {
+    setBusy(appointmentId);
     try {
       const response = await fetch("/api/admin/today", {
         method: "POST",
@@ -70,11 +79,19 @@ export function ShootDayBoard({
           <p>Confirmed appointments for today show up here.</p>
         </div>
       ) : (
-        <ul className="listing-index">
-          {items.map(({ appointment, order, shotList }) =>
-            order ? (
+        <ul className="shoot-day-list">
+          {items.map(({ appointment, order, shotList }) => {
+            if (!order) return null;
+            const next = nextMilestone(appointment);
+            const busyThis = busy === appointment.id;
+            const labels: Record<Milestone, { idle: string; busy: string }> = {
+              onMyWayAt: { idle: "On my way", busy: "Sending…" },
+              arrivedAt: { idle: "I've arrived", busy: "Sending…" },
+              completedAt: { idle: "Complete", busy: "Saving…" },
+            };
+            return (
               <li key={appointment.id}>
-                <div>
+                <div className="shoot-day-copy">
                   <strong>
                     {timeLabel(appointment.startsAt)} · {order.propertyAddress}
                   </strong>
@@ -89,47 +106,23 @@ export function ShootDayBoard({
                     </ul>
                   ) : null}
                 </div>
-                <div className="listing-index-actions">
+                <div className="shoot-day-actions">
                   <button
                     type="button"
-                    className={`btn btn-outline${busy === appointment.id + "onMyWayAt" ? " is-busy" : ""}`}
-                    disabled={Boolean(appointment.onMyWayAt) || busy !== null}
-                    onClick={() => mark(appointment.id, "onMyWayAt")}
+                    className={`btn ${next === "completedAt" || !next ? "btn-solid" : "btn-outline"}${busyThis ? " is-busy" : ""}`}
+                    disabled={next === null || busy !== null}
+                    onClick={() => next && mark(appointment.id, next)}
                   >
-                    {busy === appointment.id + "onMyWayAt"
-                      ? "Sending…"
-                      : appointment.onMyWayAt
-                        ? "On the way"
-                        : "On my way"}
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-outline${busy === appointment.id + "arrivedAt" ? " is-busy" : ""}`}
-                    disabled={Boolean(appointment.arrivedAt) || busy !== null}
-                    onClick={() => mark(appointment.id, "arrivedAt")}
-                  >
-                    {busy === appointment.id + "arrivedAt"
-                      ? "Sending…"
-                      : appointment.arrivedAt
-                        ? "Arrived"
-                        : "I've arrived"}
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-solid${busy === appointment.id + "completedAt" ? " is-busy" : ""}`}
-                    disabled={Boolean(appointment.completedAt) || busy !== null}
-                    onClick={() => mark(appointment.id, "completedAt")}
-                  >
-                    {busy === appointment.id + "completedAt"
-                      ? "Saving…"
-                      : appointment.completedAt
-                        ? "Done"
-                        : "Complete"}
+                    {busyThis && next
+                      ? labels[next].busy
+                      : next
+                        ? labels[next].idle
+                        : "Done"}
                   </button>
                 </div>
               </li>
-            ) : null,
-          )}
+            );
+          })}
         </ul>
       )}
     </div>

@@ -39,7 +39,6 @@ export default async function EditListingPage({
   return (
     <ListingPageEditor
       pageId={page.id}
-      slug={page.slug}
       publicUrl={`${siteUrl.replace(/\/$/, "")}/p/${page.slug}`}
       initial={{
         title: page.title,
@@ -52,10 +51,13 @@ export default async function EditListingPage({
         leadCapture: page.leadCapture === 1,
         brandMode: page.brandMode,
         published: Boolean(page.publishedAt),
+        captions: Object.fromEntries(
+          media.map((asset) => [asset.id, asset.roomLabel ?? ""]),
+        ),
       }}
       photos={media.map((asset) => ({
         id: asset.id,
-        label: asset.roomLabel ?? asset.originalName,
+        caption: asset.roomLabel ?? "",
       }))}
       propertyAddress={page.propertyAddress}
     />

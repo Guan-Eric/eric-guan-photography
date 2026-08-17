@@ -74,10 +74,17 @@ export default async function ConfirmationPage({
               <Link className="btn btn-solid" href="/prep">
                 Open seller prep checklist
               </Link>
+              <Link className="btn btn-outline" href="/portal">
+                Your listings
+              </Link>
               <a className="btn btn-outline" href={`mailto:${tenant.email}`}>
                 Email {tenant.photographerName}
               </a>
             </div>
+            <p className="muted">
+              Coming back later? Open <Link href="/portal">your listings</Link>{" "}
+              and we’ll email a sign-in link — no password.
+            </p>
           </div>
         </header>
 

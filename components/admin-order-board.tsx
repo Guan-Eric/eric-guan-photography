@@ -201,7 +201,7 @@ export function AdminOrderBoard({
       : orders.filter((order) => order.status === statusFilter);
 
   function galleryUrl(token: string, brand: "branded" | "unbranded" = "branded") {
-    const url = new URL(`/g/${token}`, `${siteBase}/`);
+    const url = new URL(`/g/${token}`, `${siteUrl}/`);
     if (brand === "unbranded") url.searchParams.set("brand", "off");
     return url.toString();
   }
@@ -440,7 +440,13 @@ export function AdminOrderBoard({
           order.id === orderId ? { ...order, status: "delivered" } : order,
         ),
       );
-      if (json.emailError) {
+      if (json.listingSkipped) {
+        ok(
+          json.listingError
+            ? `Gallery published. Listing page skipped: ${json.listingError}`
+            : "Gallery published. Listing pages are not on this plan.",
+        );
+      } else if (json.emailError) {
         fail(`Gallery published, but email failed: ${json.emailError}`);
       } else if (json.emailStubbed) {
         ok("Gallery published. Email was logged locally (no RESEND_API_KEY).");
@@ -645,13 +651,11 @@ export function AdminOrderBoard({
                           {formatMoney(order.priceCents, order.currency)}
                         </span>
                         <span className="muted">{primarySlot}</span>
-                        {badges.length > 0 ? (
-                          <span className="order-media-badges">
-                            {badges.map((badge) => (
-                              <span key={badge}>{badge}</span>
-                            ))}
-                          </span>
-                        ) : null}
+                        <span className="order-media-badges">
+                          {badges.map((badge) => (
+                            <span key={badge}>{badge}</span>
+                          ))}
+                        </span>
                       </span>
                     </button>
                     <label className="admin-status-label admin-status-label--inline">

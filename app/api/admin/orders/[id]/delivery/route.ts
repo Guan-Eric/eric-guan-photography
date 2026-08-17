@@ -113,6 +113,8 @@ export async function POST(
     brandedUrl,
     unbrandedUrl,
     listingUrl,
+    listingSkipped: Boolean(!listing.ok && "skipped" in listing && listing.skipped),
+    listingError: listing.ok ? null : listing.error,
     emailSent: Boolean(emailResult?.ok && !("stubbed" in emailResult && emailResult.stubbed)),
     emailStubbed: Boolean(emailResult && "stubbed" in emailResult && emailResult.stubbed),
     emailError:

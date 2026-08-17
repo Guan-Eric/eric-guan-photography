@@ -20,6 +20,15 @@ const patchSchema = z.object({
   leadCapture: z.boolean().optional(),
   brandMode: z.enum(["branded", "unbranded"]).optional(),
   published: z.boolean().optional(),
+  captions: z
+    .array(
+      z.object({
+        id: z.string().trim().max(40),
+        caption: z.string().trim().max(80),
+      }),
+    )
+    .max(80)
+    .optional(),
 });
 
 async function tenantFor() {

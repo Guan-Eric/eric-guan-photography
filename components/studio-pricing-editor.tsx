@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { normalizeStudioCurrency } from "@/lib/currency";
 import { toastError, toastSuccess } from "@/lib/toast";
+import { useUnsavedChanges } from "@/components/unsaved-changes";
 import type { Package, PriceBand, Tenant } from "@/lib/tenant-schema";
 
 type PricingMode = "set_price" | "quote_later" | "email_only";
@@ -49,6 +50,10 @@ export function StudioPricingEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const current = JSON.stringify(packages);
+  const [saved, setSaved] = useState(current);
+  useUnsavedChanges(current !== saved);
 
   function update(index: number, patch: Partial<Package>) {
     setPackages((current) =>
@@ -119,6 +124,7 @@ export function StudioPricingEditor({
       }
       setMessage("Pricing saved.");
       toastSuccess("Pricing saved.");
+      setSaved(current);
     } catch {
       setError("Network error.");
       toastError("Network error.");

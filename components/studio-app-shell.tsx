@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { CoachTour, type CoachStep } from "@/components/coach-tour";
+import { UnsavedChangesProvider } from "@/components/unsaved-changes";
 import { toastSuccess } from "@/lib/toast";
 
 const NAV = [
@@ -121,40 +122,42 @@ export function StudioAppShell({
   }
 
   return (
-    <div className="studio-app">
-      <aside className="studio-rail">
-        <div>
-          <Link className="studio-rail-brand" href="/admin">
-            {studioName}
-          </Link>
-          <p className="studio-rail-slug">{slug}</p>
-        </div>
-        <nav className="studio-rail-nav" aria-label="Studio">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              className={item.match(pathname) ? "is-active" : ""}
-              href={item.href}
-              data-tour={item.tour}
-            >
-              {item.label}
+    <UnsavedChangesProvider>
+      <div className="studio-app">
+        <aside className="studio-rail">
+          <div>
+            <Link className="studio-rail-brand" href="/admin">
+              {studioName}
             </Link>
-          ))}
-        </nav>
-        <div className="studio-rail-foot">
-          <a className="studio-rail-view" href={siteUrl} target="_blank" rel="noreferrer">
-            View site
-          </a>
-          <p>{email}</p>
-          <button type="button" onClick={() => void logout()} disabled={signingOut}>
-            {signingOut ? "Signing out…" : "Sign out"}
-          </button>
+            <p className="studio-rail-slug">{slug}</p>
+          </div>
+          <nav className="studio-rail-nav" aria-label="Studio">
+            {NAV.map((item) => (
+              <Link
+                key={item.href}
+                className={item.match(pathname) ? "is-active" : ""}
+                href={item.href}
+                data-tour={item.tour}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="studio-rail-foot">
+            <a className="studio-rail-view" href={siteUrl} target="_blank" rel="noreferrer">
+              View site
+            </a>
+            <p>{email}</p>
+            <button type="button" onClick={() => void logout()} disabled={signingOut}>
+              {signingOut ? "Signing out…" : "Sign out"}
+            </button>
+          </div>
+        </aside>
+        <div className="studio-main" id="main">
+          {children}
         </div>
-      </aside>
-      <div className="studio-main" id="main">
-        {children}
+        <CoachTour tourId="photo_v1" steps={PHOTO_TOUR} />
       </div>
-      <CoachTour tourId="photo_v1" steps={PHOTO_TOUR} />
-    </div>
+    </UnsavedChangesProvider>
   );
 }

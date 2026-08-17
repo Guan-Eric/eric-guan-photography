@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getPhotographerSession } from "@/lib/auth";
 import { entitlements } from "@/lib/billing";
-import { listListingPages } from "@/lib/listing-pages";
+import { backfillListingPages, listListingPages } from "@/lib/listing-pages";
 import { publicStudioUrl } from "@/lib/platform";
 import { getTenantRow } from "@/lib/tenant-store";
 import { getTenant } from "@/lib/tenants";
@@ -22,6 +22,7 @@ export default async function AdminListingsPage() {
   const tenant = await getTenant(session.activeTenantId);
   const row = await getTenantRow(session.activeTenantId);
   const access = row ? entitlements(row.plan) : null;
+  await backfillListingPages(session.activeTenantId);
   const pages = await listListingPages(session.activeTenantId);
   const siteUrl = publicStudioUrl({
     slug: tenant.slug,
@@ -44,7 +45,7 @@ export default async function AdminListingsPage() {
 
       {access && !access.propertyPages ? (
         <p className="field-hint">
-          Property pages are included on Growth, Studio and pay-as-you-go.
+          Property pages are included on Trial, Growth, Studio and pay-as-you-go.
           Publishing a delivery on Starter skips this step.
         </p>
       ) : null}
@@ -52,7 +53,11 @@ export default async function AdminListingsPage() {
       {pages.length === 0 ? (
         <div className="studio-empty">
           <h2>No property pages yet</h2>
-          <p>Publish a gallery from the Orders board and the page appears here.</p>
+          <p>
+            {access && !access.propertyPages
+              ? "Upgrade to Growth, Studio, or pay-as-you-go to create a page when you publish a gallery."
+              : "Publish a gallery from Shoots and the page appears here."}
+          </p>
           <Link className="btn btn-solid" href="/admin">
             Go to orders
           </Link>

@@ -3,7 +3,7 @@ import { customAlphabet } from "nanoid";
 import { entitlements } from "@/lib/billing";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { ListingPage, Order } from "@/lib/db/schema";
-import { getGalleryByOrderId, listMedia } from "@/lib/galleries";
+import { getGalleryByOrderId, listMedia, updateMediaCaptions } from "@/lib/galleries";
 import type { ListingSection, OpenHouse } from "@/lib/listing-content";
 import { type ListingTheme, listingTheme } from "@/lib/listing-themes";
 import { listMediaLinksForOrder, visibleLinks } from "@/lib/media-links";
@@ -71,7 +71,7 @@ export async function publishListingPage(order: Order) {
   if (!row) return { ok: false as const, error: "Studio not found." };
   const access = entitlements(row.plan);
   if (!access.propertyPages) {
-    return { ok: false as const, skipped: true as const, error: "Property pages require Growth or Studio." };
+    return { ok: false as const, skipped: true as const, error: "Property pages are not included on Starter." };
   }
 
   const existing = await getListingPageByOrder(order.id, order.tenantId);
@@ -132,6 +132,27 @@ export async function publishListingPage(order: Order) {
   return { ok: true as const, page: (await getListingPageByOrder(order.id, order.tenantId))! };
 }
 
+export async function backfillListingPages(tenantId: string) {
+  const row = await getTenantRow(tenantId);
+  if (!row) return;
+  const access = entitlements(row.plan);
+  if (!access.propertyPages) return;
+
+  const db = getDb();
+  const orders = await qAll<Order>(
+    db.select().from(schema.orders).where(eq(schema.orders.tenantId, tenantId)),
+  );
+
+  for (const order of orders) {
+    if (order.status !== "delivered" && order.status !== "paid") continue;
+    const existing = await getListingPageByOrder(order.id, tenantId);
+    if (existing) continue;
+    const gallery = await getGalleryByOrderId(order.id, tenantId);
+    if (!gallery) continue;
+    await publishListingPage(order);
+  }
+}
+
 export async function listListingPages(tenantId: string) {
   const db = getDb();
   return qAll<ListingPage>(
@@ -163,6 +184,7 @@ export type ListingPagePatch = {
   leadCapture?: boolean;
   brandMode?: "branded" | "unbranded";
   published?: boolean;
+  captions?: Array<{ id: string; caption: string }>;
 };
 
 export async function updateListingPage(
@@ -196,6 +218,9 @@ export async function updateListingPage(
   await qRun(
     db.update(schema.listingPages).set(values).where(eq(schema.listingPages.id, pageId)),
   );
+  if (patch.captions && page.galleryId) {
+    await updateMediaCaptions(tenantId, page.galleryId, patch.captions);
+  }
   return { ok: true as const, page: (await getListingPage(pageId, tenantId))! };
 }
 

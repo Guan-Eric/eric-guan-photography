@@ -9,6 +9,7 @@ import {
   listingThemeStyle,
 } from "@/lib/listing-themes";
 import { ListingDomainEditor } from "@/components/listing-domain-editor";
+import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 type EditorState = {
@@ -22,27 +23,30 @@ type EditorState = {
   leadCapture: boolean;
   brandMode: "branded" | "unbranded";
   published: boolean;
+  captions: Record<string, string>;
 };
 
 export function ListingPageEditor({
   pageId,
-  slug,
   publicUrl,
   initial,
   photos,
   propertyAddress,
 }: {
   pageId: string;
-  slug: string;
   publicUrl: string;
   initial: EditorState;
-  photos: Array<{ id: string; label: string }>;
+  photos: Array<{ id: string; caption: string }>;
   propertyAddress: string;
 }) {
   const [state, setState] = useState<EditorState>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const current = JSON.stringify(state);
+  const [saved, setSaved] = useState(current);
+  useUnsavedChanges(current !== saved);
 
   function patch(next: Partial<EditorState>) {
     setState((current) => ({ ...current, ...next }));
@@ -69,6 +73,10 @@ export function ListingPageEditor({
           leadCapture: state.leadCapture,
           brandMode: state.brandMode,
           published: state.published,
+          captions: photos.map((photo) => ({
+            id: photo.id,
+            caption: state.captions[photo.id] ?? "",
+          })),
         }),
       });
       const json = await response.json().catch(() => null);
@@ -79,6 +87,7 @@ export function ListingPageEditor({
       }
       setNotice("Saved.");
       toastSuccess("Listing page saved.");
+      setSaved(current);
     } catch {
       setError("Network error.");
       toastError("Network error.");
@@ -96,8 +105,8 @@ export function ListingPageEditor({
           <p className="eyebrow">Listing page</p>
           <h1>{propertyAddress}</h1>
           <p className="muted">
-            <a href={publicUrl} target="_blank" rel="noreferrer">
-              /p/{slug}
+            <a className="text-link" href={publicUrl} target="_blank" rel="noreferrer">
+              View listing page
             </a>
           </p>
         </div>
@@ -156,23 +165,57 @@ export function ListingPageEditor({
       </section>
 
       <section className="studio-section">
-        <h2>Hero photo</h2>
+        <h2>Photos</h2>
+        <p className="field-hint">
+          Choose the hero. Optional captions show on the public page — filenames
+          never do.
+        </p>
         {photos.length === 0 ? (
           <p className="field-hint">Upload photos on the order first.</p>
         ) : (
           <div className="hero-pick">
-            {photos.map((photo) => (
-              <button
-                key={photo.id}
-                type="button"
-                className={hero === photo.id ? "is-current" : undefined}
-                onClick={() => patch({ heroAssetId: photo.id })}
-                title={photo.label}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/p/${slug}/media/${photo.id}`} alt={photo.label} loading="lazy" />
-              </button>
-            ))}
+            {photos.map((photo) => {
+              const caption = state.captions[photo.id] ?? "";
+              const selected = hero === photo.id;
+              return (
+                <div key={photo.id} className="hero-pick-item">
+                  <button
+                    type="button"
+                    className={selected ? "is-current" : undefined}
+                    aria-pressed={selected}
+                    aria-label={
+                      caption
+                        ? `Use “${caption}” as the hero photo`
+                        : "Use as hero photo"
+                    }
+                    onClick={() => patch({ heroAssetId: photo.id })}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/admin/listings/${pageId}/media/${photo.id}`}
+                      alt=""
+                      loading="lazy"
+                    />
+                  </button>
+                  <label className="field">
+                    <span className="visually-hidden">Caption</span>
+                    <input
+                      value={caption}
+                      maxLength={80}
+                      placeholder="Caption (optional)"
+                      onChange={(event) =>
+                        patch({
+                          captions: {
+                            ...state.captions,
+                            [photo.id]: event.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

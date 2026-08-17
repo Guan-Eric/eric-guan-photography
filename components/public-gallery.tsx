@@ -149,91 +149,94 @@ export function PublicGallery({
 
   return (
     <main className={`delivery-shell ${branded ? "" : "delivery-shell--unbranded"}`} id="main">
-      <header className="delivery-header">
-        <div>
-          {branded ? <p className="eyebrow">{studioName}</p> : null}
-          <h1>{title}</h1>
-          <p className="lede">{propertyAddress}</p>
-        </div>
-        <div className="delivery-pay-card" data-tour="gallery-pay">
-          {unlocked ? (
-            <>
-              <p className="eyebrow">Unlocked</p>
-              <strong>Full downloads ready</strong>
-              <div className="delivery-download-row">
-                <a className="btn" href={`/api/g/${token}/download?kind=mls${branded ? "" : "&brand=off"}`}>
-                  Download MLS zip
-                </a>
-                <a
-                  className="btn btn-outline"
-                  href={`/api/g/${token}/download?kind=full${branded ? "" : "&brand=off"}`}
-                >
-                  Download full-res zip
-                </a>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="eyebrow">Proofing</p>
-              <strong>{price} to unlock</strong>
-              <p className="muted">
-                Watermarked proofs only until payment. Same link unlocks full + MLS files.
-              </p>
-              {upsells.length > 0 ? (
-                <fieldset className="upsell-list">
-                  <legend>Add-ons</legend>
-                  {upsells.map((item) => (
-                    <label key={item.id}>
-                      <input
-                        type="checkbox"
-                        checked={selectedAddOns.includes(item.id)}
-                        onChange={() =>
-                          setSelectedAddOns((current) =>
-                            current.includes(item.id)
-                              ? current.filter((id) => id !== item.id)
-                              : [...current, item.id],
-                          )
-                        }
-                      />
-                      {item.name} (+{formatAddOn(item.priceCents)})
-                    </label>
-                  ))}
-                </fieldset>
-              ) : null}
-              <div className="delivery-download-row">
+      <header className="delivery-intro">
+        {branded ? <p className="eyebrow delivery-brand">{studioName}</p> : null}
+        <h1>{title}</h1>
+        <p className="lede">{propertyAddress}</p>
+      </header>
+
+      <aside className="booking-quote delivery-pay-card" data-tour="gallery-pay">
+        {unlocked ? (
+          <>
+            <p className="eyebrow">Unlocked</p>
+            <p className="booking-quote-price">Ready</p>
+            <p className="field-hint">Full-resolution and MLS zips are on this same link.</p>
+            <div className="delivery-download-row">
+              <a
+                className="btn btn-solid"
+                href={`/api/g/${token}/download?kind=mls${branded ? "" : "&brand=off"}`}
+              >
+                Download MLS zip
+              </a>
+              <a
+                className="btn btn-outline"
+                href={`/api/g/${token}/download?kind=full${branded ? "" : "&brand=off"}`}
+              >
+                Download full-res zip
+              </a>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="eyebrow">Your quote</p>
+            <p className="booking-quote-price">{price}</p>
+            <p className="field-hint">
+              Watermarked proofs until payment. Same link unlocks full + MLS files.
+            </p>
+            {upsells.length > 0 ? (
+              <fieldset className="upsell-list">
+                <legend>Add-ons</legend>
+                {upsells.map((item) => (
+                  <label key={item.id}>
+                    <input
+                      type="checkbox"
+                      checked={selectedAddOns.includes(item.id)}
+                      onChange={() =>
+                        setSelectedAddOns((current) =>
+                          current.includes(item.id)
+                            ? current.filter((id) => id !== item.id)
+                            : [...current, item.id],
+                        )
+                      }
+                    />
+                    {item.name} (+{formatAddOn(item.priceCents)})
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
+            <div className="delivery-download-row">
+              <button
+                type="button"
+                className={`btn btn-solid${busy ? " is-busy" : ""}`}
+                disabled={busy}
+                onClick={() => checkout(false)}
+              >
+                {busy ? "Starting…" : `Pay ${price} & unlock`}
+              </button>
+              {allowStubUnlock ? (
                 <button
                   type="button"
-                  className={`btn${busy ? " is-busy" : ""}`}
+                  className={`btn btn-outline${busy ? " is-busy" : ""}`}
                   disabled={busy}
-                  onClick={() => checkout(false)}
+                  onClick={() => checkout(true)}
                 >
-                  {busy ? "Starting…" : `Pay ${price} & unlock`}
+                  {busy ? "Unlocking…" : "Dev stub unlock"}
                 </button>
-                {allowStubUnlock ? (
-                  <button
-                    type="button"
-                    className={`btn btn-outline${busy ? " is-busy" : ""}`}
-                    disabled={busy}
-                    onClick={() => checkout(true)}
-                  >
-                    {busy ? "Unlocking…" : "Dev stub unlock"}
-                  </button>
-                ) : null}
-              </div>
-            </>
-          )}
-          {paidFlag && unlocked ? (
-            <p className="form-success">Payment received — files unlocked.</p>
-          ) : null}
-          {paidFlag && !unlocked ? (
-            <p className="muted">Payment received — unlocking downloads…</p>
-          ) : null}
-          {cancelledFlag && !unlocked ? (
-            <p className="muted">Checkout cancelled. Proofs are still available.</p>
-          ) : null}
-          {error ? <p className="form-error">{error}</p> : null}
-        </div>
-      </header>
+              ) : null}
+            </div>
+          </>
+        )}
+        {paidFlag && unlocked ? (
+          <p className="form-success">Payment received — files unlocked.</p>
+        ) : null}
+        {paidFlag && !unlocked ? (
+          <p className="muted">Payment received — unlocking downloads…</p>
+        ) : null}
+        {cancelledFlag && !unlocked ? (
+          <p className="muted">Checkout cancelled. Proofs are still available.</p>
+        ) : null}
+        {error ? <p className="form-error">{error}</p> : null}
+      </aside>
 
       {media.length === 0 ? (
         <div className="booking-card">
@@ -246,13 +249,13 @@ export function PublicGallery({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/api/g/${token}/media/${asset.id}?v=${unlocked ? "web" : "proof"}`}
-                alt={asset.roomLabel ?? asset.originalName}
+                alt={asset.roomLabel || "Listing photo"}
                 width={asset.width}
                 height={asset.height}
                 loading="lazy"
               />
               <figcaption>
-                <span>{asset.roomLabel ?? asset.originalName}</span>
+                {asset.roomLabel ? <span>{asset.roomLabel}</span> : <span />}
                 {unlocked ? (
                   <span className="delivery-item-links">
                     <a href={`/api/g/${token}/media/${asset.id}?v=mls`}>MLS</a>
@@ -269,13 +272,13 @@ export function PublicGallery({
 
       <MediaEmbeds items={embeds} />
 
-      {branded ? (
-        <footer className="delivery-footer">
-          <p>
-            Delivered by {photographerName}. Questions? Reply to your booking email.
-          </p>
-        </footer>
-      ) : null}
+      <footer className="delivery-footer">
+        <p>
+          {branded ? `Delivered by ${photographerName}. ` : null}
+          <a href="/portal">Your listings</a>
+          {branded ? " · Questions? Reply to your booking email." : null}
+        </p>
+      </footer>
       {!unlocked ? (
         <CoachTour tourId="agent_gallery_v1" steps={AGENT_GALLERY_TOUR} />
       ) : null}

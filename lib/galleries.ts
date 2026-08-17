@@ -87,6 +87,29 @@ export async function listMedia(galleryIdValue: string): Promise<MediaAsset[]> {
   );
 }
 
+export async function updateMediaCaptions(
+  tenantId: string,
+  galleryId: string,
+  captions: Array<{ id: string; caption: string }>,
+) {
+  const db = getDb();
+  for (const item of captions) {
+    const caption = item.caption.trim() || null;
+    await qRun(
+      db
+        .update(schema.mediaAssets)
+        .set({ roomLabel: caption })
+        .where(
+          and(
+            eq(schema.mediaAssets.id, item.id),
+            eq(schema.mediaAssets.galleryId, galleryId),
+            eq(schema.mediaAssets.tenantId, tenantId),
+          ),
+        ),
+    );
+  }
+}
+
 export async function ensureGalleryForOrder(order: Order, tenant: Tenant) {
   const existing = await getGalleryByOrderId(order.id);
   if (existing) return existing;
@@ -109,7 +132,7 @@ export async function ensureGalleryForOrder(order: Order, tenant: Tenant) {
     propertyAddress: order.propertyAddress,
     amountCents: order.priceCents,
     currency: order.currency,
-    unlockedAt: state === "unlocked" ? createdAt : null,
+    unlockedAt: null,
     revokedAt: null,
     createdAt,
     updatedAt: createdAt,

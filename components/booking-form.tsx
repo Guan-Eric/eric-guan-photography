@@ -109,6 +109,68 @@ function FieldLabel({
   );
 }
 
+function QuoteSummary({
+  quote,
+  loadingQuote,
+  quoteError,
+  email,
+  submitting,
+}: {
+  quote: QuoteOk | null;
+  loadingQuote: boolean;
+  quoteError: string | null;
+  email: string;
+  submitting: boolean;
+}) {
+  return (
+    <aside className="booking-quote" aria-live="polite" data-tour="book-quote">
+      <h2>Shoot Summary</h2>
+      {loadingQuote ? <p className="muted">Calculating quote…</p> : null}
+      {quoteError ? <p className="form-error">{quoteError}</p> : null}
+      {quote ? (
+        <>
+          <ul className="booking-quote-rows">
+            <li>
+              <span>{quote.packageName}</span>
+              <span>{quote.priceLabel}</span>
+            </li>
+            <li>
+              <span>{quote.bandLabel}</span>
+              <span>{quote.squareFootage.toLocaleString("en-CA")} sq ft</span>
+            </li>
+            <li>
+              <span>On site</span>
+              <span>{quote.durationMinutes} min</span>
+            </li>
+          </ul>
+          <p className="booking-quote-total">
+            <span>Total Quote</span>
+            <span className="booking-quote-price">{quote.priceLabel}</span>
+          </p>
+          <p className="field-hint">
+            No credit card charged today. Gallery payment required upon delivery of
+            previews.
+          </p>
+        </>
+      ) : null}
+      {!quote && !quoteError && !loadingQuote ? (
+        <p className="field-hint">
+          Retainers are custom — email{" "}
+          <a href={`mailto:${email}`}>{email}</a> instead.
+        </p>
+      ) : null}
+      <button
+        className={`btn btn-solid booking-quote-submit${submitting ? " is-busy" : ""}`}
+        type="submit"
+        disabled={submitting}
+        data-tour="book-submit"
+      >
+        {submitting ? "Sending request…" : "Send request"}
+      </button>
+    </aside>
+  );
+}
+
 export function BookingForm({
   packages,
   defaultPackageId,
@@ -348,7 +410,16 @@ export function BookingForm({
         required.
       </p>
 
-      <section className="booking-card" data-tour="book-package">
+      <QuoteSummary
+        quote={quote}
+        loadingQuote={loadingQuote}
+        quoteError={quoteError}
+        email={email}
+        submitting={submitting}
+      />
+
+      <div className="booking-panel">
+      <section className="booking-step" data-tour="book-package">
         <h2>1. Package &amp; size</h2>
         <div className="form-grid">
           <label
@@ -406,26 +477,9 @@ export function BookingForm({
             ) : null}
           </label>
         </div>
-
-        <div className="quote-panel" aria-live="polite">
-          {loadingQuote ? <p>Calculating quote…</p> : null}
-          {quoteError ? <p className="form-error">{quoteError}</p> : null}
-          {quote ? (
-            <p>
-              <strong>{quote.priceLabel}</strong> · {quote.durationMinutes} min on
-              site · {quote.bandLabel}
-            </p>
-          ) : null}
-          {!quote && !quoteError && !loadingQuote ? (
-            <p className="field-hint">
-              Retainers are custom — email{" "}
-              <a href={`mailto:${email}`}>{email}</a> instead.
-            </p>
-          ) : null}
-        </div>
       </section>
 
-      <section className="booking-card" data-tour="book-property">
+      <section className="booking-step" data-tour="book-property">
         <h2>2. Property</h2>
         <div className="form-grid">
           <label
@@ -620,7 +674,7 @@ export function BookingForm({
       </section>
 
       <section
-        className={`booking-card${fieldErrors.preferredSlots ? " is-invalid" : ""}`}
+        className={`booking-step${fieldErrors.preferredSlots ? " is-invalid" : ""}`}
         data-field="preferredSlots"
         data-tour="book-times"
       >
@@ -645,7 +699,7 @@ export function BookingForm({
         />
       </section>
 
-      <section className="booking-card" data-tour="book-contact">
+      <section className="booking-step" data-tour="book-contact">
         <h2>4. Your details</h2>
         <div className="form-grid">
           <label
@@ -716,27 +770,30 @@ export function BookingForm({
           </label>
         </div>
       </section>
+      </div>
 
-      {formError ? (
-        <p className="form-error" role="alert">
-          {formError}
-        </p>
-      ) : null}
+      <div className="booking-form-actions">
+        {formError ? (
+          <p className="form-error" role="alert">
+            {formError}
+          </p>
+        ) : null}
 
-      <button
-        className={`btn btn-solid${submitting ? " is-busy" : ""}`}
-        type="submit"
-        disabled={submitting}
-        data-tour="book-submit"
-      >
-        {submitting ? "Sending request…" : "Request this shoot"}
-      </button>
-      {triedSubmit && Object.keys(fieldErrors).length > 0 ? (
-        <p className="field-hint">
-          {Object.keys(fieldErrors).length} required field
-          {Object.keys(fieldErrors).length === 1 ? "" : "s"} still need attention.
-        </p>
-      ) : null}
+        <button
+          className={`btn btn-solid${submitting ? " is-busy" : ""}`}
+          type="submit"
+          disabled={submitting}
+          data-tour="book-submit"
+        >
+          {submitting ? "Sending request…" : "Send request"}
+        </button>
+        {triedSubmit && Object.keys(fieldErrors).length > 0 ? (
+          <p className="field-hint">
+            {Object.keys(fieldErrors).length} required field
+            {Object.keys(fieldErrors).length === 1 ? "" : "s"} still need attention.
+          </p>
+        ) : null}
+      </div>
       <CoachTour tourId="agent_book_v1" steps={AGENT_BOOK_TOUR} />
     </form>
   );

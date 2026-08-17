@@ -36,7 +36,7 @@ export function platformTheme(): ThemeTokens {
     line: "rgba(23, 26, 23, 0.12)",
     accent: "#2f5d50",
     accentSoft: "#3f7a69",
-    paper: "rgba(252, 253, 250, 0.72)",
+    paper: "#ffffff",
     radius: "2px",
     fontDisplay: "var(--font-syne), sans-serif",
     fontBody: "var(--font-figtree), sans-serif",
@@ -45,6 +45,22 @@ export function platformTheme(): ThemeTokens {
 
 export function hostnameFromHost(host: string | null | undefined) {
   return (host ?? "").split(":")[0].toLowerCase();
+}
+
+/**
+ * Public origin for redirects. Prefer forwarded Host over `request.url`,
+ * which on Cloudflare Workers can be the `*.workers.dev` URL.
+ */
+export function requestPublicOrigin(request: Request) {
+  const url = new URL(request.url);
+  const host =
+    request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+    request.headers.get("host")?.split(",")[0]?.trim();
+  if (!host) return url.origin;
+  const proto =
+    request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ||
+    (url.protocol === "https:" ? "https" : "http");
+  return `${proto}://${host}`;
 }
 
 export function isPlatformHostname(hostname: string) {

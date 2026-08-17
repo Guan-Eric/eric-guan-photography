@@ -35,6 +35,10 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
+function listingsUrl(tenant: Tenant) {
+  return `${tenant.siteUrl.replace(/\/$/, "")}/portal`;
+}
+
 function firstName(fullName: string) {
   const trimmed = fullName.trim();
   if (!trimmed) return "there";
@@ -262,7 +266,10 @@ export function bookingConfirmationEmail(options: {
         { label: "Preferred times", value: options.slotLabel },
       ],
       cta: { label: "View request summary", url: options.confirmationUrl },
-      secondaryLinks: [{ label: "Seller prep checklist", url: prepUrl }],
+      secondaryLinks: [
+        { label: "Seller prep checklist", url: prepUrl },
+        { label: "Your listings", url: listingsUrl(tenant) },
+      ],
       outro: [
         "Please share the prep checklist with your seller ahead of the shoot so we can make the most of time on site.",
       ],
@@ -400,7 +407,10 @@ export function orderStatusEmail(options: {
         `Great news — your shoot with ${tenant.studioName} is confirmed.`,
       ],
       details,
-      secondaryLinks: [{ label: "Seller prep checklist", url: prepUrl }],
+      secondaryLinks: [
+        { label: "Seller prep checklist", url: prepUrl },
+        { label: "Your listings", url: listingsUrl(tenant) },
+      ],
       outro: [
         "Please forward the checklist to your seller so the home is ready when we arrive.",
       ],
@@ -442,7 +452,9 @@ export function orderStatusEmail(options: {
   }
 
   if (status === "delivered") {
-    const secondaryLinks: Array<{ label: string; url: string }> = [];
+    const secondaryLinks: Array<{ label: string; url: string }> = [
+      { label: "Your listings", url: listingsUrl(tenant) },
+    ];
     if (options.listingUrl) {
       secondaryLinks.push({ label: "Listing page", url: options.listingUrl });
     }
@@ -472,6 +484,7 @@ export function orderStatusEmail(options: {
       cta: options.galleryUrl
         ? { label: "Download photos", url: options.galleryUrl }
         : undefined,
+      secondaryLinks: [{ label: "Your listings", url: listingsUrl(tenant) }],
       outro: [
         "If this listing went well, a short review or referral would mean a great deal.",
       ],

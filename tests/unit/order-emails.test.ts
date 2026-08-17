@@ -60,6 +60,17 @@ describe("order lifecycle emails", () => {
     expect(mail.text).toMatch(/Tue, Apr 1/);
   });
 
+  it("points agents at the listings portal", () => {
+    const delivered = orderLifecycleEmails({
+      tenant,
+      order,
+      status: "delivered",
+      galleryUrl: "https://test.studiofront.ca/g/abc",
+    })[0];
+    expect(delivered.text).toMatch(/Your listings/);
+    expect(delivered.text).toMatch(/https:\/\/test\.studiofront\.ca\/portal/);
+  });
+
   it("emails both parties on price change", () => {
     const agent = orderPriceChangeEmail({
       tenant,

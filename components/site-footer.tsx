@@ -11,6 +11,7 @@ export function SiteFooter({ tenant }: { tenant: Tenant }) {
         <Link href="/book">Book</Link>
         <Link href="/pricing">Pricing</Link>
         <Link href="/prep">Before your shoot</Link>
+        <Link href="/portal">Your listings</Link>
         <a href={`mailto:${tenant.email}`}>Email</a>
       </div>
     </footer>

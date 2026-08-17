@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CurrencySelect } from "@/components/currency-select";
+import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { normalizeStudioCurrency } from "@/lib/currency";
 import { toastError, toastSuccess } from "@/lib/toast";
 import type { Tenant } from "@/lib/tenant-schema";
@@ -29,6 +30,19 @@ export function StudioBookingEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const current = JSON.stringify({
+    turnaround,
+    email,
+    phone,
+    currency,
+    gateEnabled,
+    region,
+    prefixes,
+    gateMessage,
+  });
+  const [saved, setSaved] = useState(current);
+  useUnsavedChanges(current !== saved);
 
   async function onSave(event: React.FormEvent) {
     event.preventDefault();
@@ -61,6 +75,7 @@ export function StudioBookingEditor({
       }
       setMessage("Booking settings saved.");
       toastSuccess("Booking settings saved.");
+      setSaved(current);
     } catch {
       setError("Network error.");
       toastError("Network error.");

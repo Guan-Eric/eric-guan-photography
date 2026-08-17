@@ -50,6 +50,7 @@ describe("billing entitlements & access", () => {
 
   it("gates features by plan", () => {
     expect(entitlements("starter").propertyPages).toBe(false);
+    expect(entitlements("trial").propertyPages).toBe(true);
     expect(entitlements("growth").propertyPages).toBe(true);
     expect(entitlements("studio").shareKit).toBe(true);
     expect(entitlements("growth").shareKit).toBe(false);

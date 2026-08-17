@@ -26,7 +26,7 @@ export const ericGuan: Tenant = {
     line: "rgba(23, 26, 23, 0.12)",
     accent: "#2f5d50",
     accentSoft: "#3f7a69",
-    paper: "rgba(252, 253, 250, 0.72)",
+    paper: "#ffffff",
     radius: "2px",
     fontDisplay: "var(--font-syne), sans-serif",
     fontBody: "var(--font-figtree), sans-serif",

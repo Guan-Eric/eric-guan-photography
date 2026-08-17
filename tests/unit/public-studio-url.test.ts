@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { publicStudioUrl, studioOrigin } from "@/lib/platform";
+import { publicStudioUrl, requestPublicOrigin, studioOrigin } from "@/lib/platform";
 
 describe("public studio URLs", () => {
   const previous = {
@@ -72,5 +72,16 @@ describe("public studio URLs", () => {
         siteUrl: "https://silentshutter.studiofront.ca",
       }),
     ).toBe("http://silentshutter.localhost:3000");
+  });
+
+  it("prefers forwarded host over the workers.dev request URL", () => {
+    const request = new Request("https://studiofront.workers.dev/portal/callback", {
+      headers: {
+        host: "studiofront.workers.dev",
+        "x-forwarded-host": "silentshutter.studiofront.ca",
+        "x-forwarded-proto": "https",
+      },
+    });
+    expect(requestPublicOrigin(request)).toBe("https://silentshutter.studiofront.ca");
   });
 });

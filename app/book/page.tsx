@@ -41,7 +41,7 @@ export default async function BookPage({
         </header>
 
         <section className="page-section" style={{ paddingTop: 0 }}>
-          <div className="page-inner">
+          <div className="page-inner page-inner--booking">
             <BookingForm
               packages={tenant.packages}
               defaultPackageId={params.package}

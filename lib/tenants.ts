@@ -146,11 +146,21 @@ export function themeStyle(theme: ThemeTokens): React.CSSProperties {
     "--line": theme.line,
     "--accent": theme.accent,
     "--accent-soft": theme.accentSoft,
-    "--paper": theme.paper,
+    "--paper": opaquePaper(theme.paper),
     "--radius": theme.radius,
     "--font-display": theme.fontDisplay,
     "--font-body": theme.fontBody,
   } as React.CSSProperties;
+}
+
+/** Stored studio themes used glass paper; cards must stay opaque over the sage wash. */
+function opaquePaper(value: string) {
+  const match =
+    /^rgba\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*[\d.]+\s*\)$/i.exec(
+      value.trim(),
+    );
+  if (!match) return value;
+  return `rgb(${match[1]}, ${match[2]}, ${match[3]})`;
 }
 
 export function requestTheme(tenant: Tenant | null): ThemeTokens {

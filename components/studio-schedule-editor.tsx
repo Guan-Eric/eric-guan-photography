@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { TimezoneSelect } from "@/components/timezone-select";
+import { useUnsavedChanges } from "@/components/unsaved-changes";
 import type { Order } from "@/lib/db/schema";
 import { parsePreferredSlotsJson } from "@/lib/preferred-slots";
 import { resolveSchedule, scheduleTimeOptions, weekdayLabel } from "@/lib/schedule";
@@ -37,6 +38,10 @@ export function StudioScheduleEditor({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const current = JSON.stringify({ schedule, timezone });
+  const [saved, setSaved] = useState(current);
+  useUnsavedChanges(current !== saved);
+
   function patchDay(key: WeekdayKey, patch: Partial<DaySchedule>) {
     setSchedule((current) => ({
       ...current,
@@ -70,6 +75,7 @@ export function StudioScheduleEditor({
       }
       setMessage("Schedule saved. Booking slots update immediately.");
       toastSuccess("Schedule saved.");
+      setSaved(current);
     } catch {
       setError("Network error.");
       toastError("Network error.");

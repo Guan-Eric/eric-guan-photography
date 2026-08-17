@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { GalleryImage, Tenant } from "@/lib/tenant-schema";
+import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 function emptyImage(): GalleryImage {
@@ -46,6 +47,19 @@ export function StudioWorkEditor({
   );
   const heroInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const current = JSON.stringify({
+    photographerName,
+    tagline,
+    lede,
+    heroSrc,
+    heroAlt,
+    heroWidth,
+    heroHeight,
+    gallery,
+  });
+  const [saved, setSaved] = useState(current);
+  useUnsavedChanges(current !== saved);
 
   function updateImage(index: number, patch: Partial<GalleryImage>) {
     setGallery((current) =>
@@ -162,6 +176,18 @@ export function StudioWorkEditor({
       setGallery(cleaned.length > 0 ? cleaned : []);
       setMessage("Work page saved.");
       toastSuccess("Work page saved.");
+      setSaved(
+        JSON.stringify({
+          photographerName,
+          tagline,
+          lede,
+          heroSrc,
+          heroAlt,
+          heroWidth,
+          heroHeight,
+          gallery: cleaned,
+        }),
+      );
     } catch {
       setError("Network error.");
       toastError("Network error.");

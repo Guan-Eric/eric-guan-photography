@@ -4,6 +4,7 @@ import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { Gallery, GalleryState, MediaAsset, Order, TrustTier } from "@/lib/db/schema";
 import { processUpload } from "@/lib/media-process";
 import { ensureGalleryDir } from "@/lib/media-storage";
+import { platformPublicUrl } from "@/lib/platform";
 import type { Tenant } from "@/lib/tenant-schema";
 
 const galleryId = customAlphabet("23456789ABCDEFGHJKLMNPQRSTUVWXYZ", 10);
@@ -182,6 +183,18 @@ export async function unlockGallery(
   if (!gallery) return { ok: false as const, error: "Gallery not found." };
   if (gallery.revokedAt) return { ok: false as const, error: "Gallery revoked." };
 
+  if (gallery.state === "unlocked") {
+    if (options?.markOrderPaid) {
+      await qRun(
+        db
+          .update(schema.orders)
+          .set({ status: "paid", updatedAt: nowIso() })
+          .where(eq(schema.orders.id, gallery.orderId)),
+      );
+    }
+    return { ok: true as const, gallery, alreadyUnlocked: true as const };
+  }
+
   const unlockedAt = nowIso();
   await qRun(
     db
@@ -284,7 +297,12 @@ export async function createPaymentRecord(options: {
 
 export async function markPaymentPaidBySession(sessionId: string) {
   const db = getDb();
-  const payment = await qGet<{ id: string; galleryId: string }>(
+  const payment = await qGet<{
+    id: string;
+    galleryId: string;
+    tenantId: string;
+    status: string;
+  }>(
     db
       .select()
       .from(schema.payments)
@@ -292,14 +310,62 @@ export async function markPaymentPaidBySession(sessionId: string) {
   );
   if (!payment) return { ok: false as const, error: "Payment not found." };
 
-  await qRun(
-    db
-      .update(schema.payments)
-      .set({ status: "paid", updatedAt: nowIso() })
-      .where(eq(schema.payments.id, payment.id)),
-  );
+  if (payment.status !== "paid") {
+    await qRun(
+      db
+        .update(schema.payments)
+        .set({ status: "paid", updatedAt: nowIso() })
+        .where(eq(schema.payments.id, payment.id)),
+    );
+  }
 
-  return unlockGallery(payment.galleryId, { markOrderPaid: true });
+  const unlocked = await unlockGallery(payment.galleryId, { markOrderPaid: true });
+  if (unlocked.ok && !("alreadyUnlocked" in unlocked && unlocked.alreadyUnlocked)) {
+    const { notifyGalleryPaid } = await import("@/lib/order-notify");
+    await notifyGalleryPaid({
+      tenantId: payment.tenantId,
+      orderId: unlocked.gallery.orderId,
+      galleryToken: unlocked.gallery.publicToken,
+    });
+  }
+  return unlocked;
+}
+
+/**
+ * After Stripe Checkout return (?session_id=…), confirm payment and unlock
+ * without waiting for the webhook (avoids proofing flash / stuck refresh).
+ */
+export async function confirmCheckoutSessionForGallery(options: {
+  sessionId: string;
+  galleryId: string;
+  publicToken: string;
+}) {
+  const { getStripe } = await import("@/lib/stripe");
+  const stripe = getStripe();
+  if (!stripe) {
+    return markPaymentPaidBySession(options.sessionId);
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(options.sessionId);
+    const paid =
+      session.payment_status === "paid" || session.status === "complete";
+    if (!paid) {
+      return { ok: false as const, error: "Payment not completed yet." };
+    }
+    if (
+      session.metadata?.galleryId &&
+      session.metadata.galleryId !== options.galleryId
+    ) {
+      return { ok: false as const, error: "Session does not match this gallery." };
+    }
+    return markPaymentPaidBySession(options.sessionId);
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Could not confirm session.",
+    };
+  }
 }
 
 export async function listRecentGalleries(tenantId: string) {
@@ -313,15 +379,121 @@ export async function listRecentGalleries(tenantId: string) {
   );
 }
 
+export type GallerySummary = Pick<
+  Gallery,
+  "id" | "orderId" | "state" | "publicToken" | "trustTier" | "brandMode"
+> & {
+  mediaCount: number;
+  coverAssetId: string | null;
+  coverWidth: number | null;
+  coverHeight: number | null;
+  videoCount: number;
+  tourCount: number;
+  floorPlanCount: number;
+};
+
+/**
+ * Board summaries in two queries instead of one `listMedia` per gallery.
+ * The lowest `sortOrder` asset is the cover, matching the share-kit convention.
+ */
+export async function listGallerySummaries(tenantId: string): Promise<GallerySummary[]> {
+  const galleries = await listRecentGalleries(tenantId);
+  if (galleries.length === 0) return [];
+
+  const db = getDb();
+  const assets = await qAll<{
+    id: string;
+    galleryId: string;
+    sortOrder: number;
+    width: number;
+    height: number;
+  }>(
+    db
+      .select({
+        id: schema.mediaAssets.id,
+        galleryId: schema.mediaAssets.galleryId,
+        sortOrder: schema.mediaAssets.sortOrder,
+        width: schema.mediaAssets.width,
+        height: schema.mediaAssets.height,
+      })
+      .from(schema.mediaAssets)
+      .where(eq(schema.mediaAssets.tenantId, tenantId))
+      .orderBy(asc(schema.mediaAssets.sortOrder)),
+  );
+
+  const counts = new Map<string, number>();
+  const covers = new Map<string, { id: string; width: number; height: number; sortOrder: number }>();
+  for (const asset of assets) {
+    counts.set(asset.galleryId, (counts.get(asset.galleryId) ?? 0) + 1);
+    const cover = covers.get(asset.galleryId);
+    if (!cover || asset.sortOrder < cover.sortOrder) {
+      covers.set(asset.galleryId, {
+        id: asset.id,
+        width: asset.width,
+        height: asset.height,
+        sortOrder: asset.sortOrder,
+      });
+    }
+  }
+
+  const links = await countMediaLinksByGallery(tenantId);
+
+  return galleries.map((gallery) => {
+    const cover = covers.get(gallery.id) ?? null;
+    const kinds = links.get(gallery.id);
+    return {
+      id: gallery.id,
+      orderId: gallery.orderId,
+      state: gallery.state,
+      publicToken: gallery.publicToken,
+      trustTier: gallery.trustTier,
+      brandMode: gallery.brandMode,
+      mediaCount: counts.get(gallery.id) ?? 0,
+      coverAssetId: cover?.id ?? null,
+      coverWidth: cover?.width ?? null,
+      coverHeight: cover?.height ?? null,
+      videoCount: kinds?.video ?? 0,
+      tourCount: kinds?.tour ?? 0,
+      floorPlanCount: kinds?.floorplan ?? 0,
+    };
+  });
+}
+
+type LinkKindCounts = { video: number; tour: number; floorplan: number };
+
+/** Embed counts per gallery; empty until media links exist for the tenant. */
+async function countMediaLinksByGallery(tenantId: string) {
+  const grouped = new Map<string, LinkKindCounts>();
+  const db = getDb();
+  const rows = await qAll<{ galleryId: string | null; kind: string }>(
+    db
+      .select({
+        galleryId: schema.mediaLinks.galleryId,
+        kind: schema.mediaLinks.kind,
+      })
+      .from(schema.mediaLinks)
+      .where(eq(schema.mediaLinks.tenantId, tenantId)),
+  );
+
+  for (const row of rows) {
+    if (!row.galleryId) continue;
+    const current =
+      grouped.get(row.galleryId) ?? { video: 0, tour: 0, floorplan: 0 };
+    if (row.kind === "video") current.video += 1;
+    else if (row.kind === "tour") current.tour += 1;
+    else if (row.kind === "floorplan") current.floorplan += 1;
+    grouped.set(row.galleryId, current);
+  }
+
+  return grouped;
+}
+
 export function galleryPublicUrl(
   token: string,
   brandMode?: "branded" | "unbranded",
   siteUrl?: string,
 ) {
-  const base =
-    siteUrl ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    "http://localhost:3000";
+  const base = siteUrl?.trim() || platformPublicUrl();
   const url = new URL(`/g/${token}`, base);
   if (brandMode === "unbranded") url.searchParams.set("brand", "off");
   return url.toString();

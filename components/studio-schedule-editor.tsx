@@ -2,20 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { TimezoneSelect } from "@/components/timezone-select";
 import type { Order } from "@/lib/db/schema";
 import { parsePreferredSlotsJson } from "@/lib/preferred-slots";
-import { resolveSchedule, weekdayLabel } from "@/lib/schedule";
+import { resolveSchedule, scheduleTimeOptions, weekdayLabel } from "@/lib/schedule";
 import type { DaySchedule, WeekdayKey, WeeklySchedule } from "@/lib/tenant-schema";
 import { WEEKDAY_KEYS } from "@/lib/tenant-schema";
-
-const TIMEZONES = [
-  "America/Toronto",
-  "America/Vancouver",
-  "America/New_York",
-  "America/Chicago",
-  "America/Los_Angeles",
-  "America/Denver",
-] as const;
+import { normalizeTimeZone } from "@/lib/timezones";
 
 function formatWhen(iso: string, timeZone: string) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -38,7 +31,7 @@ export function StudioScheduleEditor({
   bookings: Order[];
 }) {
   const [schedule, setSchedule] = useState(() => resolveSchedule(initialSchedule));
-  const [timezone, setTimezone] = useState(initialTimezone);
+  const [timezone, setTimezone] = useState(() => normalizeTimeZone(initialTimezone));
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -119,24 +112,34 @@ export function StudioScheduleEditor({
                   </label>
                   <label className="field">
                     <span className="sr-only">Open</span>
-                    <input
-                      type="time"
+                    <select
                       value={day.open}
                       disabled={!day.enabled}
                       onChange={(event) => patchDay(key, { open: event.target.value })}
-                    />
+                    >
+                      {scheduleTimeOptions(day.open).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <span className="schedule-day-sep" aria-hidden>
                     to
                   </span>
                   <label className="field">
                     <span className="sr-only">Close</span>
-                    <input
-                      type="time"
+                    <select
                       value={day.close}
                       disabled={!day.enabled}
                       onChange={(event) => patchDay(key, { close: event.target.value })}
-                    />
+                    >
+                      {scheduleTimeOptions(day.close).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 </div>
               );
@@ -149,16 +152,7 @@ export function StudioScheduleEditor({
           <div className="form-grid">
             <label className="field">
               <span>Timezone</span>
-              <select
-                value={timezone}
-                onChange={(event) => setTimezone(event.target.value)}
-              >
-                {TIMEZONES.map((zone) => (
-                  <option key={zone} value={zone}>
-                    {zone}
-                  </option>
-                ))}
-              </select>
+              <TimezoneSelect value={timezone} onChange={setTimezone} required />
             </label>
             <label className="field">
               <span>Slot interval</span>

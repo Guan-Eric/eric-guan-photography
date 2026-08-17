@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MANUAL_ORDER_STATUSES } from "@/lib/db/schema";
 
 export const quoteRequestSchema = z.object({
   packageId: z.string().min(1),
@@ -16,6 +17,10 @@ export const bookingRequestSchema = z.object({
   propertyAddress: z.string().trim().min(5).max(200),
   postalCode: z.string().trim().min(6).max(10),
   city: z.string().trim().max(80).optional(),
+  placeId: z.string().trim().max(256).optional(),
+  mapLat: z.string().trim().max(32).optional(),
+  mapLng: z.string().trim().max(32).optional(),
+  referralCode: z.string().trim().max(40).optional(),
   preferredSlots: z
     .array(
       z.object({
@@ -39,14 +44,29 @@ export const bookingRequestSchema = z.object({
   notes: z.string().trim().max(1000).optional(),
 });
 
-export const statusUpdateSchema = z.object({
-  status: z.enum([
-    "requested",
-    "confirmed",
-    "shot",
-    "editing",
-    "delivered",
-    "paid",
-    "cancelled",
-  ]),
-});
+export const statusUpdateSchema = z
+  .object({
+    status: z.enum(MANUAL_ORDER_STATUSES).optional(),
+    priceCents: z.number().int().min(0).max(5_000_000).optional(),
+    propertyAddress: z.string().trim().min(5).max(200).optional(),
+    postalCode: z.string().trim().min(3).max(12).optional(),
+    city: z.string().trim().max(80).optional(),
+    placeId: z.string().trim().max(256).nullable().optional(),
+    mapLat: z.string().trim().max(32).nullable().optional(),
+    mapLng: z.string().trim().max(32).nullable().optional(),
+  })
+  .refine(
+    (value) =>
+      value.status != null ||
+      value.priceCents != null ||
+      value.propertyAddress != null,
+    {
+      message: "Provide a status, price, or address.",
+    },
+  )
+  .refine(
+    (value) =>
+      value.propertyAddress == null ||
+      (value.postalCode != null && value.postalCode.length >= 3),
+    { message: "Postal or ZIP is required with an address." },
+  );

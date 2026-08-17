@@ -1,4 +1,9 @@
+import { normalizeStudioCurrency } from "@/lib/currency";
 import type { Package, PriceBand, Tenant } from "@/lib/tenant-schema";
+
+export function tenantCurrency(tenant: Tenant) {
+  return normalizeStudioCurrency(tenant.seo?.currency);
+}
 
 export type QuoteInput = {
   packageId: string;
@@ -16,6 +21,7 @@ export type QuoteResult =
       durationMinutes: number;
       squareFootage: number;
       bandLabel: string;
+      quoteLater?: boolean;
     }
   | {
       ok: false;
@@ -52,13 +58,15 @@ export function priceBandsFor(pkg: Package): PriceBand[] | null {
 }
 
 export function isBookablePackage(pkg: Package) {
-  return pkg.durationMinutes != null && priceBandsFor(pkg) != null;
+  if (pkg.durationMinutes == null) return false;
+  if (pkg.quoteLater) return true;
+  return priceBandsFor(pkg) != null;
 }
 
 function formatMoney(cents: number, currency: string) {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
-    currency: currency || "CAD",
+    currency: normalizeStudioCurrency(currency),
     maximumFractionDigits: 0,
   }).format(cents / 100);
 }
@@ -76,20 +84,40 @@ export function quotePackage(tenant: Tenant, input: QuoteInput): QuoteResult {
     return { ok: false, error: "Choose a package to continue." };
   }
 
+  const squareFootage = Math.round(input.squareFootage);
+  if (!Number.isFinite(squareFootage) || squareFootage < 400 || squareFootage > 20000) {
+    return {
+      ok: false,
+      error: "Enter a square footage between 400 and 20,000.",
+    };
+  }
+
+  if (pkg.quoteLater) {
+    const durationMinutes = durationFor(pkg, squareFootage);
+    if (durationMinutes == null) {
+      return { ok: false, error: "This package cannot be booked online." };
+    }
+    const currency = tenantCurrency(tenant);
+    return {
+      ok: true,
+      packageId: pkg.id,
+      packageName: pkg.name,
+      priceCents: 0,
+      priceLabel: "Quote after request",
+      currency,
+      durationMinutes,
+      squareFootage,
+      bandLabel: "Price confirmed after review",
+      quoteLater: true,
+    };
+  }
+
   const bands = priceBandsFor(pkg);
   if (pkg.durationMinutes == null || !bands) {
     return {
       ok: false,
       error: "Retainers are custom — email to set up an ongoing booking window.",
       contactOnly: true,
-    };
-  }
-
-  const squareFootage = Math.round(input.squareFootage);
-  if (!Number.isFinite(squareFootage) || squareFootage < 400 || squareFootage > 20000) {
-    return {
-      ok: false,
-      error: "Enter a square footage between 400 and 20,000.",
     };
   }
 
@@ -102,7 +130,7 @@ export function quotePackage(tenant: Tenant, input: QuoteInput): QuoteResult {
     return { ok: false, error: "This package cannot be booked online." };
   }
 
-  const currency = tenant.seo.currency || "CAD";
+  const currency = tenantCurrency(tenant);
   return {
     ok: true,
     packageId: pkg.id,

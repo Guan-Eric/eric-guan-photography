@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
-import { dayBeforeReminderEmail, sendEmail } from "@/lib/email";
+import {
+  dayBeforeReminderEmail,
+  photographerDayBeforeReminderEmail,
+  sendEmail,
+} from "@/lib/email";
+import { sendDueReviewRequests } from "@/lib/reviews";
 import { getOrder } from "@/lib/orders";
 import { getTenant } from "@/lib/tenants";
 
@@ -47,11 +52,21 @@ export async function GET(request: Request) {
     if (!order || order.status === "cancelled") continue;
 
     const tenant = await getTenant(order.tenantId);
+    const prepUrl = `${tenant.siteUrl.replace(/\/$/, "")}/prep`;
+    const adminUrl = `${tenant.siteUrl.replace(/\/$/, "")}/admin`;
+
     await sendEmail(
       dayBeforeReminderEmail({
         tenant,
         order,
-        prepUrl: `${tenant.siteUrl}/prep`,
+        prepUrl,
+      }),
+    );
+    await sendEmail(
+      photographerDayBeforeReminderEmail({
+        tenant,
+        order,
+        adminUrl,
       }),
     );
 
@@ -67,5 +82,6 @@ export async function GET(request: Request) {
     sent += 1;
   }
 
-  return NextResponse.json({ ok: true, sent });
+  const reviews = await sendDueReviewRequests();
+  return NextResponse.json({ ok: true, sent, reviews });
 }

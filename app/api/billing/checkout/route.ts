@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPhotographerSession } from "@/lib/auth";
 import { createSubscriptionCheckout } from "@/lib/billing";
-import type { PlanId } from "@/lib/db/schema";
+import { isPurchasablePlan } from "@/lib/db/schema";
 
 export const runtime = "nodejs";
 
@@ -12,9 +12,12 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const plan = body?.plan as PlanId | undefined;
-  if (plan !== "starter" && plan !== "growth" && plan !== "studio") {
-    return NextResponse.json({ ok: false, error: "Choose Starter, Growth, or Studio." }, { status: 400 });
+  const plan = typeof body?.plan === "string" ? body.plan : "";
+  if (!isPurchasablePlan(plan)) {
+    return NextResponse.json(
+      { ok: false, error: "Choose Pay as you go, Starter, Growth, or Studio." },
+      { status: 400 },
+    );
   }
 
   const origin = new URL(request.url).origin;

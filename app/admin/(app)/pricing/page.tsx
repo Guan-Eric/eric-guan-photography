@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { StudioPricingEditor } from "@/components/studio-pricing-editor";
 import { getPhotographerSession } from "@/lib/auth";
-import { studioOrigin } from "@/lib/platform";
+import { publicStudioUrl } from "@/lib/platform";
 import { getTenant } from "@/lib/tenants";
 
 export const runtime = "nodejs";
@@ -16,6 +16,10 @@ export default async function AdminPricingPage() {
   const session = await getPhotographerSession();
   if (!session?.activeTenantId) return null;
   const tenant = await getTenant(session.activeTenantId);
-  const siteUrl = studioOrigin({ slug: tenant.slug, domain: tenant.domain });
+  const siteUrl = publicStudioUrl({
+    slug: tenant.slug,
+    domain: tenant.domain,
+    siteUrl: tenant.siteUrl,
+  });
   return <StudioPricingEditor tenant={tenant} viewUrl={`${siteUrl}/pricing`} />;
 }

@@ -5,7 +5,12 @@ import { PLAN_DEFS, entitlements } from "@/lib/billing";
 import type { PlanId } from "@/lib/db/schema";
 
 export function PlatformPricing() {
-  const plans: Array<Exclude<PlanId, "trial">> = ["starter", "growth", "studio"];
+  const plans: Array<Exclude<PlanId, "trial">> = [
+    "payg",
+    "starter",
+    "growth",
+    "studio",
+  ];
   return (
     <>
       <PlatformHeader solid />
@@ -13,10 +18,11 @@ export function PlatformPricing() {
         <header className="page-header">
           <div className="page-header-inner">
             <p className="eyebrow">Pricing</p>
-            <h1>Simple monthly plans. Your name on the site.</h1>
+            <h1>Pay per listing, or go flat as you grow.</h1>
             <p className="section-copy">
-              14-day Starter trial. Then $49 / $99 / $179 per month. No agent
-              accounts. Cancel anytime.
+              Start at ${PLAN_DEFS.payg.meteredUsd} per listing with no monthly
+              fee. Switch to a flat plan once volume makes it cheaper. 14-day
+              trial, no agent accounts, cancel anytime.
             </p>
           </div>
         </header>
@@ -33,10 +39,20 @@ export function PlatformPricing() {
                   >
                     {id === "growth" ? <span className="badge">Most studios</span> : null}
                     <h3>{def.label}</h3>
-                    <p className="price">${def.monthlyUsd}/mo</p>
-                    <p className="package-meta">USD · billed monthly</p>
+                    <p className="price">
+                      {id === "payg" ? `$${def.meteredUsd}/listing` : `$${def.monthlyUsd}/mo`}
+                    </p>
+                    <p className="package-meta">
+                      {id === "payg"
+                        ? "USD · no monthly fee · billed in arrears"
+                        : "USD · billed monthly"}
+                    </p>
                     <ul className="package-includes">
-                      <li>{def.listingQuota} listings / year</li>
+                      <li>
+                        {id === "payg"
+                          ? "Unlimited listings, pay per shoot"
+                          : `${def.listingQuota} listings / year`}
+                      </li>
                       <li>
                         {def.seats} team seat{def.seats === 1 ? "" : "s"}
                       </li>
@@ -45,9 +61,12 @@ export function PlatformPricing() {
                       {extras.customDomain ? <li>Custom domain</li> : <li>Subdomain only</li>}
                       {extras.propertyPages ? <li>Property websites</li> : null}
                       {extras.shareKit ? <li>Share kit + reports + upsells</li> : null}
+                      {id === "payg" ? null : (
+                        <li>${def.meteredUsd} per listing beyond plan</li>
+                      )}
                     </ul>
                     <Link className="btn btn-solid" href={`/signup?plan=${id}`}>
-                      Start trial
+                      {id === "payg" ? "Start free" : "Start trial"}
                     </Link>
                   </article>
                 );

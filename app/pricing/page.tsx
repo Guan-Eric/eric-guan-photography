@@ -92,7 +92,9 @@ export default async function PricingPage() {
                   </ul>
                   {pkg.durationMinutes ? (
                     <Link className="btn btn-solid" href={`/book?package=${pkg.id}`}>
-                      Book {pkg.name.toLowerCase()}
+                      {pkg.quoteLater
+                        ? `Request ${pkg.name.toLowerCase()}`
+                        : `Book ${pkg.name.toLowerCase()}`}
                     </Link>
                   ) : (
                     <a className="btn btn-outline" href={`mailto:${tenant.email}`}>

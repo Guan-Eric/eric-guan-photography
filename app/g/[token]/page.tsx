@@ -3,7 +3,12 @@ import { notFound } from "next/navigation";
 import { PublicGallery } from "@/components/public-gallery";
 import { entitlements } from "@/lib/billing";
 import { recordGalleryEvent } from "@/lib/gallery-analytics";
-import { getGalleryByToken, listMedia } from "@/lib/galleries";
+import {
+  confirmCheckoutSessionForGallery,
+  getGalleryByToken,
+  listMedia,
+} from "@/lib/galleries";
+import { listMediaLinksForGallery, visibleLinks } from "@/lib/media-links";
 import { getTenantRow } from "@/lib/tenant-store";
 import { getTenant } from "@/lib/tenants";
 
@@ -11,7 +16,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Params = { token: string };
-type Search = { brand?: string; paid?: string; cancelled?: string };
+type Search = {
+  brand?: string;
+  paid?: string;
+  cancelled?: string;
+  session_id?: string;
+};
 
 export async function generateMetadata({
   params,
@@ -39,8 +49,22 @@ export default async function GalleryPage({
 }) {
   const { token } = await params;
   const query = await searchParams;
-  const gallery = await getGalleryByToken(token);
+  let gallery = await getGalleryByToken(token);
   if (!gallery || gallery.revokedAt) notFound();
+
+  // Stripe success return often beats the webhook — unlock from session_id here.
+  if (
+    gallery.state !== "unlocked" &&
+    typeof query.session_id === "string" &&
+    query.session_id.startsWith("cs_")
+  ) {
+    await confirmCheckoutSessionForGallery({
+      sessionId: query.session_id,
+      galleryId: gallery.id,
+      publicToken: gallery.publicToken,
+    });
+    gallery = (await getGalleryByToken(token)) ?? gallery;
+  }
 
   await recordGalleryEvent({
     tenantId: gallery.tenantId,
@@ -53,6 +77,19 @@ export default async function GalleryPage({
   const row = await getTenantRow(gallery.tenantId);
   const media = await listMedia(gallery.id);
   const branded = query.brand !== "off" && gallery.brandMode !== "unbranded";
+  const embeds = visibleLinks(
+    await listMediaLinksForGallery(gallery.id),
+    branded ? "branded" : "unbranded",
+  ).map((link) => ({
+    id: link.id,
+    kind: link.kind,
+    provider: link.provider,
+    url: link.url,
+    title: link.title,
+    docHref: link.storagePath
+      ? `/api/g/${token}/doc/${link.id}${branded ? "" : "?brand=off"}`
+      : null,
+  }));
   const upsells =
     row && entitlements(row.plan).upsells
       ? tenant.packages
@@ -83,6 +120,7 @@ export default async function GalleryPage({
         width: asset.width,
         height: asset.height,
       }))}
+      embeds={embeds}
       paidFlag={query.paid === "1"}
       cancelledFlag={query.cancelled === "1"}
       upsells={upsells}

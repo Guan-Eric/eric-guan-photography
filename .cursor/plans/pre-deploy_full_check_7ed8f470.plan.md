@@ -4,31 +4,31 @@ overview: Add a Vitest + Playwright test suite, then run a full readiness audit 
 todos:
   - id: test-harness
     content: Add Vitest (unit/integration), Playwright Test config, npm scripts, and SQLite test DB helpers
-    status: pending
+    status: completed
   - id: unit-tests
     content: "Write unit tests for pure lib modules: password-rules, service-area, schedule, preferred-slots, isolation, quotas, quoting, booking-schema, tenant-schema validation"
-    status: pending
+    status: completed
   - id: integration-tests
     content: "Write SQLite integration tests: tenant isolation, signup/auth, booking create, gallery unlock stub, listing pages, cron auth"
-    status: pending
+    status: completed
   - id: e2e-tests
-    content: "Write Playwright e2e for apex signup + studio book/admin/gallery stub unlock on *.localhost"
-    status: pending
+    content: Write Playwright e2e for apex signup + studio book/admin/gallery stub unlock on *.localhost
+    status: completed
   - id: auto-gates
     content: Run typecheck, next build, setup:check, npm test, isolation:check (SQLite)
-    status: pending
+    status: completed
   - id: local-smoke
     content: Manual residual smoke only if e2e gaps (email Resend delivery, Stripe Checkout redirect)
-    status: pending
+    status: completed
   - id: infra-inventory
     content: Verify Neon schema, R2 bucket/creds, Stripe test, Resend from-address, secrets/R2_BUCKET gaps
-    status: pending
+    status: completed
   - id: opennext-preview
     content: Fill .dev.vars if needed; run npm run preview for Worker compile+boot
-    status: pending
+    status: completed
   - id: go-nogo
     content: Produce pass/fail scorecard and blockers before Workers Paid
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -55,11 +55,11 @@ flowchart LR
 
 **Stack (concrete choices):**
 
-| Layer | Tool | Why |
-|---|---|---|
-| Unit + API/DB integration | **Vitest** | Fast, TS-native, works with Next path aliases |
-| Browser e2e | **`@playwright/test`** | Already have `playwright` dep; proper test runner for host-based multi-tenant flows |
-| DB | **Temp SQLite** (`DATABASE_PATH` under `os.tmpdir()`, `DATABASE_URL` unset) | Matches local seed path; no Neon needed for CI-like runs |
+| Layer                     | Tool                                                                        | Why                                                                                 |
+| ------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Unit + API/DB integration | **Vitest**                                                                  | Fast, TS-native, works with Next path aliases                                       |
+| Browser e2e               | **`@playwright/test`**                                                      | Already have `playwright` dep; proper test runner for host-based multi-tenant flows |
+| DB                        | **Temp SQLite** (`DATABASE_PATH` under `os.tmpdir()`, `DATABASE_URL` unset) | Matches local seed path; no Neon needed for CI-like runs                            |
 
 **Add:**
 
@@ -79,17 +79,17 @@ Do **not** mock the whole DB for integration tests — use real SQLite + existin
 
 Pure / near-pure modules only (no network):
 
-| Module | Cases |
-|---|---|
-| [`lib/password-rules.ts`](lib/password-rules.ts) | length/case/number/special; `passwordIsValid` / `passwordIssues` |
-| [`lib/service-area.ts`](lib/service-area.ts) | normalize/format postal; CA/US validation; Montreal prefix gate on/off |
-| [`lib/schedule.ts`](lib/schedule.ts) | HH:mm normalize/validate; open/close window edge cases |
-| [`lib/preferred-slots.ts`](lib/preferred-slots.ts) | parse/serialize preferred times; invalid input rejected |
-| [`lib/isolation.ts`](lib/isolation.ts) | `belongsToTenant` true/false |
-| [`lib/quotas.ts`](lib/quotas.ts) / [`lib/billing.ts`](lib/billing.ts) entitlements helpers | plan limits, `assertCanCreateListing` logic where pure |
-| [`lib/quoting.ts`](lib/quoting.ts) | price math / package totals if deterministic |
-| [`lib/booking-schema.ts`](lib/booking-schema.ts) / [`lib/tenant-schema.ts`](lib/tenant-schema.ts) | zod parse success/fail fixtures |
-| [`lib/custom-domain.ts`](lib/custom-domain.ts) | host normalization / allowed domain checks |
+| Module                                                                                            | Cases                                                                  |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [`lib/password-rules.ts`](lib/password-rules.ts)                                                  | length/case/number/special; `passwordIsValid` / `passwordIssues`       |
+| [`lib/service-area.ts`](lib/service-area.ts)                                                      | normalize/format postal; CA/US validation; Montreal prefix gate on/off |
+| [`lib/schedule.ts`](lib/schedule.ts)                                                              | HH:mm normalize/validate; open/close window edge cases                 |
+| [`lib/preferred-slots.ts`](lib/preferred-slots.ts)                                                | parse/serialize preferred times; invalid input rejected                |
+| [`lib/isolation.ts`](lib/isolation.ts)                                                            | `belongsToTenant` true/false                                           |
+| [`lib/quotas.ts`](lib/quotas.ts) / [`lib/billing.ts`](lib/billing.ts) entitlements helpers        | plan limits, `assertCanCreateListing` logic where pure                 |
+| [`lib/quoting.ts`](lib/quoting.ts)                                                                | price math / package totals if deterministic                           |
+| [`lib/booking-schema.ts`](lib/booking-schema.ts) / [`lib/tenant-schema.ts`](lib/tenant-schema.ts) | zod parse success/fail fixtures                                        |
+| [`lib/custom-domain.ts`](lib/custom-domain.ts)                                                    | host normalization / allowed domain checks                             |
 
 Target: high-signal coverage of money-adjacent and tenant-safety logic, not 100% line coverage of UI.
 
@@ -137,15 +137,15 @@ Only gaps e2e cannot prove: Resend from-address delivery (`Studiofront <hello@st
 
 Same inventory as before ([DEPLOY.md](DEPLOY.md) / [docs/SECRETS.md](docs/SECRETS.md)):
 
-| Service | Verify |
-|---|---|
-| **Neon** | Schema + RLS; bigint migrate if needed |
-| **R2** | Bucket `studiofront-media` + API token ready |
-| **Stripe Test** | Prices, keys, portal, Connect |
-| **Resend** | Domain + `PLATFORM_EMAIL_FROM` |
-| **Secrets** | Uploaded vs missing; `ADMIN_PASSWORD` is seed-only legacy |
+| Service            | Verify                                                                                                            |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| **Neon**           | Schema + RLS; bigint migrate if needed                                                                            |
+| **R2**             | Bucket `studiofront-media` + API token ready                                                                      |
+| **Stripe Test**    | Prices, keys, portal, Connect                                                                                     |
+| **Resend**         | Domain + `PLATFORM_EMAIL_FROM`                                                                                    |
+| **Secrets**        | Uploaded vs missing; `ADMIN_PASSWORD` is seed-only legacy                                                         |
 | **R2 bucket name** | `CLOUDFLARE_R2_BUCKET=studiofront-media` must be set (missing from [wrangler.jsonc](wrangler.jsonc) `vars` today) |
-| **GitHub Actions** | `CRON_SECRET` post-deploy only |
+| **GitHub Actions** | `CRON_SECRET` post-deploy only                                                                                    |
 
 ### 4. OpenNext preview (no Workers Paid)
 
@@ -164,7 +164,7 @@ Pass/fail per: harness + unit + integration + e2e + typecheck/build + setup:chec
 
 ## After you approve
 
-1. Install Vitest + `@playwright/test`, wire configs/scripts/helpers  
-2. Implement unit → integration → e2e suites above  
-3. Run full gate + infra inventory + OpenNext preview  
+1. Install Vitest + `@playwright/test`, wire configs/scripts/helpers
+2. Implement unit → integration → e2e suites above
+3. Run full gate + infra inventory + OpenNext preview
 4. Return go/no-go — no deploy until you reply **paid**

@@ -7,8 +7,21 @@ export const contentType = "image/png";
 
 export default async function Icon() {
   const tenant = await getRequestTenant();
-  const theme = tenant?.theme ?? platformTheme();
-  const label = tenant?.studioName ?? platformName();
+
+  // Apex / platform: Studiofront mark (static file — no Node fs on Workers).
+  if (!tenant) {
+    return new Response(null, {
+      status: 307,
+      headers: {
+        Location: "/studiofront-icon.png",
+        "Cache-Control": "public, max-age=86400, immutable",
+      },
+    });
+  }
+
+  // Studio hosts keep a simple monogram favicon from the studio name.
+  const theme = tenant.theme ?? platformTheme();
+  const label = tenant.studioName ?? platformName();
   const initials = label
     .split(/\s+/)
     .slice(0, 2)

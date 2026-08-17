@@ -3,7 +3,7 @@ import { PrepChecklist } from "@/components/prep-checklist";
 import { PrepShareActions } from "@/components/prep-share-actions";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { studioOrigin } from "@/lib/platform";
+import { publicStudioUrl } from "@/lib/platform";
 import { requireRequestTenant } from "@/lib/tenants";
 
 export const metadata: Metadata = {
@@ -61,7 +61,11 @@ const checklists = [
 
 export default async function PrepPage() {
   const tenant = await requireRequestTenant();
-  const siteUrl = studioOrigin({ slug: tenant.slug, domain: tenant.domain });
+  const siteUrl = publicStudioUrl({
+    slug: tenant.slug,
+    domain: tenant.domain,
+    siteUrl: tenant.siteUrl,
+  });
   const prepUrl = `${siteUrl}/prep`;
 
   return (

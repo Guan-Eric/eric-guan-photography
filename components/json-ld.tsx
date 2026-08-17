@@ -1,4 +1,5 @@
 import type { Tenant } from "@/lib/tenant-schema";
+import type { Testimonial } from "@/lib/db/schema";
 
 function JsonLd({ data }: { data: Record<string, unknown> }) {
   return (
@@ -14,11 +15,31 @@ function JsonLd({ data }: { data: Record<string, unknown> }) {
  * LocalBusiness markup. This is what gets a solo photographer into the local
  * pack for "real estate photographer near me", which is where agents look.
  */
-export function LocalBusinessJsonLd({ tenant }: { tenant: Tenant }) {
+export function LocalBusinessJsonLd({
+  tenant,
+  testimonials = [],
+}: {
+  tenant: Tenant;
+  testimonials?: Testimonial[];
+}) {
   const areaServed = tenant.serviceAreas.map((area) => ({
     "@type": "City",
     name: area.city,
   }));
+
+  const review =
+    testimonials.length > 0
+      ? testimonials.map((item) => ({
+          "@type": "Review",
+          author: { "@type": "Person", name: item.agentName },
+          reviewBody: item.body,
+          reviewRating: {
+            "@type": "Rating",
+            ratingValue: item.rating,
+            bestRating: 5,
+          },
+        }))
+      : undefined;
 
   return (
     <JsonLd
@@ -40,6 +61,14 @@ export function LocalBusinessJsonLd({ tenant }: { tenant: Tenant }) {
           "Architectural photography",
           "MLS listing photos",
         ],
+        ...(review ? { review, aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: (
+            testimonials.reduce((sum, item) => sum + item.rating, 0) /
+            testimonials.length
+          ).toFixed(1),
+          reviewCount: testimonials.length,
+        } } : {}),
         hasOfferCatalog: {
           "@type": "OfferCatalog",
           name: "Real estate photography packages",

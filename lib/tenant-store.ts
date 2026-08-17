@@ -3,8 +3,9 @@ import { customAlphabet } from "nanoid";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { ConnectStatus, TenantRow } from "@/lib/db/schema";
 import type { Tenant } from "@/lib/tenant-schema";
-import { studioOrigin } from "@/lib/platform";
+import { publicStudioUrl, studioOrigin } from "@/lib/platform";
 import { buildStudioConfig } from "@/lib/studio-defaults";
+import { normalizeTimeZone } from "@/lib/timezones";
 
 const slugAlphabet = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 10);
 
@@ -50,11 +51,18 @@ export async function listTenantRows(): Promise<TenantRow[]> {
 
 export function tenantFromRow(row: TenantRow): Tenant {
   const config = parseTenantConfig(row);
+  const siteUrl = publicStudioUrl({
+    slug: row.slug,
+    domain: row.domain,
+    domainStatus: row.domainStatus,
+    siteUrl: config.siteUrl,
+  });
   return {
     ...config,
     id: row.id,
     slug: row.slug,
     domain: row.domain,
+    siteUrl,
   };
 }
 
@@ -65,6 +73,7 @@ export async function createTenantFromOnboarding(options: {
   slug?: string;
   timezone?: string;
   accent?: string;
+  currency?: string;
 }) {
   const db = getDb();
   const baseSlug =
@@ -89,6 +98,7 @@ export async function createTenantFromOnboarding(options: {
     photographerName: options.photographerName.trim(),
     email: options.email.trim().toLowerCase(),
     accent: options.accent,
+    currency: options.currency,
   });
   tenant.siteUrl = siteUrl;
 
@@ -100,7 +110,7 @@ export async function createTenantFromOnboarding(options: {
       id,
       slug,
       domain: null,
-      timezone: options.timezone ?? "America/Toronto",
+      timezone: normalizeTimeZone(options.timezone),
       configJson: JSON.stringify(tenant),
       stripeConnectStatus: "not_started",
       storageBytesUsed: 0,
@@ -137,12 +147,63 @@ export async function updateTenantConnect(
   );
 }
 
-export async function setTenantDomain(tenantId: string, domain: string | null) {
+export async function setTenantDomain(
+  tenantId: string,
+  domain: string | null,
+  options?: {
+    domainCfId?: string | null;
+    domainStatus?: string | null;
+  },
+) {
   const db = getDb();
+  const patch: {
+    domain: string | null;
+    updatedAt: string;
+    domainCfId?: string | null;
+    domainStatus?: string | null;
+  } = {
+    domain,
+    updatedAt: nowIso(),
+  };
+  if (options && "domainCfId" in options) {
+    patch.domainCfId = options.domainCfId;
+  } else if (domain === null) {
+    patch.domainCfId = null;
+  }
+  if (options && "domainStatus" in options) {
+    patch.domainStatus = options.domainStatus;
+  } else if (domain === null) {
+    patch.domainStatus = "cleared";
+  }
   await qRun(
     db
       .update(schema.tenants)
-      .set({ domain, updatedAt: nowIso() })
+      .set(patch)
+      .where(eq(schema.tenants.id, tenantId)),
+  );
+}
+
+export async function updateTenantDomainMeta(
+  tenantId: string,
+  options: {
+    domainCfId?: string | null;
+    domainStatus?: string | null;
+  },
+) {
+  const db = getDb();
+  const patch: {
+    updatedAt: string;
+    domainCfId?: string | null;
+    domainStatus?: string | null;
+  } = { updatedAt: nowIso() };
+  if (options.domainCfId !== undefined) patch.domainCfId = options.domainCfId;
+  if (options.domainStatus !== undefined) {
+    patch.domainStatus = options.domainStatus;
+  }
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set(patch)
       .where(eq(schema.tenants.id, tenantId)),
   );
 }
@@ -193,7 +254,7 @@ export async function updateTenantTimezone(tenantId: string, timezone: string) {
   await qRun(
     db
       .update(schema.tenants)
-      .set({ timezone, updatedAt: nowIso() })
+      .set({ timezone: normalizeTimeZone(timezone), updatedAt: nowIso() })
       .where(eq(schema.tenants.id, tenantId)),
   );
   return getTenantRow(tenantId);

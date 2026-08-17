@@ -9,17 +9,21 @@ import { getTenantRow } from "@/lib/tenant-store";
 
 const id = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 14);
 
-export const PLAN_DEFS: Record<
-  PlanId,
-  {
-    label: string;
-    monthlyUsd: number;
-    listingQuota: number;
-    seats: number;
-    storageBytes: number;
-    envPrice: string;
-  }
-> = {
+export type PlanDef = {
+  label: string;
+  monthlyUsd: number;
+  /** Listings included before metered usage starts. */
+  listingQuota: number;
+  seats: number;
+  storageBytes: number;
+  envPrice: string;
+  /** Metered price for listings beyond the included quota (or every listing on payg). */
+  envMeteredPrice: string;
+  /** Per-listing price in dollars once metering kicks in. */
+  meteredUsd: number;
+};
+
+export const PLAN_DEFS: Record<PlanId, PlanDef> = {
   trial: {
     label: "Trial",
     monthlyUsd: 0,
@@ -27,6 +31,18 @@ export const PLAN_DEFS: Record<
     seats: 1,
     storageBytes: 10_737_418_240,
     envPrice: "",
+    envMeteredPrice: "",
+    meteredUsd: 0,
+  },
+  payg: {
+    label: "Pay as you go",
+    monthlyUsd: 0,
+    listingQuota: 0,
+    seats: 1,
+    storageBytes: 21_474_836_480,
+    envPrice: "STRIPE_PRICE_PAYG_BASE",
+    envMeteredPrice: "STRIPE_PRICE_PAYG_LISTING",
+    meteredUsd: 5,
   },
   starter: {
     label: "Starter",
@@ -35,6 +51,8 @@ export const PLAN_DEFS: Record<
     seats: 1,
     storageBytes: 21_474_836_480,
     envPrice: "STRIPE_PRICE_STARTER",
+    envMeteredPrice: "STRIPE_PRICE_OVERAGE_LISTING",
+    meteredUsd: 3,
   },
   growth: {
     label: "Growth",
@@ -43,6 +61,8 @@ export const PLAN_DEFS: Record<
     seats: 3,
     storageBytes: 53_687_091_200,
     envPrice: "STRIPE_PRICE_GROWTH",
+    envMeteredPrice: "STRIPE_PRICE_OVERAGE_LISTING",
+    meteredUsd: 3,
   },
   studio: {
     label: "Studio",
@@ -51,8 +71,29 @@ export const PLAN_DEFS: Record<
     seats: 5,
     storageBytes: 107_374_182_400,
     envPrice: "STRIPE_PRICE_STUDIO",
+    envMeteredPrice: "STRIPE_PRICE_OVERAGE_LISTING",
+    meteredUsd: 3,
   },
 };
+
+/** Per-month price for each active custom hostname on a studio. */
+export const DOMAIN_ADDON_USD = 5;
+
+/** Meter event name configured on the Stripe billing meter. */
+export function listingMeterEvent() {
+  return process.env.STRIPE_METER_EVENT_LISTINGS?.trim() || "listing_completed";
+}
+
+export function meteredPriceIdForPlan(plan: PlanId) {
+  const env = PLAN_DEFS[plan].envMeteredPrice;
+  if (!env) return "";
+  return process.env[env] ?? "";
+}
+
+/** Metering is live only when the plan has a configured metered price. */
+export function meteringEnabled(plan: PlanId) {
+  return Boolean(meteredPriceIdForPlan(plan));
+}
 
 const TRIAL_DAYS = 14;
 
@@ -64,9 +105,22 @@ export function trialEndsAt(from = new Date()) {
   return new Date(from.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
 }
 
+/**
+ * Pay-as-you-go carries every feature because each listing is billed; the flat
+ * tiers gate features and get cheaper per listing as volume grows.
+ */
 export function entitlements(plan: PlanId) {
+  if (plan === "payg") {
+    return {
+      customDomain: true,
+      propertyPages: true,
+      shareKit: true,
+      reports: true,
+      upsells: true,
+    };
+  }
   return {
-    customDomain: plan === "growth" || plan === "studio",
+    customDomain: plan === "trial" || plan === "growth" || plan === "studio",
     propertyPages: plan === "growth" || plan === "studio",
     shareKit: plan === "studio",
     reports: plan === "studio",
@@ -103,6 +157,10 @@ async function resetYearIfNeeded(row: TenantRow) {
   return (await getTenantRow(row.id))!;
 }
 
+/**
+ * Quotas no longer hard-block at the cap: past the included listings we meter
+ * the overage. Access is only refused when billing itself is unhealthy.
+ */
 export async function assertCanCreateListing(tenantId: string) {
   const row = await getTenantRow(tenantId);
   if (!row) return { ok: false as const, error: "Studio not found." };
@@ -113,13 +171,22 @@ export async function assertCanCreateListing(tenantId: string) {
       error: "Your trial or subscription is inactive. Choose a plan in Settings to keep booking.",
     };
   }
-  if (current.listingsUsedYear >= current.listingQuotaAnnual) {
+  if (
+    current.listingsUsedYear >= current.listingQuotaAnnual &&
+    !meteringEnabled(current.plan)
+  ) {
     return {
       ok: false as const,
       error: `Annual listing quota reached (${current.listingQuotaAnnual}). Upgrade your plan.`,
     };
   }
   return { ok: true as const, row: current };
+}
+
+/** Listings past the included quota (all of them on payg) are metered. */
+export function listingIsMetered(row: TenantRow) {
+  if (!meteringEnabled(row.plan)) return false;
+  return row.listingsUsedYear >= row.listingQuotaAnnual;
 }
 
 export async function incrementListingUsage(tenantId: string) {
@@ -136,6 +203,61 @@ export async function incrementListingUsage(tenantId: string) {
       })
       .where(eq(schema.tenants.id, tenantId)),
   );
+
+  if (listingIsMetered(current)) {
+    await reportListingUsage(current);
+  }
+}
+
+/**
+ * Push one metered listing to Stripe. Every attempt is journaled to
+ * billing_events so an invoice can be reconciled against the board.
+ */
+export async function reportListingUsage(row: TenantRow) {
+  const stripe = getStripe();
+  if (!stripe || !row.stripeCustomerId) {
+    await recordBillingEvent({
+      tenantId: row.id,
+      type: "usage.listing.skipped",
+      payload: {
+        plan: row.plan,
+        reason: stripe ? "no_customer" : "stripe_disabled",
+        listingsUsedYear: row.listingsUsedYear,
+      },
+    });
+    return { ok: false as const, skipped: true as const };
+  }
+
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: listingMeterEvent(),
+      payload: {
+        stripe_customer_id: row.stripeCustomerId,
+        value: "1",
+      },
+    });
+    await recordBillingEvent({
+      tenantId: row.id,
+      type: "usage.listing.reported",
+      payload: {
+        plan: row.plan,
+        event: listingMeterEvent(),
+        listingsUsedYear: row.listingsUsedYear,
+        unitUsd: PLAN_DEFS[row.plan].meteredUsd,
+      },
+    });
+    return { ok: true as const };
+  } catch (error) {
+    await recordBillingEvent({
+      tenantId: row.id,
+      type: "usage.listing.failed",
+      payload: {
+        plan: row.plan,
+        error: error instanceof Error ? error.message : "meter event failed",
+      },
+    });
+    return { ok: false as const, error: "Could not report usage." };
+  }
 }
 
 export async function assertCanInviteSeat(tenantId: string) {
@@ -166,8 +288,13 @@ export function priceIdForPlan(plan: Exclude<PlanId, "trial">) {
   return process.env[PLAN_DEFS[plan].envPrice] ?? "";
 }
 
+/**
+ * Base prices only — the overage price is shared by every flat tier, so it
+ * cannot identify a plan.
+ */
 export function planFromPriceId(priceId: string | undefined): PlanId | null {
   if (!priceId) return null;
+  if (priceId === process.env.STRIPE_PRICE_PAYG_BASE) return "payg";
   if (priceId === process.env.STRIPE_PRICE_STARTER) return "starter";
   if (priceId === process.env.STRIPE_PRICE_GROWTH) return "growth";
   if (priceId === process.env.STRIPE_PRICE_STUDIO) return "studio";
@@ -283,12 +410,19 @@ export async function createSubscriptionCheckout(options: {
   const stillTrialing =
     row.trialEndsAt && new Date(row.trialEndsAt).getTime() > Date.now();
 
+  // Metered items carry no quantity; usage arrives via meter events.
+  const meteredPriceId = meteredPriceIdForPlan(options.plan);
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+    { price: priceId, quantity: 1 },
+  ];
+  if (meteredPriceId) lineItems.push({ price: meteredPriceId });
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customer.customerId,
     success_url: options.successUrl,
     cancel_url: options.cancelUrl,
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: lineItems,
     metadata: {
       kind: "subscription",
       tenantId: options.tenantId,
@@ -329,8 +463,11 @@ export async function createBillingPortalSession(tenantId: string, returnUrl: st
 export async function applyStripeSubscription(sub: Stripe.Subscription) {
   const tenantId = sub.metadata?.tenantId;
   if (!tenantId) return { ok: false as const, error: "No tenant on subscription." };
-  const priceId = sub.items.data[0]?.price?.id;
-  const plan = planFromPriceId(priceId) ?? (sub.metadata?.plan as PlanId | undefined);
+  const plan =
+    sub.items.data
+      .map((item) => planFromPriceId(item.price?.id))
+      .find((match): match is PlanId => Boolean(match)) ??
+    (sub.metadata?.plan as PlanId | undefined);
   if (!plan || plan === "trial") {
     return { ok: false as const, error: "Unknown plan price." };
   }
@@ -352,13 +489,19 @@ export async function applyStripeSubscription(sub: Stripe.Subscription) {
   return { ok: true as const, tenantId, plan };
 }
 
-export function billingSummary(row: TenantRow) {
+export function billingSummary(row: TenantRow, options?: { activeDomains?: number }) {
   const access = hasActiveAccess(row);
   const plan = row.plan;
+  const def = PLAN_DEFS[plan];
+  const meteredListings = Math.max(0, row.listingsUsedYear - row.listingQuotaAnnual);
+  const metered = meteringEnabled(plan);
+  const activeDomains = options?.activeDomains ?? 0;
+  const domainUsd = activeDomains * DOMAIN_ADDON_USD;
+
   return {
     plan,
-    planLabel: PLAN_DEFS[plan].label,
-    monthlyUsd: PLAN_DEFS[plan].monthlyUsd,
+    planLabel: def.label,
+    monthlyUsd: def.monthlyUsd,
     subscriptionStatus: row.subscriptionStatus,
     trialEndsAt: row.trialEndsAt,
     listingQuotaAnnual: row.listingQuotaAnnual,
@@ -368,5 +511,20 @@ export function billingSummary(row: TenantRow) {
     entitlements: entitlements(plan),
     platformName: platformName(),
     billingReturn: `${platformPublicUrl()}/admin/settings`,
+    metering: {
+      enabled: metered,
+      unitUsd: def.meteredUsd,
+      meteredListings: metered ? meteredListings : 0,
+      meteredUsd: metered ? meteredListings * def.meteredUsd : 0,
+    },
+    domains: {
+      active: activeDomains,
+      unitUsd: DOMAIN_ADDON_USD,
+      monthlyUsd: domainUsd,
+    },
+    projectedMonthlyUsd:
+      def.monthlyUsd +
+      domainUsd +
+      (metered ? meteredListings * def.meteredUsd : 0),
   };
 }

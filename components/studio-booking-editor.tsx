@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { CurrencySelect } from "@/components/currency-select";
+import { normalizeStudioCurrency } from "@/lib/currency";
 import type { Tenant } from "@/lib/tenant-schema";
 
 export function StudioBookingEditor({
@@ -14,6 +16,9 @@ export function StudioBookingEditor({
   const [turnaround, setTurnaround] = useState(tenant.turnaround);
   const [email, setEmail] = useState(tenant.email);
   const [phone, setPhone] = useState(tenant.phone ?? "");
+  const [currency, setCurrency] = useState(
+    normalizeStudioCurrency(tenant.seo.currency),
+  );
   const [gateEnabled, setGateEnabled] = useState(Boolean(gate?.enabled));
   const [region, setRegion] = useState<"CA" | "US" | "none">(gate?.region ?? "none");
   const [prefixes, setPrefixes] = useState((gate?.prefixes ?? []).join(", "));
@@ -38,6 +43,7 @@ export function StudioBookingEditor({
           turnaround,
           email,
           phone,
+          currency,
           serviceAreaGate: {
             enabled: gateEnabled,
             region,
@@ -93,6 +99,15 @@ export function StudioBookingEditor({
         <label className="field">
           <span>Phone</span>
           <input value={phone} onChange={(event) => setPhone(event.target.value)} />
+        </label>
+        <label className="field">
+          <span>Currency for packages &amp; galleries</span>
+          <CurrencySelect value={currency} onChange={setCurrency} required />
+          <span className="field-hint">
+            New quotes and gallery checkouts use this currency. Existing unpaid
+            orders keep the currency they were booked with. Studiofront SaaS
+            billing stays in USD.
+          </span>
         </label>
       </section>
 

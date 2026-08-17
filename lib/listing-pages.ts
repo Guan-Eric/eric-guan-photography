@@ -1,9 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { entitlements } from "@/lib/billing";
-import { getDb, qGet, qRun, schema } from "@/lib/db";
+import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { ListingPage, Order } from "@/lib/db/schema";
 import { getGalleryByOrderId, listMedia } from "@/lib/galleries";
+import type { ListingSection, OpenHouse } from "@/lib/listing-content";
+import { type ListingTheme, listingTheme } from "@/lib/listing-themes";
+import { listMediaLinksForOrder, visibleLinks } from "@/lib/media-links";
 import { getTenantRow } from "@/lib/tenant-store";
 import { getTenant } from "@/lib/tenants";
 
@@ -75,7 +78,9 @@ export async function publishListingPage(order: Order) {
   const gallery = await getGalleryByOrderId(order.id, order.tenantId);
   const coords = existing?.mapLat
     ? { lat: existing.mapLat, lng: existing.mapLng }
-    : await geocode(order.propertyAddress);
+    : order.mapLat && order.mapLng
+      ? { lat: order.mapLat, lng: order.mapLng }
+      : await geocode(order.propertyAddress);
 
   const db = getDb();
   const publishedAt = nowIso();
@@ -127,6 +132,73 @@ export async function publishListingPage(order: Order) {
   return { ok: true as const, page: (await getListingPageByOrder(order.id, order.tenantId))! };
 }
 
+export async function listListingPages(tenantId: string) {
+  const db = getDb();
+  return qAll<ListingPage>(
+    db
+      .select()
+      .from(schema.listingPages)
+      .where(eq(schema.listingPages.tenantId, tenantId))
+      .orderBy(desc(schema.listingPages.createdAt)),
+  );
+}
+
+export async function getListingPage(pageId: string, tenantId: string) {
+  const db = getDb();
+  const page = await qGet<ListingPage>(
+    db.select().from(schema.listingPages).where(eq(schema.listingPages.id, pageId)),
+  );
+  if (!page || page.tenantId !== tenantId) return null;
+  return page;
+}
+
+export type ListingPagePatch = {
+  title?: string;
+  headline?: string | null;
+  description?: string | null;
+  theme?: ListingTheme;
+  heroAssetId?: string | null;
+  sections?: ListingSection[];
+  openHouses?: OpenHouse[];
+  leadCapture?: boolean;
+  brandMode?: "branded" | "unbranded";
+  published?: boolean;
+};
+
+export async function updateListingPage(
+  pageId: string,
+  tenantId: string,
+  patch: ListingPagePatch,
+) {
+  const page = await getListingPage(pageId, tenantId);
+  if (!page) return { ok: false as const, error: "Listing page not found." };
+
+  const updatedAt = nowIso();
+  const values: Record<string, unknown> = { updatedAt };
+  if (patch.title !== undefined) values.title = patch.title.trim() || page.title;
+  if (patch.headline !== undefined) values.headline = patch.headline?.trim() || null;
+  if (patch.description !== undefined) {
+    values.description = patch.description?.trim() || null;
+  }
+  if (patch.theme !== undefined) values.theme = listingTheme(patch.theme);
+  if (patch.heroAssetId !== undefined) values.heroAssetId = patch.heroAssetId || null;
+  if (patch.sections !== undefined) values.sectionsJson = JSON.stringify(patch.sections);
+  if (patch.openHouses !== undefined) {
+    values.openHouseJson = JSON.stringify(patch.openHouses);
+  }
+  if (patch.leadCapture !== undefined) values.leadCapture = patch.leadCapture ? 1 : 0;
+  if (patch.brandMode !== undefined) values.brandMode = patch.brandMode;
+  if (patch.published !== undefined) {
+    values.publishedAt = patch.published ? (page.publishedAt ?? updatedAt) : null;
+  }
+
+  const db = getDb();
+  await qRun(
+    db.update(schema.listingPages).set(values).where(eq(schema.listingPages.id, pageId)),
+  );
+  return { ok: true as const, page: (await getListingPage(pageId, tenantId))! };
+}
+
 export function listingPagePublicUrl(page: ListingPage, siteUrl: string) {
   return new URL(`/p/${page.slug}`, siteUrl).toString();
 }
@@ -136,9 +208,23 @@ export async function listingPageMedia(page: ListingPage) {
   return listMedia(page.galleryId);
 }
 
+/** Video / tour / floor-plan links attached to the shoot behind this page. */
+export async function listingPageLinks(page: ListingPage) {
+  const links = await listMediaLinksForOrder(page.orderId, page.tenantId);
+  return visibleLinks(
+    links,
+    page.brandMode === "unbranded" ? "unbranded" : "branded",
+  );
+}
+
 export async function listingPageForPublic(tenantId: string, slug: string) {
   const page = await getListingPageBySlug(tenantId, slug);
   if (!page || !page.publishedAt) return null;
   const tenant = await getTenant(tenantId);
-  return { page, tenant, media: await listingPageMedia(page) };
+  return {
+    page,
+    tenant,
+    media: await listingPageMedia(page),
+    links: await listingPageLinks(page),
+  };
 }

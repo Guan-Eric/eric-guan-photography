@@ -1,12 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { NextResponse } from "next/server";
 import { customAlphabet } from "nanoid";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { Membership, MembershipRole, User } from "@/lib/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { passwordIssues } from "@/lib/password-rules";
-import { cookieDomain } from "@/lib/platform";
+import { cookieDomain, hostnameFromHost, isLocalRequestHost } from "@/lib/platform";
 
 const SESSION_COOKIE = "eg_photographer_session";
 const ACTIVE_TENANT_COOKIE = "eg_active_tenant";
@@ -34,8 +35,13 @@ function sessionSecure() {
   );
 }
 
-function sessionCookieOptions() {
-  const domain = cookieDomain();
+async function sessionCookieOptions() {
+  const host = await requestHost();
+  return cookieOptionsForHost(host);
+}
+
+function cookieOptionsForHost(host: string | null) {
+  const domain = cookieDomain(hostnameFromHost(host));
   return {
     httpOnly: true,
     sameSite: "lax" as const,
@@ -46,32 +52,112 @@ function sessionCookieOptions() {
   };
 }
 
+async function requestHost() {
+  const headerStore = await headers();
+  return headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? null;
+}
+
+function hostOnlyClearOptions() {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: sessionSecure(),
+    path: "/",
+    maxAge: 0,
+  };
+}
+
+function localhostDomainClearOptions() {
+  return {
+    ...hostOnlyClearOptions(),
+    domain: ".localhost",
+  };
+}
+
+type CookieWriter = {
+  set: (
+    name: string,
+    value: string,
+    options?: {
+      httpOnly?: boolean;
+      sameSite?: "lax" | "strict" | "none";
+      secure?: boolean;
+      path?: string;
+      maxAge?: number;
+      domain?: string;
+    },
+  ) => void;
+};
+
+/** Drop both host-only and Domain=.localhost copies so one doesn't shadow the other. */
+function purgeLocalSessionCookies(writer: CookieWriter, host?: string | null) {
+  if (!isLocalRequestHost(host)) return;
+  writer.set(SESSION_COOKIE, "", hostOnlyClearOptions());
+  writer.set(ACTIVE_TENANT_COOKIE, "", hostOnlyClearOptions());
+  writer.set(SESSION_COOKIE, "", localhostDomainClearOptions());
+  writer.set(ACTIVE_TENANT_COOKIE, "", localhostDomainClearOptions());
+  // Also expire any mistakenly scoped production-domain cookies from local env.
+  const root = process.env.PLATFORM_ROOT_DOMAIN?.toLowerCase();
+  if (root && root !== "localhost" && root !== "127.0.0.1") {
+    writer.set(SESSION_COOKIE, "", { ...hostOnlyClearOptions(), domain: `.${root}` });
+    writer.set(ACTIVE_TENANT_COOKIE, "", { ...hostOnlyClearOptions(), domain: `.${root}` });
+  }
+}
+
 export type PhotographerSession = {
   user: User;
   memberships: Membership[];
   activeTenantId: string | null;
 };
 
+/**
+ * Prefer this in Route Handlers so Set-Cookie is attached to the JSON response.
+ */
+export function attachPhotographerSession(
+  response: NextResponse,
+  userId: string,
+  tenantId?: string,
+  host?: string | null,
+) {
+  purgeLocalSessionCookies(response.cookies, host);
+  const opts = cookieOptionsForHost(host ?? null);
+  const issuedAt = Date.now().toString();
+  const payload = `${userId}.${issuedAt}`;
+  response.cookies.set(SESSION_COOKIE, `${payload}.${sign(payload)}`, opts);
+  if (tenantId) {
+    response.cookies.set(ACTIVE_TENANT_COOKIE, tenantId, opts);
+  } else {
+    response.cookies.set(ACTIVE_TENANT_COOKIE, "", { ...opts, maxAge: 0 });
+  }
+  return response;
+}
+
 export async function createPhotographerSession(userId: string, tenantId?: string) {
   const issuedAt = Date.now().toString();
   const payload = `${userId}.${issuedAt}`;
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, `${payload}.${sign(payload)}`, sessionCookieOptions());
+  const host = await requestHost();
+  purgeLocalSessionCookies(jar, host);
+  const opts = await sessionCookieOptions();
+  jar.set(SESSION_COOKIE, `${payload}.${sign(payload)}`, opts);
   if (tenantId) {
-    jar.set(ACTIVE_TENANT_COOKIE, tenantId, sessionCookieOptions());
+    jar.set(ACTIVE_TENANT_COOKIE, tenantId, opts);
   }
 }
 
 export async function clearPhotographerSession() {
   const jar = await cookies();
-  const expired = { ...sessionCookieOptions(), maxAge: 0 };
+  const host = await requestHost();
+  purgeLocalSessionCookies(jar, host);
+  const opts = await sessionCookieOptions();
+  const expired = { ...opts, maxAge: 0 };
   jar.set(SESSION_COOKIE, "", expired);
   jar.set(ACTIVE_TENANT_COOKIE, "", expired);
 }
 
 export async function setActiveTenantCookie(tenantId: string) {
   const jar = await cookies();
-  const opts = sessionCookieOptions();
+  const opts = await sessionCookieOptions();
   jar.set(ACTIVE_TENANT_COOKIE, tenantId, opts);
 }
 
@@ -212,12 +298,14 @@ export async function requestPasswordReset(email: string, origin: string) {
     }),
   );
 
-  const { sendEmail } = await import("@/lib/email");
-  await sendEmail({
-    to: user.email,
-    subject: "Reset your password",
-    text: `Reset your password within one hour:\n\n${origin}/reset-password?token=${token}\n\nIf you did not ask for this, ignore this email.`,
-  });
+  const { passwordResetEmail, sendEmail } = await import("@/lib/email");
+  await sendEmail(
+    passwordResetEmail({
+      to: user.email,
+      name: user.name,
+      resetUrl: `${origin}/reset-password?token=${token}`,
+    }),
+  );
 
   return { ok: true as const };
 }

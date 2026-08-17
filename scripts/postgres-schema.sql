@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS tenants (
   id TEXT PRIMARY KEY NOT NULL,
   slug TEXT NOT NULL,
   domain TEXT,
+  domain_cf_id TEXT,
+  domain_status TEXT,
   timezone TEXT NOT NULL DEFAULT 'America/Toronto',
   config_json TEXT NOT NULL,
   stripe_connect_account_id TEXT,
@@ -44,6 +46,10 @@ CREATE TABLE IF NOT EXISTS tenants (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS tenants_domain_unique_idx
+  ON tenants (domain)
+  WHERE domain IS NOT NULL AND domain <> '';
 
 CREATE TABLE IF NOT EXISTS memberships (
   id TEXT PRIMARY KEY NOT NULL,
@@ -87,6 +93,9 @@ CREATE TABLE IF NOT EXISTS orders (
   parking_notes TEXT,
   meeting_contact TEXT,
   notes TEXT,
+  place_id TEXT,
+  map_lat TEXT,
+  map_lng TEXT,
   public_token TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -100,6 +109,9 @@ CREATE TABLE IF NOT EXISTS appointments (
   ends_at TEXT NOT NULL,
   buffer_minutes INTEGER NOT NULL DEFAULT 45,
   postal_code TEXT NOT NULL,
+  on_my_way_at TEXT,
+  arrived_at TEXT,
+  completed_at TEXT,
   created_at TEXT NOT NULL
 );
 
@@ -136,6 +148,22 @@ CREATE TABLE IF NOT EXISTS media_assets (
   path_web TEXT NOT NULL,
   path_proof TEXT NOT NULL,
   path_mls TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS media_links (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant_id TEXT NOT NULL,
+  order_id TEXT NOT NULL REFERENCES orders(id),
+  gallery_id TEXT REFERENCES galleries(id),
+  listing_page_id TEXT,
+  kind TEXT NOT NULL,
+  provider TEXT NOT NULL DEFAULT 'link',
+  url TEXT,
+  storage_path TEXT,
+  title TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  brand_mode TEXT NOT NULL DEFAULT 'both',
   created_at TEXT NOT NULL
 );
 
@@ -177,7 +205,27 @@ CREATE TABLE IF NOT EXISTS listing_pages (
   brokerage TEXT,
   map_lat TEXT,
   map_lng TEXT,
+  headline TEXT,
+  description TEXT,
+  theme TEXT NOT NULL DEFAULT 'gallery',
+  hero_asset_id TEXT,
+  sections_json TEXT NOT NULL DEFAULT '[]',
+  open_house_json TEXT NOT NULL DEFAULT '[]',
+  lead_capture INTEGER NOT NULL DEFAULT 1,
   published_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS listing_domains (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant_id TEXT NOT NULL,
+  listing_page_id TEXT NOT NULL REFERENCES listing_pages(id),
+  hostname TEXT NOT NULL,
+  cf_id TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  purchased_by_email TEXT,
+  paid_until TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -211,6 +259,57 @@ CREATE TABLE IF NOT EXISTS reminder_sends (
   sent_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS agent_login_tokens (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  token TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  consumed_at TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS referral_codes (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant_id TEXT NOT NULL,
+  agent_email TEXT NOT NULL,
+  code TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS referral_credits (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant_id TEXT NOT NULL,
+  agent_email TEXT NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'CAD',
+  source_order_id TEXT,
+  applied_order_id TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS review_requests (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant_id TEXT NOT NULL,
+  order_id TEXT NOT NULL,
+  agent_email TEXT NOT NULL,
+  token TEXT NOT NULL,
+  sent_at TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS testimonials (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant_id TEXT NOT NULL,
+  order_id TEXT,
+  agent_name TEXT NOT NULL,
+  agent_email TEXT NOT NULL,
+  body TEXT NOT NULL,
+  rating INTEGER NOT NULL DEFAULT 5,
+  approved_at TEXT,
+  created_at TEXT NOT NULL
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users(email);
 CREATE UNIQUE INDEX IF NOT EXISTS tenants_slug_idx ON tenants(slug);
 CREATE UNIQUE INDEX IF NOT EXISTS memberships_user_tenant_idx ON memberships(user_id, tenant_id);
@@ -219,6 +318,10 @@ CREATE INDEX IF NOT EXISTS appointments_tenant_starts_idx ON appointments(tenant
 CREATE UNIQUE INDEX IF NOT EXISTS galleries_token_idx ON galleries(public_token);
 CREATE INDEX IF NOT EXISTS galleries_order_idx ON galleries(order_id);
 CREATE INDEX IF NOT EXISTS media_gallery_idx ON media_assets(gallery_id, sort_order);
+CREATE UNIQUE INDEX IF NOT EXISTS listing_domains_hostname_idx ON listing_domains(hostname);
+CREATE INDEX IF NOT EXISTS listing_domains_tenant_idx ON listing_domains(tenant_id, status);
+CREATE INDEX IF NOT EXISTS media_links_tenant_idx ON media_links(tenant_id, kind);
+CREATE INDEX IF NOT EXISTS media_links_gallery_idx ON media_links(gallery_id, sort_order);
 CREATE INDEX IF NOT EXISTS upload_rate_tenant_idx ON upload_rate_limits(tenant_id);
 CREATE UNIQUE INDEX IF NOT EXISTS listing_pages_tenant_slug_idx ON listing_pages(tenant_id, slug);
 CREATE INDEX IF NOT EXISTS listing_pages_order_idx ON listing_pages(order_id);
@@ -226,3 +329,8 @@ CREATE INDEX IF NOT EXISTS gallery_events_gallery_idx ON gallery_events(gallery_
 CREATE UNIQUE INDEX IF NOT EXISTS membership_invites_token_idx ON membership_invites(token);
 CREATE INDEX IF NOT EXISTS billing_events_tenant_idx ON billing_events(tenant_id);
 CREATE INDEX IF NOT EXISTS reminder_sends_order_kind_idx ON reminder_sends(order_id, kind);
+CREATE UNIQUE INDEX IF NOT EXISTS agent_login_tokens_token_idx ON agent_login_tokens(token);
+CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_tenant_code_idx ON referral_codes(tenant_id, code);
+CREATE INDEX IF NOT EXISTS referral_credits_agent_idx ON referral_credits(tenant_id, agent_email);
+CREATE UNIQUE INDEX IF NOT EXISTS review_requests_token_idx ON review_requests(token);
+CREATE INDEX IF NOT EXISTS testimonials_tenant_idx ON testimonials(tenant_id, approved_at);

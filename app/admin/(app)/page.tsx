@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { AdminOrderBoard } from "@/components/admin-order-board";
 import { getPhotographerSession } from "@/lib/auth";
-import { listMedia, listRecentGalleries } from "@/lib/galleries";
+import { listGallerySummaries } from "@/lib/galleries";
 import { listOrders } from "@/lib/orders";
-import { studioOrigin } from "@/lib/platform";
+import { publicStudioUrl } from "@/lib/platform";
 import { getTenant } from "@/lib/tenants";
 
 export const runtime = "nodejs";
@@ -24,20 +24,13 @@ export default async function AdminPage({
 
   const query = await searchParams;
   const tenant = await getTenant(session.activeTenantId);
-  const siteUrl = studioOrigin({ slug: tenant.slug, domain: tenant.domain });
+  const siteUrl = publicStudioUrl({
+    slug: tenant.slug,
+    domain: tenant.domain,
+    siteUrl: tenant.siteUrl,
+  });
   const orders = await listOrders(tenant.id);
-  const recent = await listRecentGalleries(tenant.id);
-  const galleries = await Promise.all(
-    recent.map(async (gallery) => ({
-      id: gallery.id,
-      orderId: gallery.orderId,
-      state: gallery.state,
-      publicToken: gallery.publicToken,
-      trustTier: gallery.trustTier,
-      brandMode: gallery.brandMode,
-      mediaCount: (await listMedia(gallery.id)).length,
-    })),
-  );
+  const galleries = await listGallerySummaries(tenant.id);
 
   return (
     <AdminOrderBoard

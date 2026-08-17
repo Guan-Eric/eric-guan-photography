@@ -84,6 +84,11 @@ export type Package = {
   priceCents?: number;
   /** Square-footage quote bands. When absent, `priceCents` is used as a single band. */
   priceBands?: PriceBand[];
+  /**
+   * Agents can request the shoot online; you confirm the price after reviewing
+   * the property details. Requires `durationMinutes` for scheduling.
+   */
+  quoteLater?: boolean;
 };
 
 export type ProcessStep = {

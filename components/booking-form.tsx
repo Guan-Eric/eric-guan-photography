@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { PreferredTimesPicker } from "@/components/preferred-times-picker";
+import { CoachTour, type CoachStep } from "@/components/coach-tour";
 import type { PreferredSlot } from "@/lib/preferred-slots";
-import { normalizePostalCode } from "@/lib/service-area";
+import { isInServiceArea, normalizePostalCode } from "@/lib/service-area";
 import { isBookablePackage } from "@/lib/quoting";
-import type { Package } from "@/lib/tenant-schema";
+import type { Package, ServiceAreaGate } from "@/lib/tenant-schema";
 
 type Slot = { start: string; end: string; label: string };
 
@@ -20,6 +22,7 @@ type QuoteOk = {
   durationMinutes: number;
   squareFootage: number;
   bandLabel: string;
+  quoteLater?: boolean;
 };
 
 type Props = {
@@ -28,6 +31,8 @@ type Props = {
   email: string;
   defaultCity?: string;
   timeZone?: string;
+  serviceAreaGate?: ServiceAreaGate | null;
+  serviceAreaMessage?: string;
 };
 
 type FieldKey =
@@ -50,6 +55,34 @@ const emptyAccess = {
   parkingNotes: "",
   meetingContact: "",
 };
+
+const AGENT_BOOK_TOUR: CoachStep[] = [
+  {
+    selector: '[data-tour="book-package"]',
+    title: "Choose package & size",
+    body: "Pick the shoot package and enter square footage so the quote updates.",
+  },
+  {
+    selector: '[data-tour="book-property"]',
+    title: "Property details",
+    body: "Add the full address and postal/ZIP so the photographer can find the listing.",
+  },
+  {
+    selector: '[data-tour="book-times"]',
+    title: "Preferred times",
+    body: "Select one to three start times that work. The photographer confirms one.",
+  },
+  {
+    selector: '[data-tour="book-contact"]',
+    title: "Your contact",
+    body: "Name and email are required so you get confirmation and the gallery link.",
+  },
+  {
+    selector: '[data-tour="book-submit"]',
+    title: "Send the request",
+    body: "Submit when ready. You’ll get an email; no payment until photos are delivered.",
+  },
+];
 
 function FieldLabel({
   children,
@@ -81,6 +114,8 @@ export function BookingForm({
   email,
   defaultCity = "",
   timeZone = "America/Toronto",
+  serviceAreaGate,
+  serviceAreaMessage,
 }: Props) {
   const router = useRouter();
   const bookable = useMemo(
@@ -108,12 +143,25 @@ export function BookingForm({
   const [propertyAddress, setPropertyAddress] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState(defaultCity);
+  const [placeId, setPlaceId] = useState("");
+  const [mapLat, setMapLat] = useState("");
+  const [mapLng, setMapLng] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [agentName, setAgentName] = useState("");
   const [agentEmail, setAgentEmail] = useState("");
   const [agentPhone, setAgentPhone] = useState("");
   const [brokerage, setBrokerage] = useState("");
   const [notes, setNotes] = useState("");
   const [access, setAccess] = useState(emptyAccess);
+
+  useEffect(() => {
+    try {
+      const code = new URLSearchParams(window.location.search).get("ref");
+      if (code) setReferralCode(code.trim());
+    } catch {
+      // ignore
+    }
+  }, []);
 
   function clearFieldError(key: FieldKey) {
     setFieldErrors((current) => {
@@ -245,6 +293,10 @@ export function BookingForm({
           propertyAddress,
           postalCode: normalizePostalCode(postalCode),
           city,
+          placeId: placeId || undefined,
+          mapLat: mapLat || undefined,
+          mapLng: mapLng || undefined,
+          referralCode: referralCode || undefined,
           preferredSlots: selectedSlots,
           agentName,
           agentEmail,
@@ -291,7 +343,7 @@ export function BookingForm({
         required.
       </p>
 
-      <section className="booking-card">
+      <section className="booking-card" data-tour="book-package">
         <h2>1. Package &amp; size</h2>
         <div className="form-grid">
           <label
@@ -368,7 +420,7 @@ export function BookingForm({
         </div>
       </section>
 
-      <section className="booking-card">
+      <section className="booking-card" data-tour="book-property">
         <h2>2. Property</h2>
         <div className="form-grid">
           <label
@@ -376,18 +428,41 @@ export function BookingForm({
             data-field="propertyAddress"
           >
             <FieldLabel required>Property address</FieldLabel>
-            <input
+            <AddressAutocomplete
               value={propertyAddress}
-              placeholder="123 Main Street"
-              aria-invalid={Boolean(fieldErrors.propertyAddress)}
-              aria-describedby={
+              invalid={Boolean(fieldErrors.propertyAddress)}
+              describedBy={
                 fieldErrors.propertyAddress ? "err-propertyAddress" : undefined
               }
-              onChange={(event) => {
-                setPropertyAddress(event.target.value);
+              required
+              onChange={(next) => {
+                setPropertyAddress(next);
+                setPlaceId("");
                 clearFieldError("propertyAddress");
               }}
-              required
+              onResolved={(address) => {
+                setPropertyAddress(address.line1 || address.formatted);
+                setCity(address.city || city);
+                setPostalCode(address.postalCode);
+                setPlaceId(address.placeId);
+                setMapLat(address.lat);
+                setMapLng(address.lng);
+                clearFieldError("propertyAddress");
+                clearFieldError("city");
+                clearFieldError("postalCode");
+                if (
+                  address.postalCode &&
+                  !isInServiceArea(address.postalCode, {
+                    serviceAreaGate,
+                  } as import("@/lib/tenant-schema").Tenant) &&
+                  serviceAreaMessage
+                ) {
+                  setFieldErrors((current) => ({
+                    ...current,
+                    postalCode: serviceAreaMessage,
+                  }));
+                }
+              }}
             />
             {fieldErrors.propertyAddress ? (
               <span className="field-error" id="err-propertyAddress">
@@ -542,6 +617,7 @@ export function BookingForm({
       <section
         className={`booking-card${fieldErrors.preferredSlots ? " is-invalid" : ""}`}
         data-field="preferredSlots"
+        data-tour="book-times"
       >
         <h2>
           3. Preferred times{" "}
@@ -564,7 +640,7 @@ export function BookingForm({
         />
       </section>
 
-      <section className="booking-card">
+      <section className="booking-card" data-tour="book-contact">
         <h2>4. Your details</h2>
         <div className="form-grid">
           <label
@@ -642,7 +718,12 @@ export function BookingForm({
         </p>
       ) : null}
 
-      <button className="btn btn-solid" type="submit" disabled={submitting}>
+      <button
+        className="btn btn-solid"
+        type="submit"
+        disabled={submitting}
+        data-tour="book-submit"
+      >
         {submitting ? "Sending request…" : "Request this shoot"}
       </button>
       {triedSubmit && Object.keys(fieldErrors).length > 0 ? (
@@ -651,6 +732,7 @@ export function BookingForm({
           {Object.keys(fieldErrors).length === 1 ? "" : "s"} still need attention.
         </p>
       ) : null}
+      <CoachTour tourId="agent_book_v1" steps={AGENT_BOOK_TOUR} />
     </form>
   );
 }

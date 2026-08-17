@@ -12,14 +12,20 @@ export type DomainVerification = {
 
 /**
  * Expected DNS target for custom studio domains.
- * Prefer CNAME → PLATFORM_ROOT_DOMAIN (or apex A if that is how the platform is published).
+ * Prefer CNAME → CUSTOM_DOMAIN_TARGET (sites.<root>), else sites.<PLATFORM_ROOT_DOMAIN>.
  */
 export function expectedDomainTarget() {
-  return (
-    process.env.CUSTOM_DOMAIN_TARGET ??
-    process.env.PLATFORM_ROOT_DOMAIN ??
-    "localhost"
+  const custom = process.env.CUSTOM_DOMAIN_TARGET?.trim().toLowerCase();
+  if (custom) return custom;
+  const root = (
+    process.env.PLATFORM_ROOT_DOMAIN ?? "localhost"
   ).toLowerCase();
+  if (!root || root === "localhost") return "localhost";
+  return `sites.${root}`;
+}
+
+export function normalizeCustomDomain(input: string) {
+  return normalizeDomain(input);
 }
 
 function normalizeDomain(input: string) {

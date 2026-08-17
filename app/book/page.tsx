@@ -48,6 +48,8 @@ export default async function BookPage({
               email={tenant.email}
               defaultCity={defaultCity}
               timeZone={row?.timezone ?? "America/Toronto"}
+              serviceAreaGate={tenant.serviceAreaGate}
+              serviceAreaMessage={tenant.serviceAreaGate?.message}
             />
           </div>
         </section>

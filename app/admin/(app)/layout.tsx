@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { StudioAppShell } from "@/components/studio-app-shell";
 import { getPhotographerSession } from "@/lib/auth";
-import { studioOrigin } from "@/lib/platform";
+import { publicStudioUrl } from "@/lib/platform";
 import { getTenant } from "@/lib/tenants";
 
 export const runtime = "nodejs";
@@ -22,9 +22,10 @@ export default async function StudioAppLayout({
   if (!session.activeTenantId) redirect("/onboarding");
 
   const tenant = await getTenant(session.activeTenantId);
-  const siteUrl = studioOrigin({
+  const siteUrl = publicStudioUrl({
     slug: tenant.slug,
     domain: tenant.domain,
+    siteUrl: tenant.siteUrl,
   });
 
   return (

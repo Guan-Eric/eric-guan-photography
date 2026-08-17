@@ -75,6 +75,34 @@ const checks = [
     present("STRIPE_WEBHOOK_SECRET"),
   ),
   check(
+    "Pay-as-you-go prices (PAYG_BASE + PAYG_LISTING)",
+    present("STRIPE_PRICE_PAYG_BASE", "STRIPE_PRICE_PAYG_LISTING"),
+    present("STRIPE_PRICE_PAYG_BASE", "STRIPE_PRICE_PAYG_LISTING")
+      ? undefined
+      : "optional; without these the $0/mo + $5/listing plan is hidden",
+  ),
+  check(
+    "Listing overage price (STRIPE_PRICE_OVERAGE_LISTING)",
+    present("STRIPE_PRICE_OVERAGE_LISTING"),
+    present("STRIPE_PRICE_OVERAGE_LISTING")
+      ? undefined
+      : "optional; without it flat tiers hard-block at their listing cap",
+  ),
+  check(
+    "Domain add-on price (STRIPE_PRICE_DOMAIN_ADDON)",
+    present("STRIPE_PRICE_DOMAIN_ADDON"),
+    present("STRIPE_PRICE_DOMAIN_ADDON")
+      ? undefined
+      : "optional; without it custom domains are not billed per domain",
+  ),
+  check(
+    "Address lookup (GOOGLE_PLACES_API_KEY)",
+    present("GOOGLE_PLACES_API_KEY"),
+    present("GOOGLE_PLACES_API_KEY")
+      ? undefined
+      : "optional; address fields fall back to plain text inputs",
+  ),
+  check(
     "Resend (RESEND_API_KEY)",
     present("RESEND_API_KEY"),
     present("RESEND_API_KEY") ? undefined : "Without this, email logs to console only",
@@ -103,14 +131,25 @@ const checks = [
       ? undefined
       : "e.g. Studiofront <hello@studiofront.ca>",
   ),
+  check(
+    "Custom domains (CLOUDFLARE_ZONE_ID + CF_SAAS_API_TOKEN)",
+    present("CLOUDFLARE_ZONE_ID", "CF_SAAS_API_TOKEN"),
+    present("CLOUDFLARE_ZONE_ID", "CF_SAAS_API_TOKEN")
+      ? "configured — Custom Hostname provisioning enabled"
+      : "optional until vanity domains; DNS save still works, SSL attach skipped",
+  ),
 ];
 
 let failed = 0;
 for (const item of checks) {
   const mark = item.ok ? "PASS" : "FAIL";
-  if (!item.ok) failed += 1;
+  // Custom domains are optional — warn only
+  const isOptionalCustom =
+    item.label.startsWith("Custom domains") && !item.ok;
+  if (!item.ok && !isOptionalCustom) failed += 1;
+  const displayMark = isOptionalCustom ? "WARN" : mark;
   const suffix = item.detail ? ` — ${item.detail}` : "";
-  console.log(`${mark}  ${item.label}${suffix}`);
+  console.log(`${displayMark}  ${item.label}${suffix}`);
 }
 
 console.log(

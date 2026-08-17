@@ -4,6 +4,7 @@ import { bigint, integer, pgTable, text } from "drizzle-orm/pg-core";
  * Order statuses for the photographer admin board.
  * Flow: requested → confirmed → shot → editing → delivered → paid
  * `cancelled` is a terminal escape hatch from any pre-delivery state.
+ * `delivered` / `paid` are set by Publish / Unlock (or Stripe), not the status dropdown.
  */
 export const ORDER_STATUSES = [
   "requested",
@@ -15,7 +16,17 @@ export const ORDER_STATUSES = [
   "cancelled",
 ] as const;
 
+/** Statuses the admin may set via PATCH / dropdown. */
+export const MANUAL_ORDER_STATUSES = [
+  "requested",
+  "confirmed",
+  "shot",
+  "editing",
+  "cancelled",
+] as const;
+
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
+export type ManualOrderStatus = (typeof MANUAL_ORDER_STATUSES)[number];
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   requested: "Requested",
@@ -29,6 +40,10 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 
 export function orderStatusLabel(status: string) {
   return ORDER_STATUS_LABELS[status as OrderStatus] ?? status;
+}
+
+export function isManualOrderStatus(status: string): status is ManualOrderStatus {
+  return (MANUAL_ORDER_STATUSES as readonly string[]).includes(status);
 }
 
 export const GALLERY_STATES = ["proofing", "unlocked", "archived"] as const;
@@ -48,8 +63,16 @@ export const CONNECT_STATUSES = [
 ] as const;
 export type ConnectStatus = (typeof CONNECT_STATUSES)[number];
 
-export const PLANS = ["trial", "starter", "growth", "studio"] as const;
+export const PLANS = ["trial", "payg", "starter", "growth", "studio"] as const;
 export type PlanId = (typeof PLANS)[number];
+
+/** Plans a studio can buy. `trial` is granted, never purchased. */
+export const PURCHASABLE_PLANS = ["payg", "starter", "growth", "studio"] as const;
+export type PurchasablePlanId = (typeof PURCHASABLE_PLANS)[number];
+
+export function isPurchasablePlan(value: string): value is PurchasablePlanId {
+  return (PURCHASABLE_PLANS as readonly string[]).includes(value);
+}
 
 export const SUBSCRIPTION_STATUSES = [
   "trialing",
@@ -87,6 +110,8 @@ export const tenants = pgTable("tenants", {
   id: text("id").primaryKey(),
   slug: text("slug").notNull(),
   domain: text("domain"),
+  domainCfId: text("domain_cf_id"),
+  domainStatus: text("domain_status"),
   timezone: text("timezone").notNull().default("America/Toronto"),
   configJson: text("config_json").notNull(),
   stripeConnectAccountId: text("stripe_connect_account_id"),
@@ -171,6 +196,10 @@ export const orders = pgTable("orders", {
   meetingContact: text("meeting_contact"),
   notes: text("notes"),
 
+  placeId: text("place_id"),
+  mapLat: text("map_lat"),
+  mapLng: text("map_lng"),
+
   publicToken: text("public_token").notNull(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -186,6 +215,9 @@ export const appointments = pgTable("appointments", {
   endsAt: text("ends_at").notNull(),
   bufferMinutes: integer("buffer_minutes").notNull().default(45),
   postalCode: text("postal_code").notNull(),
+  onMyWayAt: text("on_my_way_at"),
+  arrivedAt: text("arrived_at"),
+  completedAt: text("completed_at"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -231,6 +263,27 @@ export const mediaAssets = pgTable("media_assets", {
   createdAt: text("created_at").notNull(),
 });
 
+export const MEDIA_LINK_KINDS = ["video", "tour", "floorplan", "doc"] as const;
+export type MediaLinkKind = (typeof MEDIA_LINK_KINDS)[number];
+
+export const mediaLinks = pgTable("media_links", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  orderId: text("order_id")
+    .notNull()
+    .references(() => orders.id),
+  galleryId: text("gallery_id").references(() => galleries.id),
+  listingPageId: text("listing_page_id"),
+  kind: text("kind").$type<MediaLinkKind>().notNull(),
+  provider: text("provider").notNull().default("link"),
+  url: text("url"),
+  storagePath: text("storage_path"),
+  title: text("title"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  brandMode: text("brand_mode").$type<"branded" | "unbranded" | "both">().notNull().default("both"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const payments = pgTable("payments", {
   id: text("id").primaryKey(),
   tenantId: text("tenant_id").notNull(),
@@ -257,6 +310,7 @@ export type NewOrder = typeof orders.$inferInsert;
 export type Appointment = typeof appointments.$inferSelect;
 export type Gallery = typeof galleries.$inferSelect;
 export type MediaAsset = typeof mediaAssets.$inferSelect;
+export type MediaLink = typeof mediaLinks.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type User = typeof users.$inferSelect;
 export const billingEvents = pgTable("billing_events", {
@@ -285,7 +339,30 @@ export const listingPages = pgTable("listing_pages", {
   brokerage: text("brokerage"),
   mapLat: text("map_lat"),
   mapLng: text("map_lng"),
+  headline: text("headline"),
+  description: text("description"),
+  theme: text("theme").notNull().default("gallery"),
+  heroAssetId: text("hero_asset_id"),
+  sectionsJson: text("sections_json").notNull().default("[]"),
+  openHouseJson: text("open_house_json").notNull().default("[]"),
+  leadCapture: integer("lead_capture").notNull().default(1),
   publishedAt: text("published_at"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/** Per-listing custom hostnames (Cloudflare for SaaS), billed per domain. */
+export const listingDomains = pgTable("listing_domains", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  listingPageId: text("listing_page_id")
+    .notNull()
+    .references(() => listingPages.id),
+  hostname: text("hostname").notNull(),
+  cfId: text("cf_id"),
+  status: text("status").notNull().default("pending"),
+  purchasedByEmail: text("purchased_by_email"),
+  paidUntil: text("paid_until"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -323,9 +400,66 @@ export const reminderSends = pgTable("reminder_sends", {
   sentAt: text("sent_at").notNull(),
 });
 
+export const agentLoginTokens = pgTable("agent_login_tokens", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  email: text("email").notNull(),
+  token: text("token").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  consumedAt: text("consumed_at"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const referralCodes = pgTable("referral_codes", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  agentEmail: text("agent_email").notNull(),
+  code: text("code").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const referralCredits = pgTable("referral_credits", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  agentEmail: text("agent_email").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("CAD"),
+  sourceOrderId: text("source_order_id"),
+  appliedOrderId: text("applied_order_id"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const reviewRequests = pgTable("review_requests", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  orderId: text("order_id").notNull(),
+  agentEmail: text("agent_email").notNull(),
+  token: text("token").notNull(),
+  sentAt: text("sent_at"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const testimonials = pgTable("testimonials", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  orderId: text("order_id"),
+  agentName: text("agent_name").notNull(),
+  agentEmail: text("agent_email").notNull(),
+  body: text("body").notNull(),
+  rating: integer("rating").notNull().default(5),
+  approvedAt: text("approved_at"),
+  createdAt: text("created_at").notNull(),
+});
+
 export type TenantRow = typeof tenants.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type BillingEvent = typeof billingEvents.$inferSelect;
 export type ListingPage = typeof listingPages.$inferSelect;
+export type ListingDomain = typeof listingDomains.$inferSelect;
 export type GalleryEvent = typeof galleryEvents.$inferSelect;
 export type MembershipInvite = typeof membershipInvites.$inferSelect;
+export type AgentLoginToken = typeof agentLoginTokens.$inferSelect;
+export type ReferralCode = typeof referralCodes.$inferSelect;
+export type ReferralCredit = typeof referralCredits.$inferSelect;
+export type ReviewRequest = typeof reviewRequests.$inferSelect;
+export type Testimonial = typeof testimonials.$inferSelect;

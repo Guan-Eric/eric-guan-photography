@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CoachTour, type CoachStep } from "@/components/coach-tour";
+import { MediaEmbeds, type EmbedItem } from "@/components/media-embeds";
 
 type GalleryMedia = {
   id: string;
@@ -12,6 +14,19 @@ type GalleryMedia = {
 };
 
 type Upsell = { id: string; name: string; priceCents: number; summary: string };
+
+const AGENT_GALLERY_TOUR: CoachStep[] = [
+  {
+    selector: '[data-tour="gallery-grid"]',
+    title: "Preview proofs",
+    body: "These are watermarked previews. Full-resolution and MLS files unlock after payment.",
+  },
+  {
+    selector: '[data-tour="gallery-pay"]',
+    title: "Pay to unlock",
+    body: "Add optional add-ons if shown, then pay to download the zip files from this same link.",
+  },
+];
 
 export function PublicGallery({
   token,
@@ -24,6 +39,7 @@ export function PublicGallery({
   studioName,
   photographerName,
   media,
+  embeds = [],
   paidFlag,
   cancelledFlag,
   upsells = [],
@@ -39,6 +55,7 @@ export function PublicGallery({
   studioName: string;
   photographerName: string;
   media: GalleryMedia[];
+  embeds?: EmbedItem[];
   paidFlag: boolean;
   cancelledFlag: boolean;
   upsells?: Upsell[];
@@ -49,6 +66,18 @@ export function PublicGallery({
   const [error, setError] = useState<string | null>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const unlocked = state === "unlocked";
+
+  // Webhook may lag Stripe return — keep refreshing until DB shows unlocked.
+  useEffect(() => {
+    if (!paidFlag || unlocked) return;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      router.refresh();
+      if (attempts >= 8) window.clearInterval(timer);
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [paidFlag, unlocked, router]);
 
   const totalCents = useMemo(() => {
     const addOnTotal = upsells
@@ -84,9 +113,15 @@ export function PublicGallery({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stub, addOnIds: selectedAddOns }),
       });
-      const json = await response.json();
-      if (!json.ok) {
-        setError(json.error ?? "Checkout failed.");
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        alreadyUnlocked?: boolean;
+        stubbed?: boolean;
+        url?: string | null;
+      } | null;
+      if (!json || !json.ok) {
+        setError(json?.error ?? "Checkout failed.");
         return;
       }
       if (json.alreadyUnlocked || json.stubbed) {
@@ -95,7 +130,11 @@ export function PublicGallery({
       }
       if (json.url) {
         window.location.href = json.url;
+        return;
       }
+      setError("Checkout started but no payment link was returned.");
+    } catch {
+      setError("Network error starting checkout.");
     } finally {
       setBusy(false);
     }
@@ -109,7 +148,7 @@ export function PublicGallery({
           <h1>{title}</h1>
           <p className="lede">{propertyAddress}</p>
         </div>
-        <div className="delivery-pay-card">
+        <div className="delivery-pay-card" data-tour="gallery-pay">
           {unlocked ? (
             <>
               <p className="eyebrow">Unlocked</p>
@@ -176,7 +215,12 @@ export function PublicGallery({
               </div>
             </>
           )}
-          {paidFlag ? <p className="form-success">Payment received — files unlocked.</p> : null}
+          {paidFlag && unlocked ? (
+            <p className="form-success">Payment received — files unlocked.</p>
+          ) : null}
+          {paidFlag && !unlocked ? (
+            <p className="muted">Payment received — unlocking downloads…</p>
+          ) : null}
           {cancelledFlag && !unlocked ? (
             <p className="muted">Checkout cancelled. Proofs are still available.</p>
           ) : null}
@@ -189,7 +233,7 @@ export function PublicGallery({
           <p>Photos are being prepared. Check back shortly.</p>
         </div>
       ) : (
-        <div className="delivery-grid">
+        <div className="delivery-grid" data-tour="gallery-grid">
           {media.map((asset) => (
             <figure key={asset.id} className="delivery-item">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -216,12 +260,17 @@ export function PublicGallery({
         </div>
       )}
 
+      <MediaEmbeds items={embeds} />
+
       {branded ? (
         <footer className="delivery-footer">
           <p>
             Delivered by {photographerName}. Questions? Reply to your booking email.
           </p>
         </footer>
+      ) : null}
+      {!unlocked ? (
+        <CoachTour tourId="agent_gallery_v1" steps={AGENT_GALLERY_TOUR} />
       ) : null}
     </main>
   );

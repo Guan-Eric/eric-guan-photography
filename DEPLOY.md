@@ -102,6 +102,11 @@ npx wrangler secret put STRIPE_WEBHOOK_SECRET
 npx wrangler secret put STRIPE_PRICE_STARTER
 npx wrangler secret put STRIPE_PRICE_GROWTH
 npx wrangler secret put STRIPE_PRICE_STUDIO
+npx wrangler secret put STRIPE_PRICE_PAYG_BASE
+npx wrangler secret put STRIPE_PRICE_PAYG_LISTING
+npx wrangler secret put STRIPE_PRICE_OVERAGE_LISTING
+npx wrangler secret put STRIPE_PRICE_DOMAIN_ADDON
+npx wrangler secret put GOOGLE_PLACES_API_KEY
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put CRON_SECRET
 npx wrangler secret put CLOUDFLARE_R2_ACCOUNT_ID
@@ -150,6 +155,8 @@ First deploy gets a `*.workers.dev` URL. Confirm it boots, then attach custom do
 
 ### 8. DNS + custom domains
 
+#### Platform hosts
+
 In Cloudflare DNS for `studiofront.ca`:
 
 | Type | Name | Target |
@@ -161,6 +168,39 @@ In Cloudflare DNS for `studiofront.ca`:
 Workers → **studiofront** → Custom Domains: add `studiofront.ca` and `*.studiofront.ca`.
 
 Studios will be `ericguan.studiofront.ca`, etc.
+
+#### Tenant vanity domains (Cloudflare for SaaS)
+
+Photographers on Growth/Studio (and trial) can map `photos.theirbrand.com` → Studiofront.
+
+1. Enable **Cloudflare for SaaS** on the `studiofront.ca` zone (SSL/TLS → Custom Hostnames).
+2. Apply DB columns (Neon):
+
+```bash
+node scripts/apply-custom-domain-migration.mjs
+# or: psql "$DATABASE_URL" -f scripts/postgres-migrate-custom-domain.sql
+```
+
+3. One-time DNS + fallback origin (uses API token in `.env.local` or the environment):
+
+```bash
+# CF_SAAS_API_TOKEN + CLOUDFLARE_ZONE_ID required
+node scripts/setup-custom-domain-saas.mjs
+```
+
+That creates:
+
+| Type | Name | Target |
+|---|---|---|
+| A (proxied) | `fallback` | `192.0.2.1` (dummy; Worker is origin) |
+| CNAME (proxied) | `sites` | `fallback.studiofront.ca` |
+
+Customers CNAME their hostname to **`sites.studiofront.ca`** (`CUSTOM_DOMAIN_TARGET` in wrangler vars).
+
+4. Worker route `*/*` on zone `studiofront.ca` (listed in `wrangler.jsonc`) so vanity hosts hit Worker `studiofront`.
+5. Secrets: `CLOUDFLARE_ZONE_ID`, `CF_SAAS_API_TOKEN` (SSL and Certificates Edit). Do **not** name the token `CLOUDFLARE_API_TOKEN` — Wrangler reserves that for CLI auth.
+
+Saving a domain in Studio Settings creates a Cloudflare Custom Hostname and verifies DNS.
 
 ### 9. Stripe webhook (after domain works)
 

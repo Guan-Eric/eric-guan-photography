@@ -1,3 +1,7 @@
+import {
+  DEFAULT_STUDIO_CURRENCY,
+  normalizeStudioCurrency,
+} from "@/lib/currency";
 import { platformTheme, studioOrigin } from "@/lib/platform";
 import { PREMIUM_LISTING_BANDS, STANDARD_LISTING_BANDS } from "@/lib/quoting";
 import { defaultWeeklySchedule } from "@/lib/schedule";
@@ -17,9 +21,14 @@ export function buildStudioConfig(options: {
   photographerName: string;
   email: string;
   accent?: string;
+  currency?: string;
 }): Tenant {
   const accent = options.accent ?? "#2f5d50";
   const siteUrl = studioOrigin({ slug: options.slug });
+  const currency = normalizeStudioCurrency(
+    options.currency,
+    DEFAULT_STUDIO_CURRENCY,
+  );
 
   return {
     id: options.id,
@@ -131,7 +140,7 @@ export function buildStudioConfig(options: {
     turnaround: "24–48 hours",
     seo: {
       description: `${options.studioName} — real estate photography for agents. MLS-ready galleries delivered in 24–48 hours.`,
-      currency: "USD",
+      currency,
       priceRange: "$$",
     },
     portfolioComplete: false,

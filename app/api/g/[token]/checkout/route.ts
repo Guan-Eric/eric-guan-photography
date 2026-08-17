@@ -26,9 +26,19 @@ export async function POST(
     return NextResponse.json({ ok: true, alreadyUnlocked: true });
   }
 
+  if (gallery.amountCents <= 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "This shoot still needs a price from the photographer before checkout.",
+      },
+      { status: 400 },
+    );
+  }
+
   const body = await request.json().catch(() => ({}));
   const origin = new URL(request.url).origin;
-  const successUrl = `${origin}/g/${token}?paid=1`;
+  const successUrl = `${origin}/g/${token}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${origin}/g/${token}?cancelled=1`;
 
   const row = await getTenantRow(gallery.tenantId);
@@ -52,16 +62,31 @@ export async function POST(
     });
   }
 
-  const session = await createGalleryCheckoutSession({
-    gallery,
-    successUrl,
-    cancelUrl,
-    addOns,
-  });
+  try {
+    const session = await createGalleryCheckoutSession({
+      gallery,
+      successUrl,
+      cancelUrl,
+      addOns,
+    });
 
-  if (!session.ok) {
-    return NextResponse.json({ ok: false, error: "Could not start checkout." }, { status: 500 });
+    if (!session.ok) {
+      return NextResponse.json(
+        { ok: false, error: "Could not start checkout. Check Stripe keys." },
+        { status: 500 },
+      );
+    }
+    if (!session.url) {
+      return NextResponse.json(
+        { ok: false, error: "Stripe did not return a checkout URL." },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ ok: true, stubbed: false, url: session.url });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Could not start checkout.";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true, stubbed: false, url: session.url });
 }

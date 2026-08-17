@@ -79,6 +79,39 @@ export function isValidHhmm(value: string) {
   return HHMM.test(normalizeHhmm(value));
 }
 
+/** 12-hour label for an HH:mm wall-clock string (e.g. "09:00" → "9:00 AM"). */
+export function formatHhmmLabel(value: string) {
+  if (!isValidHhmm(value)) return value;
+  const [h, m] = normalizeHhmm(value).split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+/** Open/close options every `stepMinutes` from 00:00–23:45, plus any off-step current value. */
+export function scheduleTimeOptions(
+  currentValue?: string,
+  stepMinutes = 15,
+): { value: string; label: string }[] {
+  const options: { value: string; label: string }[] = [];
+  for (let min = 0; min < 24 * 60; min += stepMinutes) {
+    const hour = String(Math.floor(min / 60)).padStart(2, "0");
+    const minute = String(min % 60).padStart(2, "0");
+    const value = `${hour}:${minute}`;
+    options.push({ value, label: formatHhmmLabel(value) });
+  }
+  const normalized = currentValue ? normalizeHhmm(currentValue) : "";
+  if (
+    normalized &&
+    isValidHhmm(normalized) &&
+    !options.some((option) => option.value === normalized)
+  ) {
+    options.push({ value: normalized, label: formatHhmmLabel(normalized) });
+    options.sort((a, b) => minutesFromHhmm(a.value) - minutesFromHhmm(b.value));
+  }
+  return options;
+}
+
 export function minutesFromHhmm(value: string) {
   const normalized = normalizeHhmm(value);
   const [h, m] = normalized.split(":").map(Number);

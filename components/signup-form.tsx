@@ -4,6 +4,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { PASSWORD_RULES, passwordIsValid } from "@/lib/password-rules";
 
+/** Kept local so the client bundle never pulls in the Drizzle schema. */
+const PLAN_PARAMS = ["payg", "starter", "growth", "studio"];
+
 export function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,7 +54,7 @@ export function SignupForm() {
         router.push(`/invite/${invite}`);
       } else if (json.hasStudio) {
         const plan = searchParams.get("plan");
-        const allowed = plan === "starter" || plan === "growth" || plan === "studio";
+        const allowed = plan ? PLAN_PARAMS.includes(plan) : false;
         router.push(
           allowed ? `/admin?welcome=1&plan=${plan}` : "/admin?welcome=1",
         );

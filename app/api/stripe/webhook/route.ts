@@ -20,7 +20,12 @@ export async function POST(request: Request) {
   const rawBody = await request.text();
   let event;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    // Async + WebCrypto — required on Cloudflare Workers.
+    event = await stripe.webhooks.constructEventAsync(
+      rawBody,
+      signature,
+      webhookSecret,
+    );
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: `Webhook signature failed: ${(error as Error).message}` },
@@ -30,7 +35,14 @@ export async function POST(request: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    if (session.mode === "subscription" && session.subscription) {
+    if (session.metadata?.kind === "listing_domain" && session.metadata.listingPageId && session.metadata.tenantId) {
+      const { markListingDomainPaid } = await import("@/lib/listing-domains");
+      await markListingDomainPaid({
+        listingPageId: session.metadata.listingPageId,
+        tenantId: session.metadata.tenantId,
+        email: session.metadata.email ?? session.customer_email ?? "",
+      });
+    } else if (session.mode === "subscription" && session.subscription) {
       const subId =
         typeof session.subscription === "string"
           ? session.subscription

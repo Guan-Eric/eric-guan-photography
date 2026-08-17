@@ -38,7 +38,14 @@ export function PlatformHeader({ solid = false }: { solid?: boolean }) {
   return (
     <header className={className}>
       <Link className="logo" href="/" onClick={() => setMenuOpen(false)}>
-        {platformName()}
+        <img
+          className="logo-mark"
+          src="/studiofront-icon.png"
+          alt=""
+          width={28}
+          height={28}
+        />
+        <span>{platformName()}</span>
       </Link>
       <nav className="nav" id={menuId} aria-label="Primary" data-open={menuOpen}>
         <Link href="/#product" onClick={() => setMenuOpen(false)}>

@@ -13,7 +13,10 @@ export function stripeEnabled() {
 export function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  return new Stripe(key);
+  // Cloudflare Workers: Node https client hangs — use fetch.
+  return new Stripe(key, {
+    httpClient: Stripe.createFetchHttpClient(),
+  });
 }
 
 export async function createGalleryCheckoutSession(options: {
@@ -107,5 +110,14 @@ export async function localStubUnlock(gallery: Gallery) {
     providerSessionId: `local_${Date.now()}`,
     status: "paid",
   });
-  return unlockGallery(gallery.id, { markOrderPaid: true });
+  const unlocked = await unlockGallery(gallery.id, { markOrderPaid: true });
+  if (unlocked.ok) {
+    const { notifyGalleryPaid } = await import("@/lib/order-notify");
+    await notifyGalleryPaid({
+      tenantId: gallery.tenantId,
+      orderId: gallery.orderId,
+      galleryToken: gallery.publicToken,
+    });
+  }
+  return unlocked;
 }

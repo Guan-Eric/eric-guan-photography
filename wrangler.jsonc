@@ -23,6 +23,12 @@
   "images": {
     "binding": "IMAGES"
   },
+  "routes": [
+    { "pattern": "studiofront.ca/*", "zone_name": "studiofront.ca" },
+    { "pattern": "*.studiofront.ca/*", "zone_name": "studiofront.ca" },
+    { "pattern": "*/*", "zone_name": "studiofront.ca" }
+  ],
+  "workers_dev": true,
   "vars": {
     "PLATFORM_NAME": "Studiofront",
     "NEXT_PUBLIC_PLATFORM_NAME": "Studiofront",
@@ -30,6 +36,8 @@
     "PLATFORM_PUBLIC_URL": "https://studiofront.ca",
     "NEXT_PUBLIC_SITE_URL": "https://studiofront.ca",
     "PLATFORM_EMAIL_FROM": "Studiofront <hello@studiofront.ca>",
+    "CUSTOM_DOMAIN_TARGET": "sites.studiofront.ca",
+    "CLOUDFLARE_R2_BUCKET": "studiofront-media",
     "R2_FORCE_REMOTE": "1"
   }
 }

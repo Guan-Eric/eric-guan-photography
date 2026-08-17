@@ -66,25 +66,70 @@ export function isLocalPlatform() {
   return root === "localhost" || root === "127.0.0.1";
 }
 
-export function cookieDomain() {
-  // Local multi-tenant hosts are `{slug}.localhost`. A bare `Domain=localhost`
-  // is rejected on those hosts (not a domain-match), so the session never sticks.
-  // `.localhost` is accepted by Chromium for *.localhost sharing.
-  if (isLocalPlatform()) return ".localhost";
-  return `.${platformRootDomain()}`;
+function isLocalhostUrl(value: string | null | undefined) {
+  if (!value) return false;
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return (
+      host === "localhost" ||
+      host === "127.0.0.1" ||
+      host.endsWith(".localhost")
+    );
+  } catch {
+    return /localhost|127\.0\.0\.1/i.test(value);
+  }
 }
 
+export function cookieDomain(hostname?: string | null) {
+  const host = hostnameFromHost(hostname);
+  const root = platformRootDomain();
+
+  // Prefer the *request* host, not only PLATFORM_ROOT_DOMAIN. Local `next dev`
+  // on localhost must not emit Domain=.studiofront.ca when env is production-like.
+  if (!host || host === "localhost" || host === "127.0.0.1" || host === "[::1]") {
+    return undefined;
+  }
+  if (host.endsWith(".localhost")) {
+    return ".localhost";
+  }
+  if (host === root || host.endsWith(`.${root}`) || host === `www.${root}`) {
+    return `.${root}`;
+  }
+  return undefined;
+}
+
+/** True when the current request host is a local browser host. */
+export function isLocalRequestHost(hostname?: string | null) {
+  const host = hostnameFromHost(hostname);
+  return (
+    !host ||
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "[::1]" ||
+    host.endsWith(".localhost")
+  );
+}
+
+/**
+ * Canonical public origin for a studio.
+ * Production: always https, never a port.
+ * Local (`PLATFORM_ROOT_DOMAIN=localhost`): http://{slug}.localhost:{port}.
+ */
 export function studioOrigin(options: {
   slug: string;
   domain?: string | null;
   requestOrigin?: string | null;
 }) {
   if (options.domain) {
-    const proto = platformPublicUrl().startsWith("https") ? "https" : "http";
-    return `${proto}://${options.domain}`;
+    const proto = isLocalPlatform() ? "http" : "https";
+    return `${proto}://${options.domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
   }
 
   const root = platformRootDomain();
+  if (!isLocalPlatform()) {
+    return `https://${options.slug}.${root}`;
+  }
+
   let port = "";
   const origin = options.requestOrigin ?? platformPublicUrl();
   try {
@@ -93,8 +138,54 @@ export function studioOrigin(options: {
     port = "";
   }
   const host = port ? `${options.slug}.${root}:${port}` : `${options.slug}.${root}`;
-  const proto = origin.startsWith("https") ? "https" : "http";
-  return `${proto}://${host}`;
+  return `http://${host}`;
+}
+
+/**
+ * Resolve the public studio base URL for share links, emails, and galleries.
+ * Ignores a stored siteUrl that still points at localhost when the platform is prod.
+ * Custom domains are used only when domainStatus is active (HTTPS live).
+ */
+export function publicStudioUrl(options: {
+  slug: string;
+  domain?: string | null;
+  domainStatus?: string | null;
+  siteUrl?: string | null;
+  requestOrigin?: string | null;
+}) {
+  const domainLive =
+    Boolean(options.domain) &&
+    (options.domainStatus === "active" || options.domainStatus === "verified");
+
+  const rebuilt = studioOrigin({
+    slug: options.slug,
+    domain: domainLive ? options.domain : null,
+    requestOrigin: options.requestOrigin,
+  });
+
+  const stored = options.siteUrl?.trim();
+  if (!stored) return rebuilt;
+
+  if (!isLocalPlatform() && isLocalhostUrl(stored)) {
+    return rebuilt;
+  }
+
+  if (isLocalPlatform() && !isLocalhostUrl(stored) && !domainLive) {
+    // Local dev with a prod-looking stored URL — prefer live local origin.
+    return rebuilt;
+  }
+
+  // Stored custom-domain URL while domain is not live yet → fall back to slug host.
+  if (
+    !isLocalPlatform() &&
+    !domainLive &&
+    options.domain &&
+    stored.includes(options.domain)
+  ) {
+    return rebuilt;
+  }
+
+  return stored.replace(/\/$/, "");
 }
 
 export function platformSeo() {

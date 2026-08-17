@@ -2,13 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { CurrencySelect } from "@/components/currency-select";
+import { TimezoneSelect } from "@/components/timezone-select";
+import { DEFAULT_STUDIO_CURRENCY } from "@/lib/currency";
+import { DEFAULT_STUDIO_TIMEZONE } from "@/lib/timezones";
 
 export function OnboardingForm({ defaultName }: { defaultName: string }) {
   const router = useRouter();
   const [studioName, setStudioName] = useState("");
   const [photographerName, setPhotographerName] = useState(defaultName);
   const [slug, setSlug] = useState("");
-  const [timezone, setTimezone] = useState("America/Toronto");
+  const [timezone, setTimezone] = useState(DEFAULT_STUDIO_TIMEZONE);
+  const [currency, setCurrency] = useState(DEFAULT_STUDIO_CURRENCY);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,6 +30,7 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
           photographerName,
           slug: slug || undefined,
           timezone,
+          currency,
         }),
       });
       const json = await response.json();
@@ -83,14 +89,17 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
       </label>
       <label className="field">
         <span>Timezone</span>
-        <select value={timezone} onChange={(event) => setTimezone(event.target.value)}>
-          <option value="America/Toronto">America/Toronto</option>
-          <option value="America/Vancouver">America/Vancouver</option>
-          <option value="America/New_York">America/New_York</option>
-          <option value="America/Chicago">America/Chicago</option>
-          <option value="America/Los_Angeles">America/Los_Angeles</option>
-          <option value="America/Denver">America/Denver</option>
-        </select>
+        <TimezoneSelect value={timezone} onChange={setTimezone} required />
+        <span className="field-hint">
+          Shoot times and availability use this timezone.
+        </span>
+      </label>
+      <label className="field">
+        <span>Currency for packages &amp; galleries</span>
+        <CurrencySelect value={currency} onChange={setCurrency} required />
+        <span className="field-hint">
+          Agents pay you in this currency. Studiofront SaaS billing stays in USD.
+        </span>
       </label>
       {error ? <p className="form-error">{error}</p> : null}
       <button className="btn btn-solid" type="submit" disabled={loading}>

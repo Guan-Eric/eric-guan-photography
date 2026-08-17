@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import {
   assertSlotAvailable,
   DRIVE_BUFFER_MINUTES,
@@ -35,6 +35,10 @@ export type BookingInput = {
   propertyAddress: string;
   postalCode: string;
   city?: string;
+  placeId?: string;
+  mapLat?: string;
+  mapLng?: string;
+  referralCode?: string;
   preferredSlots: PreferredSlot[];
   agentName: string;
   agentEmail: string;
@@ -137,6 +141,9 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
     parkingNotes: input.parkingNotes?.trim() || null,
     meetingContact: input.meetingContact?.trim() || null,
     notes: input.notes?.trim() || null,
+    placeId: input.placeId?.trim() || null,
+    mapLat: input.mapLat?.trim() || null,
+    mapLng: input.mapLng?.trim() || null,
     publicToken,
     createdAt,
     updatedAt: createdAt,
@@ -144,6 +151,14 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
 
   await qRun(db.insert(schema.orders).values(orderRow));
   await incrementListingUsage(tenant.id);
+  const { applyReferralOnBooking } = await import("@/lib/referrals");
+  await applyReferralOnBooking({
+    tenantId: tenant.id,
+    orderId: id,
+    agentEmail: orderRow.agentEmail,
+    referralCode: input.referralCode,
+    currency: quote.currency,
+  });
 
   // Preferences are not calendar holds. The appointment is created when you
   // mark the order confirmed, using the primary preferred slot.
@@ -199,6 +214,70 @@ export async function listOrders(tenantId: string): Promise<Order[]> {
       .where(eq(schema.orders.tenantId, tenantId))
       .orderBy(desc(schema.orders.createdAt)),
   );
+}
+
+export async function listOrdersByAgentEmail(tenantId: string, email: string) {
+  const db = getDb();
+  return qAll<Order>(
+    db
+      .select()
+      .from(schema.orders)
+      .where(
+        and(
+          eq(schema.orders.tenantId, tenantId),
+          eq(schema.orders.agentEmail, email.trim().toLowerCase()),
+        ),
+      )
+      .orderBy(desc(schema.orders.createdAt)),
+  );
+}
+
+export async function listTodayAppointments(tenantId: string, timezone: string) {
+  const db = getDb();
+  const rows = await qAll<Appointment>(
+    db
+      .select()
+      .from(schema.appointments)
+      .where(eq(schema.appointments.tenantId, tenantId)),
+  );
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  return rows.filter((row) => {
+    const local = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(row.startsAt));
+    return local === today;
+  });
+}
+
+export async function markAppointmentMilestone(
+  tenantId: string,
+  appointmentId: string,
+  field: "onMyWayAt" | "arrivedAt" | "completedAt",
+) {
+  const db = getDb();
+  const row =
+    (await qGet<Appointment>(
+      db.select().from(schema.appointments).where(eq(schema.appointments.id, appointmentId)),
+    )) ?? null;
+  if (!row || row.tenantId !== tenantId) {
+    return { ok: false as const, error: "Appointment not found." };
+  }
+  const stamp = nowIso();
+  await qRun(
+    db
+      .update(schema.appointments)
+      .set({ [field]: stamp })
+      .where(eq(schema.appointments.id, appointmentId)),
+  );
+  return { ok: true as const, appointment: { ...row, [field]: stamp } };
 }
 
 export async function getOrder(orderId: string, tenantId?: string) {
@@ -270,6 +349,90 @@ export async function updateOrderStatus(
   } else if (status === "confirmed") {
     await ensureAppointmentForOrder(existing);
   }
+
+  return { ok: true as const, order: (await getOrder(orderId, tenantId))! };
+}
+
+export async function updateOrderPrice(
+  orderId: string,
+  priceCents: number,
+  tenantId?: string,
+) {
+  if (!Number.isFinite(priceCents) || priceCents < 0 || priceCents > 5_000_000) {
+    return { ok: false as const, error: "Enter a valid price." };
+  }
+
+  const existing = await getOrder(orderId, tenantId);
+  if (!existing) return { ok: false as const, error: "Order not found." };
+
+  const rounded = Math.round(priceCents);
+  const db = getDb();
+  await qRun(
+    db
+      .update(schema.orders)
+      .set({ priceCents: rounded, updatedAt: nowIso() })
+      .where(eq(schema.orders.id, orderId)),
+  );
+
+  await qRun(
+    db
+      .update(schema.galleries)
+      .set({ amountCents: rounded, updatedAt: nowIso() })
+      .where(eq(schema.galleries.orderId, orderId)),
+  );
+
+  return { ok: true as const, order: (await getOrder(orderId, tenantId))! };
+}
+
+export async function updateOrderAddress(
+  orderId: string,
+  input: {
+    propertyAddress: string;
+    postalCode: string;
+    city?: string;
+    placeId?: string | null;
+    mapLat?: string | null;
+    mapLng?: string | null;
+  },
+  tenantId?: string,
+) {
+  const existing = await getOrder(orderId, tenantId);
+  if (!existing) return { ok: false as const, error: "Order not found." };
+
+  const propertyAddress = input.propertyAddress.trim();
+  const postalCode = input.postalCode.trim().toUpperCase();
+  if (propertyAddress.length < 5) {
+    return { ok: false as const, error: "Enter the full property address." };
+  }
+  if (postalCode.length < 3) {
+    return { ok: false as const, error: "Enter a postal or ZIP code." };
+  }
+
+  const db = getDb();
+  await qRun(
+    db
+      .update(schema.orders)
+      .set({
+        propertyAddress,
+        postalCode,
+        city: input.city?.trim() || null,
+        placeId: input.placeId?.trim() || null,
+        mapLat: input.mapLat?.trim() || null,
+        mapLng: input.mapLng?.trim() || null,
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.orders.id, orderId)),
+  );
+
+  await qRun(
+    db
+      .update(schema.galleries)
+      .set({
+        propertyAddress,
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.galleries.orderId, orderId)),
+  );
 
   return { ok: true as const, order: (await getOrder(orderId, tenantId))! };
 }

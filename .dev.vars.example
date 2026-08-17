@@ -20,6 +20,15 @@ PLATFORM_EMAIL_FROM=Studiofront <hello@studiofront.ca>
 # STRIPE_PRICE_STARTER=
 # STRIPE_PRICE_GROWTH=
 # STRIPE_PRICE_STUDIO=
+# Pay-as-you-go: $0 recurring base + metered per-listing price
+# STRIPE_PRICE_PAYG_BASE=
+# STRIPE_PRICE_PAYG_LISTING=
+# Metered overage for flat tiers past their included listings
+# STRIPE_PRICE_OVERAGE_LISTING=
+# STRIPE_METER_EVENT_LISTINGS=listing_completed
+# Per-domain add-on (quantity = active custom hostnames)
+# STRIPE_PRICE_DOMAIN_ADDON=
+# GOOGLE_PLACES_API_KEY=
 # RESEND_API_KEY=
 # CRON_SECRET=
 # CLOUDFLARE_R2_ACCOUNT_ID=
@@ -27,3 +36,6 @@ PLATFORM_EMAIL_FROM=Studiofront <hello@studiofront.ca>
 # CLOUDFLARE_R2_SECRET_ACCESS_KEY=
 # CLOUDFLARE_R2_BUCKET=studiofront-media
 # R2_FORCE_REMOTE=1
+# CUSTOM_DOMAIN_TARGET=sites.studiofront.ca
+# CLOUDFLARE_ZONE_ID=
+# CF_SAAS_API_TOKEN=

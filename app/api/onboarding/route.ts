@@ -4,7 +4,9 @@ import {
   getPhotographerSession,
   setActiveTenantCookie,
 } from "@/lib/auth";
+import { normalizeStudioCurrency } from "@/lib/currency";
 import { createTenantFromOnboarding } from "@/lib/tenant-store";
+import { normalizeTimeZone } from "@/lib/timezones";
 
 export const runtime = "nodejs";
 
@@ -25,9 +27,9 @@ export async function POST(request: Request) {
       ? body.photographerName.trim()
       : session.user.name;
   const slug = typeof body?.slug === "string" ? body.slug.trim() : undefined;
-  const timezone =
-    typeof body?.timezone === "string" ? body.timezone : "America/Toronto";
+  const timezone = normalizeTimeZone(body?.timezone);
   const accent = typeof body?.accent === "string" ? body.accent : undefined;
+  const currency = normalizeStudioCurrency(body?.currency);
 
   if (studioName.length < 2) {
     return NextResponse.json(
@@ -43,6 +45,7 @@ export async function POST(request: Request) {
     slug,
     timezone,
     accent,
+    currency,
   });
 
   await createMembership({

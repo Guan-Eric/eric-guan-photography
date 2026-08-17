@@ -16,6 +16,28 @@ Create three **recurring monthly** Products (USD):
 
 Copy each Price ID (starts with `price_`) into production secrets / `.env.local`.
 
+## 1b. Usage-based billing (pay-as-you-go + overage)
+
+Billing → Meters → **Create meter**:
+
+- Event name: `listing_completed` (or set `STRIPE_METER_EVENT_LISTINGS`)
+- Aggregation: **Sum** of `value`
+
+Then create these prices against that meter:
+
+| Product name | Price | Env var |
+|---|---|---|
+| Pay as you go (base) | $0 / month recurring | `STRIPE_PRICE_PAYG_BASE=price_...` |
+| Pay as you go (listing) | $5 per unit, metered | `STRIPE_PRICE_PAYG_LISTING=price_...` |
+| Listing overage | $3 per unit, metered | `STRIPE_PRICE_OVERAGE_LISTING=price_...` |
+| Custom domain add-on | $5 / month, quantity-based | `STRIPE_PRICE_DOMAIN_ADDON=price_...` |
+
+The $0 base keeps a monthly invoice cycle so metered listings have somewhere to
+land. The overage price is attached to every flat tier and only accrues once a
+studio passes its included listings; without it, tiers hard-block at the cap.
+The domain add-on is a plain licensed price — the app keeps its quantity equal
+to the number of live custom hostnames.
+
 ## 2. API keys
 
 Developers → API keys:

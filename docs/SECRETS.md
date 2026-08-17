@@ -22,15 +22,24 @@ npx wrangler secret put STRIPE_WEBHOOK_SECRET
 npx wrangler secret put STRIPE_PRICE_STARTER
 npx wrangler secret put STRIPE_PRICE_GROWTH
 npx wrangler secret put STRIPE_PRICE_STUDIO
+npx wrangler secret put STRIPE_PRICE_PAYG_BASE
+npx wrangler secret put STRIPE_PRICE_PAYG_LISTING
+npx wrangler secret put STRIPE_PRICE_OVERAGE_LISTING
+npx wrangler secret put STRIPE_PRICE_DOMAIN_ADDON
+npx wrangler secret put GOOGLE_PLACES_API_KEY
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put CRON_SECRET
 npx wrangler secret put CLOUDFLARE_R2_ACCOUNT_ID
 npx wrangler secret put CLOUDFLARE_R2_ACCESS_KEY_ID
 npx wrangler secret put CLOUDFLARE_R2_SECRET_ACCESS_KEY
 npx wrangler secret put CLOUDFLARE_R2_BUCKET
+npx wrangler secret put CLOUDFLARE_ZONE_ID
+npx wrangler secret put CF_SAAS_API_TOKEN
 ```
 
-Public (non-secret) vars live in `wrangler.jsonc` → `vars` (already set for Studiofront).
+Public (non-secret) vars live in `wrangler.jsonc` → `vars` (already set for Studiofront), including `CUSTOM_DOMAIN_TARGET=sites.studiofront.ca`.
+
+Optional for tenant custom domains (Growth/Studio): create an API token with **Zone → SSL and Certificates → Edit**, **Zone → DNS → Edit** (for the one-time setup script), and **Zone → Zone → Read**. Store it as **`CF_SAAS_API_TOKEN`** (not `CLOUDFLARE_API_TOKEN` — Wrangler uses that name for its own CLI auth). Set `CLOUDFLARE_ZONE_ID` to the `studiofront.ca` zone id.
 
 Also set in the Cloudflare dashboard (or extend `vars`) if not already there:
 

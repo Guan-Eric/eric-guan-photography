@@ -12,7 +12,7 @@ This document describes **what runs where** and **how production deploys**. Step
 |---|---|
 | `studiofront.ca` (apex) | Platform marketing, pricing, signup/login |
 | `{slug}.studiofront.ca` | One photographer’s public site, booking, admin, galleries |
-| Custom domains (optional) | Same studio app, mapped per tenant |
+| Custom domains (optional) | Same studio app via Cloudflare for SaaS; customer CNAME → `sites.studiofront.ca` |
 
 Eric Guan Photography is dogfood tenant #1 (`ericguan.…`). Production does **not** auto-seed tenants when Postgres is used — first studio comes from `/signup`.
 
@@ -115,7 +115,7 @@ Copy [`.env.example`](.env.example) → `.env.local`. For Wrangler preview, also
 | Media | R2 `studiofront-media` |
 | Public config | `wrangler.jsonc` → `vars` (platform name, root domain, URLs) |
 | Secrets | `wrangler secret put …` — see [`docs/SECRETS.md`](docs/SECRETS.md) |
-| Domains | Worker custom domains: apex + `*.studiofront.ca` |
+| Domains | Worker custom domains: apex + `*.studiofront.ca`; vanity hosts via Cloudflare for SaaS (`*/*` route + Custom Hostnames API) |
 
 **Important OpenNext constraint:** use Edge **`middleware.ts`**, not Next 16 Node **`proxy.ts`**. OpenNext on Cloudflare still requires Edge middleware for host routing.
 
@@ -130,13 +130,16 @@ Copy [`.env.example`](.env.example) → `.env.local`. For Wrangler preview, also
 4. Resend domain + API key
 5. wrangler secrets + public vars
 6. npm run deploy
-7. Attach custom domains
+7. Attach custom domains (+ Cloudflare for SaaS for tenant vanity hosts)
 8. Point Stripe webhook → https://studiofront.ca/api/stripe/webhook
 9. Schedule cron (GitHub Actions → /api/cron/reminders)
 ```
 
+Custom domain ops: enable SaaS on the zone, run `scripts/postgres-migrate-custom-domain.sql`, `node scripts/setup-custom-domain-saas.mjs`, set `CLOUDFLARE_ZONE_ID` / `CF_SAAS_API_TOKEN` Worker secrets. See [`DEPLOY.md`](../DEPLOY.md) §8.
+
 Full checklist: [`DEPLOY.md`](DEPLOY.md).  
-Stripe details: [`docs/STRIPE-SETUP.md`](docs/STRIPE-SETUP.md).  
+Booking lifecycle (every click, status, email): [`BOOKING-FLOW.md`](BOOKING-FLOW.md).  
+Stripe details: [`docs/STRIPE-SETUP.md`](STRIPE-SETUP.md).  
 Env smoke test: `npm run setup:check`.
 
 ### Useful commands

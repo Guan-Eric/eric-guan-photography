@@ -39,7 +39,10 @@ export function AdminGettingStarted({
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
   const showPlanCheckout =
-    plan === "starter" || plan === "growth" || plan === "studio";
+    plan === "payg" ||
+    plan === "starter" ||
+    plan === "growth" ||
+    plan === "studio";
 
   if (hidden || !welcome) return null;
 

@@ -4,8 +4,8 @@ import { createMembership } from "@/lib/auth";
 import { assertCanInviteSeat } from "@/lib/billing";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { MembershipInvite, MembershipRole } from "@/lib/db/schema";
-import { sendEmail } from "@/lib/email";
-import { platformName } from "@/lib/platform";
+import { sendEmail, studioInviteEmail } from "@/lib/email";
+import { getTenantRow } from "@/lib/tenant-store";
 
 const tokenId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 24);
 const rowId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
@@ -60,6 +60,23 @@ export async function createInvite(options: {
       ),
   );
   if (existing && !existing.acceptedAt) {
+    const tenant = await getTenantRow(options.tenantId);
+    let studioName: string | undefined;
+    try {
+      studioName = tenant
+        ? (JSON.parse(tenant.configJson) as { studioName?: string }).studioName
+        : undefined;
+    } catch {
+      studioName = undefined;
+    }
+    await sendEmail(
+      studioInviteEmail({
+        to: email,
+        role: existing.role,
+        acceptUrl: options.acceptUrl.replace("TOKEN", existing.token),
+        studioName,
+      }),
+    );
     return { ok: true as const, invite: existing, resent: true as const };
   }
 
@@ -77,17 +94,24 @@ export async function createInvite(options: {
   };
   await qRun(db.insert(schema.membershipInvites).values(invite));
 
-  await sendEmail({
-    to: email,
-    subject: `You're invited to a studio on ${platformName()}`,
-    text: [
-      `You've been invited as ${options.role}.`,
-      "",
-      `Accept: ${options.acceptUrl.replace("TOKEN", invite.token)}`,
-      "",
-      "This link expires in 14 days.",
-    ].join("\n"),
-  });
+  const tenant = await getTenantRow(options.tenantId);
+  let studioName: string | undefined;
+  try {
+    studioName = tenant
+      ? (JSON.parse(tenant.configJson) as { studioName?: string }).studioName
+      : undefined;
+  } catch {
+    studioName = undefined;
+  }
+
+  await sendEmail(
+    studioInviteEmail({
+      to: email,
+      role: options.role,
+      acceptUrl: options.acceptUrl.replace("TOKEN", invite.token),
+      studioName,
+    }),
+  );
 
   return { ok: true as const, invite, resent: false as const };
 }

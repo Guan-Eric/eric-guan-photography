@@ -15,6 +15,7 @@ import {
   listTenantRows,
   tenantFromRow,
 } from "@/lib/tenant-store";
+import { getListingDomainByHostname } from "@/lib/domain-billing";
 import type { Tenant, ThemeTokens } from "@/lib/tenant-schema";
 
 export const DEFAULT_TENANT_ID = ericGuan.id;
@@ -40,6 +41,12 @@ export async function getTenantByHost(host: string | null): Promise<Tenant | nul
 
   const byDomain = await getTenantRowByDomain(hostname);
   if (byDomain) return tenantFromRow(byDomain);
+
+  const listing = await getListingDomainByHostname(hostname);
+  if (listing) {
+    const row = await getTenantRow(listing.tenantId);
+    if (row) return tenantFromRow(row);
+  }
 
   const root = (process.env.PLATFORM_ROOT_DOMAIN ?? "localhost").toLowerCase();
   if (hostname.endsWith(`.${root}`)) {
@@ -93,6 +100,30 @@ export async function requireRequestTenant(): Promise<Tenant> {
   const tenant = await getRequestTenant();
   if (!tenant) notFound();
   return tenant;
+}
+
+export async function resolveHostTarget(host: string | null) {
+  if (!host) return { kind: "unknown" as const };
+  const hostname = hostnameFromHost(host);
+  if (isPlatformHostname(hostname)) return { kind: "platform" as const };
+
+  const listing = await getListingDomainByHostname(hostname);
+  if (listing) {
+    const row = await getTenantRow(listing.tenantId);
+    if (row) {
+      return {
+        kind: "listing" as const,
+        tenant: tenantFromRow(row),
+        listingPageId: listing.listingPageId,
+        hostname: listing.hostname,
+        status: listing.status,
+      };
+    }
+  }
+
+  const tenant = await getTenantByHost(host);
+  if (tenant) return { kind: "studio" as const, tenant };
+  return { kind: "unknown" as const };
 }
 
 export async function isPlatformRequest() {

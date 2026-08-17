@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import {
+  attachPhotographerSession,
   createMembership,
-  createPhotographerSession,
   registerUser,
-  setActiveTenantCookie,
 } from "@/lib/auth";
 import { passwordIssues } from "@/lib/password-rules";
 import { createTenantFromOnboarding } from "@/lib/tenant-store";
@@ -48,7 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json(created, { status: 400 });
   }
 
-  await createPhotographerSession(created.user.id);
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
 
   if (!invite && studioName.length >= 2) {
     const provisioned = await createTenantFromOnboarding({
@@ -61,18 +60,21 @@ export async function POST(request: Request) {
       tenantId: provisioned.tenant.id,
       role: "owner",
     });
-    await setActiveTenantCookie(provisioned.tenant.id);
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       userId: created.user.id,
       hasStudio: true,
       slug: provisioned.tenant.slug,
     });
+    attachPhotographerSession(response, created.user.id, provisioned.tenant.id, host);
+    return response;
   }
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     ok: true,
     userId: created.user.id,
     hasStudio: false,
   });
+  attachPhotographerSession(response, created.user.id, undefined, host);
+  return response;
 }

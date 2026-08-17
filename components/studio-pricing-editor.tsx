@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { normalizeStudioCurrency } from "@/lib/currency";
 import type { Package, PriceBand, Tenant } from "@/lib/tenant-schema";
+
+type PricingMode = "set_price" | "quote_later" | "email_only";
 
 function dollars(cents: number | undefined) {
   if (cents == null) return "";
@@ -12,6 +15,12 @@ function toCents(value: string) {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 0) return undefined;
   return Math.round(n * 100);
+}
+
+function modeOf(pkg: Package): PricingMode {
+  if (pkg.durationMinutes == null) return "email_only";
+  if (pkg.quoteLater) return "quote_later";
+  return "set_price";
 }
 
 function emptyPackage(): Package {
@@ -34,6 +43,7 @@ export function StudioPricingEditor({
   tenant: Tenant;
   viewUrl: string;
 }) {
+  const currency = normalizeStudioCurrency(tenant.seo.currency);
   const [packages, setPackages] = useState<Package[]>(tenant.packages);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +52,39 @@ export function StudioPricingEditor({
   function update(index: number, patch: Partial<Package>) {
     setPackages((current) =>
       current.map((pkg, i) => (i === index ? { ...pkg, ...patch } : pkg)),
+    );
+  }
+
+  function setMode(index: number, mode: PricingMode) {
+    setPackages((current) =>
+      current.map((pkg, i) => {
+        if (i !== index) return pkg;
+        if (mode === "email_only") {
+          return {
+            ...pkg,
+            durationMinutes: null,
+            quoteLater: undefined,
+            price: pkg.price || "Custom",
+          };
+        }
+        if (mode === "quote_later") {
+          return {
+            ...pkg,
+            durationMinutes: pkg.durationMinutes ?? 60,
+            quoteLater: true,
+            price: "Quote after request",
+            priceCents: undefined,
+            priceBands: [],
+          };
+        }
+        return {
+          ...pkg,
+          durationMinutes: pkg.durationMinutes ?? 60,
+          quoteLater: undefined,
+          priceCents: pkg.priceCents ?? 20000,
+          price: pkg.price === "Quote after request" ? "" : pkg.price,
+        };
+      }),
     );
   }
 
@@ -87,7 +130,9 @@ export function StudioPricingEditor({
           <p className="eyebrow">Pricing</p>
           <h1>Packages</h1>
           <p className="muted">
-            Duration + a price lets agents book online. Leave duration empty for custom-only.
+            Set a firm price for online booking, or quote after the agent requests.
+            Amounts are in <strong>{currency}</strong>. Change currency under{" "}
+            <a href="/admin/booking">Booking</a>.
           </p>
         </div>
         <a className="btn btn-outline" href={viewUrl} target="_blank" rel="noreferrer">
@@ -96,161 +141,222 @@ export function StudioPricingEditor({
       </div>
 
       <div className="studio-editor-list">
-        {packages.map((pkg, index) => (
-          <section key={pkg.id} className="studio-section studio-editor-item">
-            <div className="studio-editor-row">
-              <h2>{pkg.name || "New package"}</h2>
-              <button
-                type="button"
-                className="text-link"
-                onClick={() =>
-                  setPackages((current) => current.filter((_, i) => i !== index))
-                }
-              >
-                Remove
-              </button>
-            </div>
-            <div className="form-grid">
+        {packages.map((pkg, index) => {
+          const mode = modeOf(pkg);
+          return (
+            <section key={pkg.id} className="studio-section studio-editor-item">
+              <div className="studio-editor-row">
+                <h2>{pkg.name || "New package"}</h2>
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() =>
+                    setPackages((current) => current.filter((_, i) => i !== index))
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="form-grid">
+                <label className="field">
+                  <span>Name</span>
+                  <input
+                    value={pkg.name}
+                    onChange={(event) => update(index, { name: event.target.value })}
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>How pricing works</span>
+                  <select
+                    value={mode}
+                    onChange={(event) =>
+                      setMode(index, event.target.value as PricingMode)
+                    }
+                  >
+                    <option value="set_price">Set price now (agents see quote)</option>
+                    <option value="quote_later">
+                      Decide price after request
+                    </option>
+                    <option value="email_only">Email only (not bookable online)</option>
+                  </select>
+                </label>
+              </div>
               <label className="field">
-                <span>Name</span>
+                <span>Summary</span>
                 <input
-                  value={pkg.name}
-                  onChange={(event) => update(index, { name: event.target.value })}
-                  required
+                  value={pkg.summary}
+                  onChange={(event) => update(index, { summary: event.target.value })}
                 />
               </label>
               <label className="field">
-                <span>Display price</span>
+                <span>Display price on pricing page</span>
                 <input
                   value={pkg.price}
                   onChange={(event) => update(index, { price: event.target.value })}
-                  placeholder="$150–$250"
-                />
-              </label>
-            </div>
-            <label className="field">
-              <span>Summary</span>
-              <input
-                value={pkg.summary}
-                onChange={(event) => update(index, { summary: event.target.value })}
-              />
-            </label>
-            <div className="form-grid">
-              <label className="field">
-                <span>On-site minutes</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={pkg.durationMinutes ?? ""}
-                  onChange={(event) =>
-                    update(index, {
-                      durationMinutes: event.target.value ? Number(event.target.value) : null,
-                    })
-                  }
-                  placeholder="Leave empty if not bookable"
-                />
-              </label>
-              <label className="field">
-                <span>Quote price (dollars)</span>
-                <input
-                  type="number"
-                  min={0}
-                  step="1"
-                  value={dollars(pkg.priceCents)}
-                  onChange={(event) =>
-                    update(index, { priceCents: toCents(event.target.value) })
+                  placeholder={
+                    mode === "quote_later"
+                      ? "Quote after request"
+                      : mode === "email_only"
+                        ? "Custom"
+                        : "$150–$250"
                   }
                 />
               </label>
-            </div>
-            <label className="field">
-              <span>Includes (one per line)</span>
-              <textarea
-                rows={4}
-                value={pkg.includes.join("\n")}
-                onChange={(event) =>
-                  update(index, {
-                    includes: event.target.value.split("\n").map((line) => line.trim()),
-                  })
-                }
-              />
-            </label>
-            <div className="studio-editor-row">
-              <label className="field field-check">
-                <span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(pkg.featured)}
-                    onChange={(event) => update(index, { featured: event.target.checked })}
-                  />{" "}
-                  Featured
-                </span>
-              </label>
-              <label className="field field-check">
-                <span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(pkg.upsell)}
-                    onChange={(event) => update(index, { upsell: event.target.checked })}
-                  />{" "}
-                  In-gallery add-on
-                </span>
-              </label>
-            </div>
-            <p className="field-hint">Optional sq ft bands. If empty, the quote price above is used.</p>
-            {(pkg.priceBands ?? []).map((band, bandIndex) => (
-              <div key={bandIndex} className="form-grid">
+
+              {mode !== "email_only" ? (
                 <label className="field">
-                  <span>Up to sq ft</span>
+                  <span>On-site minutes</span>
                   <input
                     type="number"
-                    min={1}
-                    value={band.maxSqft}
+                    min={15}
+                    value={pkg.durationMinutes ?? ""}
                     onChange={(event) =>
-                      updateBand(index, bandIndex, { maxSqft: Number(event.target.value) })
-                    }
-                  />
-                </label>
-                <label className="field">
-                  <span>Price (dollars)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={dollars(band.priceCents)}
-                    onChange={(event) =>
-                      updateBand(index, bandIndex, {
-                        priceCents: toCents(event.target.value) ?? 0,
+                      update(index, {
+                        durationMinutes: event.target.value
+                          ? Number(event.target.value)
+                          : 60,
                       })
                     }
+                    required
                   />
                 </label>
-                <label className="field field-span">
-                  <span>Label</span>
-                  <input
-                    value={band.label}
-                    onChange={(event) =>
-                      updateBand(index, bandIndex, { label: event.target.value })
+              ) : (
+                <p className="field-hint">
+                  Agents email you to book. No online quote or calendar hold.
+                </p>
+              )}
+
+              {mode === "quote_later" ? (
+                <p className="field-hint">
+                  Agents can request a shoot online. You set the final price on the
+                  Orders board after reviewing the property.
+                </p>
+              ) : null}
+
+              {mode === "set_price" ? (
+                <>
+                  <label className="field">
+                    <span>Base quote price ({currency})</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={dollars(pkg.priceCents)}
+                      onChange={(event) =>
+                        update(index, { priceCents: toCents(event.target.value) })
+                      }
+                    />
+                  </label>
+                  <p className="field-hint">
+                    Optional sq ft bands override the base price. Leave empty to use
+                    one price for every size.
+                  </p>
+                  {(pkg.priceBands ?? []).map((band, bandIndex) => (
+                    <div key={bandIndex} className="form-grid">
+                      <label className="field">
+                        <span>Up to sq ft</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={band.maxSqft}
+                          onChange={(event) =>
+                            updateBand(index, bandIndex, {
+                              maxSqft: Number(event.target.value),
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Price (dollars)</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={dollars(band.priceCents)}
+                          onChange={(event) =>
+                            updateBand(index, bandIndex, {
+                              priceCents: toCents(event.target.value) ?? 0,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="field field-span">
+                        <span>Label</span>
+                        <input
+                          value={band.label}
+                          onChange={(event) =>
+                            updateBand(index, bandIndex, {
+                              label: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() =>
+                      update(index, {
+                        priceBands: [
+                          ...(pkg.priceBands ?? []),
+                          {
+                            maxSqft: 2500,
+                            priceCents: pkg.priceCents ?? 20000,
+                            label: "",
+                          },
+                        ],
+                      })
                     }
-                  />
+                  >
+                    Add price band
+                  </button>
+                </>
+              ) : null}
+
+              <label className="field">
+                <span>Includes (one per line)</span>
+                <textarea
+                  rows={4}
+                  value={pkg.includes.join("\n")}
+                  onChange={(event) =>
+                    update(index, {
+                      includes: event.target.value
+                        .split("\n")
+                        .map((line) => line.trim()),
+                    })
+                  }
+                />
+              </label>
+              <div className="studio-editor-row">
+                <label className="field field-check">
+                  <span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(pkg.featured)}
+                      onChange={(event) =>
+                        update(index, { featured: event.target.checked })
+                      }
+                    />{" "}
+                    Featured
+                  </span>
+                </label>
+                <label className="field field-check">
+                  <span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(pkg.upsell)}
+                      onChange={(event) =>
+                        update(index, { upsell: event.target.checked })
+                      }
+                    />{" "}
+                    In-gallery add-on
+                  </span>
                 </label>
               </div>
-            ))}
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() =>
-                update(index, {
-                  priceBands: [
-                    ...(pkg.priceBands ?? []),
-                    { maxSqft: 2500, priceCents: pkg.priceCents ?? 20000, label: "" },
-                  ],
-                })
-              }
-            >
-              Add price band
-            </button>
-          </section>
-        ))}
+            </section>
+          );
+        })}
       </div>
 
       <button

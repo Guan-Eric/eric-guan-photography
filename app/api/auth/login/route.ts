@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  authenticateUser,
-  createPhotographerSession,
-  setActiveTenantCookie,
-} from "@/lib/auth";
+import { attachPhotographerSession, authenticateUser } from "@/lib/auth";
 import { getDb, qGet, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
 
@@ -25,13 +21,11 @@ export async function POST(request: Request) {
       .where(eq(schema.memberships.userId, result.user.id)),
   );
 
-  await createPhotographerSession(result.user.id, membership?.tenantId);
-  if (membership?.tenantId) {
-    await setActiveTenantCookie(membership.tenantId);
-  }
-
-  return NextResponse.json({
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const response = NextResponse.json({
     ok: true,
     hasStudio: Boolean(membership?.tenantId),
   });
+  attachPhotographerSession(response, result.user.id, membership?.tenantId, host);
+  return response;
 }

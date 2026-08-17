@@ -1,21 +1,38 @@
+import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Gallery } from "@/components/gallery";
 import { LocalBusinessJsonLd } from "@/components/json-ld";
 import { RevealObserver } from "@/components/reveal-observer";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { requireRequestTenant } from "@/lib/tenants";
+import { getListingPage } from "@/lib/listing-pages";
+import { TENANT_HOST_HEADER } from "@/lib/platform";
+import { requireRequestTenant, resolveHostTarget } from "@/lib/tenants";
+import { listTestimonials } from "@/lib/reviews";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const headerStore = await headers();
+  const host =
+    headerStore.get(TENANT_HOST_HEADER) ??
+    headerStore.get("x-forwarded-host") ??
+    headerStore.get("host");
+  const target = await resolveHostTarget(host);
+  if (target.kind === "listing") {
+    const page = await getListingPage(target.listingPageId, target.tenant.id);
+    if (page?.slug) redirect(`/p/${page.slug}`);
+  }
+
   const tenant = await requireRequestTenant();
   const primaryArea = tenant.serviceAreas[0];
+  const testimonials = await listTestimonials(tenant.id, true);
 
   return (
     <>
-      <LocalBusinessJsonLd tenant={tenant} />
+      <LocalBusinessJsonLd tenant={tenant} testimonials={testimonials} />
       <RevealObserver />
       <SiteHeader tenant={tenant} />
 
@@ -75,6 +92,28 @@ export default async function HomePage() {
             </p>
           ) : null}
         </section>
+
+        {testimonials.length > 0 ? (
+          <section className="services" id="reviews">
+            <div className="services-inner">
+              <div className="section-intro">
+                <p className="eyebrow">Agents</p>
+                <h2>What clients say.</h2>
+              </div>
+              <ul className="price-list">
+                {testimonials.slice(0, 6).map((item) => (
+                  <li key={item.id}>
+                    <div>
+                      <h3>{item.agentName}</h3>
+                      <p>{item.body}</p>
+                    </div>
+                    <p className="price">{item.rating}/5</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        ) : null}
 
         <section className="services" id="services">
           <div className="services-inner">

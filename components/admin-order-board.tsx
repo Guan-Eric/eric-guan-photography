@@ -1,13 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import type { Gallery, Order, OrderStatus } from "@/lib/db/schema";
-import { ORDER_STATUSES, orderStatusLabel } from "@/lib/db/schema";
+import { useEffect, useRef, useState } from "react";
+import { AddressAutocomplete } from "@/components/address-autocomplete";
+import type { Order, OrderStatus } from "@/lib/db/schema";
+import {
+  MANUAL_ORDER_STATUSES,
+  ORDER_STATUSES,
+  isManualOrderStatus,
+  orderStatusLabel,
+} from "@/lib/db/schema";
+import type { GallerySummary } from "@/lib/galleries";
 import { parsePreferredSlotsJson } from "@/lib/preferred-slots";
 import { AdminGettingStarted } from "@/components/admin-getting-started";
+import { OrderMediaLinks } from "@/components/order-media-links";
+
+const VIEW_KEY = "sf_board_view";
+type BoardView = "grid" | "list";
 
 function formatMoney(cents: number, currency: string) {
+  if (cents <= 0) return "Quote later";
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency,
@@ -26,10 +38,19 @@ function formatSlot(iso: string) {
   }).format(new Date(iso));
 }
 
-type GallerySummary = Pick<
-  Gallery,
-  "id" | "orderId" | "state" | "publicToken" | "trustTier" | "brandMode"
-> & { mediaCount: number };
+function mediaBadges(gallery: GallerySummary | null) {
+  if (!gallery) return [];
+  const badges: string[] = [];
+  if (gallery.mediaCount > 0) {
+    badges.push(`${gallery.mediaCount} photo${gallery.mediaCount === 1 ? "" : "s"}`);
+  }
+  if (gallery.videoCount > 0) badges.push(`${gallery.videoCount} video`);
+  if (gallery.tourCount > 0) badges.push(`${gallery.tourCount} tour`);
+  if (gallery.floorPlanCount > 0) badges.push(`${gallery.floorPlanCount} floor plan`);
+  if (gallery.brandMode === "unbranded") badges.push("unbranded");
+  if (gallery.trustTier === "net7") badges.push("net 7");
+  return badges;
+}
 
 function deliveryPhase(
   gallery: GallerySummary | null,
@@ -68,9 +89,102 @@ export function AdminOrderBoard({
     Record<string, { branded: string; unbranded: string; listing?: string }>
   >({});
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [addressDrafts, setAddressDrafts] = useState<
+    Record<
+      string,
+      {
+        propertyAddress: string;
+        postalCode: string;
+        city: string;
+        placeId: string;
+        mapLat: string;
+        mapLng: string;
+      }
+    >
+  >({});
+  const [view, setView] = useState<BoardView>("grid");
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const siteBase = siteUrl.replace(/\/$/, "");
+
+  function addressDraft(order: Order) {
+    return (
+      addressDrafts[order.id] ?? {
+        propertyAddress: order.propertyAddress,
+        postalCode: order.postalCode,
+        city: order.city ?? "",
+        placeId: order.placeId ?? "",
+        mapLat: order.mapLat ?? "",
+        mapLng: order.mapLng ?? "",
+      }
+    );
+  }
+
+  function patchAddressDraft(
+    orderId: string,
+    order: Order,
+    patch: Partial<(typeof addressDrafts)[string]>,
+  ) {
+    setAddressDrafts((current) => ({
+      ...current,
+      [orderId]: {
+        ...(current[orderId] ?? {
+          propertyAddress: order.propertyAddress,
+          postalCode: order.postalCode,
+          city: order.city ?? "",
+          placeId: order.placeId ?? "",
+          mapLat: order.mapLat ?? "",
+          mapLng: order.mapLng ?? "",
+        }),
+        ...patch,
+      },
+    }));
+  }
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (saved === "grid" || saved === "list") setView(saved);
+    } catch {
+      // ignore private mode
+    }
+  }, []);
+
+  function chooseView(next: BoardView) {
+    setView(next);
+    try {
+      localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // ignore quota / private mode
+    }
+  }
+
+  function isExpanded(orderId: string) {
+    return expandedIds.has(orderId);
+  }
+
+  function toggleExpanded(orderId: string) {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  }
+
+  function expandAllVisible() {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      for (const order of visibleOrders) next.add(order.id);
+      return next;
+    });
+  }
+
+  function collapseAll() {
+    setExpandedIds(new Set());
+  }
 
   const visibleOrders =
     statusFilter === "all"
@@ -114,6 +228,68 @@ export function AdminOrderBoard({
     );
   }
 
+  async function savePrice(orderId: string) {
+    setError(null);
+    const raw = priceDrafts[orderId];
+    const dollars = Number(raw);
+    if (!Number.isFinite(dollars) || dollars <= 0) {
+      setError("Enter a price greater than zero.");
+      return;
+    }
+    const response = await fetch(`/api/admin/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priceCents: Math.round(dollars * 100) }),
+    });
+    const json = await response.json();
+    if (!json.ok) {
+      setError(json.error ?? "Could not update price.");
+      return;
+    }
+    setOrders((current) =>
+      current.map((order) => (order.id === orderId ? json.order : order)),
+    );
+    setNotice("Price saved.");
+    setPriceDrafts((current) => {
+      const next = { ...current };
+      delete next[orderId];
+      return next;
+    });
+  }
+
+  async function saveAddress(orderId: string) {
+    const order = orders.find((row) => row.id === orderId);
+    if (!order) return;
+    const draft = addressDraft(order);
+    setError(null);
+    const response = await fetch(`/api/admin/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        propertyAddress: draft.propertyAddress,
+        postalCode: draft.postalCode,
+        city: draft.city || undefined,
+        placeId: draft.placeId || null,
+        mapLat: draft.mapLat || null,
+        mapLng: draft.mapLng || null,
+      }),
+    });
+    const json = await response.json();
+    if (!json.ok) {
+      setError(json.error ?? "Could not update address.");
+      return;
+    }
+    setOrders((current) =>
+      current.map((row) => (row.id === orderId ? json.order : row)),
+    );
+    setAddressDrafts((current) => {
+      const next = { ...current };
+      delete next[orderId];
+      return next;
+    });
+    setNotice("Address saved.");
+  }
+
   async function uploadPhotos(orderId: string) {
     const input = fileRefs.current[orderId];
     if (!input?.files?.length) {
@@ -145,6 +321,7 @@ export function AdminOrderBoard({
       }
 
       setGalleries((current) => {
+        const previous = galleryFor(orderId);
         const without = current.filter((gallery) => gallery.orderId !== orderId);
         return [
           ...without,
@@ -153,10 +330,15 @@ export function AdminOrderBoard({
             orderId,
             state: json.state!,
             publicToken: json.token!,
-            trustTier:
-              galleryFor(orderId)?.trustTier ?? ("pay_first" as const),
-            brandMode: galleryFor(orderId)?.brandMode ?? ("branded" as const),
-            mediaCount: (galleryFor(orderId)?.mediaCount ?? 0) + (json.uploaded ?? 0),
+            trustTier: previous?.trustTier ?? ("pay_first" as const),
+            brandMode: previous?.brandMode ?? ("branded" as const),
+            mediaCount: (previous?.mediaCount ?? 0) + (json.uploaded ?? 0),
+            coverAssetId: previous?.coverAssetId ?? null,
+            coverWidth: previous?.coverWidth ?? null,
+            coverHeight: previous?.coverHeight ?? null,
+            videoCount: previous?.videoCount ?? 0,
+            tourCount: previous?.tourCount ?? 0,
+            floorPlanCount: previous?.floorPlanCount ?? 0,
           },
         ];
       });
@@ -304,8 +486,34 @@ export function AdminOrderBoard({
                 ))}
               </select>
             </label>
+            <div className="admin-order-collapse-tools">
+              <div className="admin-order-view" role="group" aria-label="Board layout">
+                <button
+                  type="button"
+                  className={view === "grid" ? "is-active" : undefined}
+                  aria-pressed={view === "grid"}
+                  onClick={() => chooseView("grid")}
+                >
+                  Cards
+                </button>
+                <button
+                  type="button"
+                  className={view === "list" ? "is-active" : undefined}
+                  aria-pressed={view === "list"}
+                  onClick={() => chooseView("list")}
+                >
+                  List
+                </button>
+              </div>
+              <button type="button" className="text-link" onClick={expandAllVisible}>
+                Expand all
+              </button>
+              <button type="button" className="text-link" onClick={collapseAll}>
+                Collapse all
+              </button>
+            </div>
           </div>
-          <div className="admin-order-list">
+          <div className={`admin-order-list is-${view}`}>
             {visibleOrders.map((order) => {
               const gallery = galleryFor(order.id);
               const orderLinks = links[order.id];
@@ -323,38 +531,181 @@ export function AdminOrderBoard({
                 gallery?.state === "unlocked";
               const paid =
                 order.status === "paid" || gallery?.state === "unlocked";
+              const expanded = isExpanded(order.id);
+              const preferred = parsePreferredSlotsJson(order.preferredSlotsJson);
+              const primarySlot =
+                preferred[0]?.label ?? formatSlot(order.preferredStart);
+
+              const badges = mediaBadges(gallery);
+              const coverUrl =
+                gallery?.coverAssetId
+                  ? `/api/g/${gallery.publicToken}/media/${gallery.coverAssetId}?v=web`
+                  : null;
 
               return (
-                <article key={order.id} className="admin-order-card">
+                <article
+                  key={order.id}
+                  className={`admin-order-card${expanded ? " is-expanded" : " is-collapsed"}`}
+                >
+                  <div className="order-card-cover">
+                    {coverUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={coverUrl}
+                        alt={`Cover photo for ${order.propertyAddress}`}
+                        width={gallery?.coverWidth ?? undefined}
+                        height={gallery?.coverHeight ?? undefined}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="order-card-cover-empty">
+                        {gallery ? "Processing" : "No photos yet"}
+                      </div>
+                    )}
+                    <span className={`order-chip order-chip--${order.status}`}>
+                      {orderStatusLabel(order.status)}
+                    </span>
+                  </div>
+
+                  <div className="admin-order-summary">
+                    <button
+                      type="button"
+                      className="admin-order-summary-toggle"
+                      aria-expanded={expanded}
+                      onClick={() => toggleExpanded(order.id)}
+                    >
+                      <span className="admin-order-chevron" aria-hidden>
+                        {expanded ? "▾" : "▸"}
+                      </span>
+                      <span className="admin-order-summary-copy">
+                        <strong>{order.propertyAddress}</strong>
+                        <span className="muted">
+                          {order.agentName} · {order.packageName} ·{" "}
+                          {formatMoney(order.priceCents, order.currency)}
+                        </span>
+                        <span className="muted">{primarySlot}</span>
+                        {badges.length > 0 ? (
+                          <span className="order-media-badges">
+                            {badges.map((badge) => (
+                              <span key={badge}>{badge}</span>
+                            ))}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                    <label className="admin-status-label admin-status-label--inline">
+                      <span className="visually-hidden">Status</span>
+                      {order.status === "delivered" || order.status === "paid" ? (
+                        <span
+                          className="status-select status-select--locked"
+                          title="Set by Publish or Unlock — not editable here"
+                        >
+                          {orderStatusLabel(order.status)}
+                        </span>
+                      ) : (
+                        <select
+                          className="status-select"
+                          value={order.status}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) => {
+                            const next = event.target.value as OrderStatus;
+                            if (!isManualOrderStatus(next)) return;
+                            void setStatus(order.id, next);
+                          }}
+                        >
+                          {MANUAL_ORDER_STATUSES.map((status) => (
+                            <option key={status} value={status}>
+                              {orderStatusLabel(status)}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </label>
+                  </div>
+
+                  {expanded ? (
+                    <>
                   <div className="admin-order-grid">
                     <div>
                       <p className="eyebrow">Preferred times</p>
-                      {(() => {
-                        const preferred = parsePreferredSlotsJson(
-                          order.preferredSlotsJson,
-                        );
-                        if (preferred.length === 0) {
-                          return <div>{formatSlot(order.preferredStart)}</div>;
-                        }
-                        return preferred.map((slot, index) => (
+                      {preferred.length === 0 ? (
+                        <div>{formatSlot(order.preferredStart)}</div>
+                      ) : (
+                        preferred.map((slot, index) => (
                           <div key={slot.start}>
                             {index === 0 ? "1st" : index === 1 ? "2nd" : "3rd"}:{" "}
                             {slot.label}
                           </div>
-                        ));
-                      })()}
+                        ))
+                      )}
                     </div>
                     <div>
                       <p className="eyebrow">Property</p>
-                      <div>{order.propertyAddress}</div>
-                      <div className="muted">
-                        {order.postalCode}
-                        {order.city ? ` · ${order.city}` : ""}
-                      </div>
-                      <div className="muted">
-                        {order.occupancy} · {order.accessType}
-                        {order.accessNotes ? ` · ${order.accessNotes}` : ""}
-                      </div>
+                      {(() => {
+                        const draft = addressDraft(order);
+                        return (
+                          <div className="admin-address-edit">
+                            <label className="field">
+                              <span>Address</span>
+                              <AddressAutocomplete
+                                value={draft.propertyAddress}
+                                onChange={(value) =>
+                                  patchAddressDraft(order.id, order, {
+                                    propertyAddress: value,
+                                  })
+                                }
+                                onResolved={(address) =>
+                                  patchAddressDraft(order.id, order, {
+                                    propertyAddress:
+                                      address.line1 || address.formatted,
+                                    city: address.city || draft.city,
+                                    postalCode:
+                                      address.postalCode || draft.postalCode,
+                                    placeId: address.placeId,
+                                    mapLat: address.lat,
+                                    mapLng: address.lng,
+                                  })
+                                }
+                              />
+                            </label>
+                            <div className="form-grid">
+                              <label className="field">
+                                <span>Postal / ZIP</span>
+                                <input
+                                  value={draft.postalCode}
+                                  onChange={(event) =>
+                                    patchAddressDraft(order.id, order, {
+                                      postalCode: event.target.value,
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label className="field">
+                                <span>City</span>
+                                <input
+                                  value={draft.city}
+                                  onChange={(event) =>
+                                    patchAddressDraft(order.id, order, {
+                                      city: event.target.value,
+                                    })
+                                  }
+                                />
+                              </label>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              onClick={() => void saveAddress(order.id)}
+                            >
+                              Save address
+                            </button>
+                            <div className="muted">
+                              {order.occupancy} · {order.accessType}
+                              {order.accessNotes ? ` · ${order.accessNotes}` : ""}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div>
                       <p className="eyebrow">Agent</p>
@@ -373,22 +724,33 @@ export function AdminOrderBoard({
                         {formatMoney(order.priceCents, order.currency)} ·{" "}
                         {order.squareFootage} sq ft · {order.durationMinutes} min
                       </div>
-                      <label className="admin-status-label">
-                        Status
-                        <select
-                          className="status-select"
-                          value={order.status}
-                          onChange={(event) =>
-                            setStatus(order.id, event.target.value as OrderStatus)
-                          }
-                        >
-                          {ORDER_STATUSES.map((status) => (
-                            <option key={status} value={status}>
-                              {orderStatusLabel(status)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                      {order.priceCents <= 0 ? (
+                        <div className="admin-quote-price">
+                          <label className="field">
+                            <span>Set price (dollars)</span>
+                            <input
+                              type="number"
+                              min={1}
+                              step="1"
+                              value={priceDrafts[order.id] ?? ""}
+                              onChange={(event) =>
+                                setPriceDrafts((current) => ({
+                                  ...current,
+                                  [order.id]: event.target.value,
+                                }))
+                              }
+                              placeholder="e.g. 200"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => void savePrice(order.id)}
+                          >
+                            Save price
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
@@ -618,6 +980,11 @@ export function AdminOrderBoard({
                     </ol>
 
                     <details className="delivery-extras">
+                      <summary>Video, tours & floor plans</summary>
+                      <OrderMediaLinks orderId={order.id} />
+                    </details>
+
+                    <details className="delivery-extras">
                       <summary>Share kit & reports</summary>
                       <div className="admin-delivery-actions">
                         <a
@@ -655,6 +1022,8 @@ export function AdminOrderBoard({
                       </div>
                     </details>
                   </div>
+                    </>
+                  ) : null}
                 </article>
               );
             })}

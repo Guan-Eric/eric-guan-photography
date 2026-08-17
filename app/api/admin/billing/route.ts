@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
 import { billingSummary } from "@/lib/billing";
+import { countBillableDomains } from "@/lib/domain-billing";
 import { getTenantRow } from "@/lib/tenant-store";
 
 export const runtime = "nodejs";
@@ -18,5 +19,6 @@ export async function GET() {
   if (!row) {
     return NextResponse.json({ ok: false, error: "Studio not found." }, { status: 404 });
   }
-  return NextResponse.json({ ok: true, ...billingSummary(row) });
+  const activeDomains = await countBillableDomains(row.id);
+  return NextResponse.json({ ok: true, ...billingSummary(row, { activeDomains }) });
 }

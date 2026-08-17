@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
+import { normalizeStudioCurrency } from "@/lib/currency";
 import {
   isValidHhmm,
   minutesFromHhmm,
@@ -22,6 +23,7 @@ import {
   updateTenantConfig,
   updateTenantTimezone,
 } from "@/lib/tenant-store";
+import { isValidTimeZone, normalizeTimeZone } from "@/lib/timezones";
 
 export const runtime = "nodejs";
 
@@ -100,30 +102,24 @@ function parsePackages(value: unknown, existing: Package[]): Package[] {
       ? row.includes.map((line) => String(line).trim()).filter(Boolean)
       : [];
     const cents = asNumber(row.priceCents, null);
+    const durationMinutes = durationRaw && durationRaw > 0 ? durationRaw : null;
+    const quoteLater = Boolean(row.quoteLater) && durationMinutes != null;
     parsed.push({
       id: asString(row.id).trim() || `pkg_${index + 1}`,
       name,
       summary: asString(row.summary),
-      price: asString(row.price),
-      durationMinutes: durationRaw && durationRaw > 0 ? durationRaw : null,
+      price: asString(row.price) || (quoteLater ? "Quote after request" : ""),
+      durationMinutes,
       includes,
       featured: Boolean(row.featured),
       upsell: Boolean(row.upsell),
-      priceCents: cents ?? undefined,
-      priceBands: parseBands(row.priceBands),
+      quoteLater: quoteLater || undefined,
+      priceCents: quoteLater ? undefined : cents ?? undefined,
+      priceBands: quoteLater ? [] : parseBands(row.priceBands),
     });
   });
   return parsed;
 }
-
-const ALLOWED_TIMEZONES = new Set([
-  "America/Toronto",
-  "America/Vancouver",
-  "America/New_York",
-  "America/Chicago",
-  "America/Los_Angeles",
-  "America/Denver",
-]);
 
 function parseSchedule(
   value: unknown,
@@ -254,11 +250,19 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ ok: false, error: "A valid email is required." }, { status: 400 });
     }
     const phone = asString(body?.phone).trim();
+    const currency = normalizeStudioCurrency(
+      body?.currency,
+      normalizeStudioCurrency(current.seo.currency),
+    );
     await updateTenantConfig(session.activeTenantId, {
       turnaround: asString(body?.turnaround, current.turnaround).trim() || current.turnaround,
       email,
       phone: phone || null,
       serviceAreaGate: gate,
+      seo: {
+        ...current.seo,
+        currency,
+      },
     });
     return NextResponse.json({ ok: true });
   }
@@ -268,9 +272,12 @@ export async function PATCH(request: Request) {
     if (!parsed.ok) {
       return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
     }
-    const timezone = asString(body?.timezone, row.timezone).trim();
-    if (!ALLOWED_TIMEZONES.has(timezone)) {
-      return NextResponse.json({ ok: false, error: "Pick a supported timezone." }, { status: 400 });
+    const timezone = normalizeTimeZone(
+      asString(body?.timezone, row.timezone),
+      normalizeTimeZone(row.timezone),
+    );
+    if (!isValidTimeZone(timezone)) {
+      return NextResponse.json({ ok: false, error: "Pick a valid timezone." }, { status: 400 });
     }
     await updateTenantConfig(session.activeTenantId, { schedule: parsed.schedule });
     await updateTenantTimezone(session.activeTenantId, timezone);

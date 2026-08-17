@@ -1,0 +1,109 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type DomainState = {
+  hostname: string;
+  status: string;
+  expectedTarget: string;
+  note: string;
+};
+
+export function ListingDomainEditor({ pageId }: { pageId: string }) {
+  const [hostname, setHostname] = useState("");
+  const [state, setState] = useState<DomainState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    const response = await fetch(`/api/admin/listings/${pageId}/domain`);
+    const json = await response.json().catch(() => null);
+    if (json?.domain) {
+      setHostname(json.domain.hostname ?? "");
+      setState({
+        hostname: json.domain.hostname,
+        status: json.domain.status,
+        expectedTarget: json.expectedTarget ?? "",
+        note: json.note ?? "",
+      });
+    }
+  }
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageId]);
+
+  async function save(action: "save" | "clear" | "refresh") {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/admin/listings/${pageId}/domain`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostname, action }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!json?.ok) {
+        setError(json?.error ?? "Could not save the domain.");
+        return;
+      }
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="studio-section">
+      <h2>Listing domain</h2>
+      <p className="muted">
+        Point a CNAME at the platform target, then save. Agents can pay for a
+        year of this hostname from the listing page. You are billed $5/mo per
+        live custom hostname.
+      </p>
+      <label className="field">
+        <span>Hostname</span>
+        <input
+          value={hostname}
+          placeholder="123main.yourbrand.com"
+          onChange={(event) => setHostname(event.target.value)}
+        />
+      </label>
+      {state ? (
+        <p className="field-hint">
+          Status: {state.status}
+          {state.expectedTarget ? ` · CNAME → ${state.expectedTarget}` : ""}
+          {state.note ? ` · ${state.note}` : ""}
+        </p>
+      ) : null}
+      {error ? <p className="form-error">{error}</p> : null}
+      <div className="listing-index-actions">
+        <button
+          type="button"
+          className="btn btn-solid"
+          disabled={busy}
+          onClick={() => save("save")}
+        >
+          Save domain
+        </button>
+        <button
+          type="button"
+          className="btn btn-outline"
+          disabled={busy}
+          onClick={() => save("refresh")}
+        >
+          Check status
+        </button>
+        <button
+          type="button"
+          className="text-link"
+          disabled={busy}
+          onClick={() => save("clear")}
+        >
+          Remove
+        </button>
+      </div>
+    </section>
+  );
+}

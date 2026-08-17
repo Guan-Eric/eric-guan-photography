@@ -11,8 +11,12 @@ type ConnectState = {
   mediaQuotaBytes: number;
   canCustomDomain: boolean;
   domainVerified?: boolean;
-  domainStatus?: string;
+  domainLive?: boolean;
+  domainStatus?: string | null;
+  domainCfStatus?: string | null;
+  domainSslStatus?: string | null;
   expectedDnsTarget?: string;
+  note?: string;
   serviceAreaGate: {
     enabled: boolean;
     region: string;
@@ -38,7 +42,36 @@ type BillingState = {
     reports: boolean;
     upsells: boolean;
   };
+  metering: {
+    enabled: boolean;
+    unitUsd: number;
+    meteredListings: number;
+    meteredUsd: number;
+  };
+  domains: {
+    active: number;
+    unitUsd: number;
+    monthlyUsd: number;
+  };
+  projectedMonthlyUsd: number;
 };
+
+const PLAN_CHOICES = [
+  ["payg", "Pay as you go", "$0 + $5 / listing"],
+  ["starter", "Starter", "$49 / month"],
+  ["growth", "Growth", "$99 / month"],
+  ["studio", "Studio", "$179 / month"],
+] as const;
+
+type PlanChoice = (typeof PLAN_CHOICES)[number][0];
+
+function usd(amount: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 export function StudioSettingsPanel() {
   const [state, setState] = useState<ConnectState | null>(null);
@@ -113,16 +146,19 @@ export function StudioSettingsPanel() {
       const json = await response.json();
       if (!json.ok) {
         setError(json.error ?? "Could not save domain.");
+        if (json.note) setMessage(json.note);
         return;
       }
       const status =
-        json.domainStatus === "verified"
-          ? "DNS verified."
+        json.domainLive || json.domainStatus === "active"
+          ? "Custom domain is live."
           : json.domainStatus === "pending"
-            ? "Saved — DNS still pending."
+            ? "Saved — waiting on DNS/SSL."
             : json.domainStatus === "cleared"
               ? "Domain cleared."
-              : "Domain saved.";
+              : json.domainStatus === "error"
+                ? "Saved with an error — check status below."
+                : "Domain saved.";
       setMessage(json.note ? `${status} ${json.note}` : status);
       await load();
     } finally {
@@ -130,7 +166,72 @@ export function StudioSettingsPanel() {
     }
   }
 
-  async function checkout(plan: "starter" | "growth" | "studio") {
+  function domainPhase(current: ConnectState | null): {
+    key: "none" | "live" | "dns" | "ssl" | "error";
+    title: string;
+    detail: string;
+  } {
+    if (!current?.domain) {
+      return {
+        key: "none",
+        title: "Not set",
+        detail: "Save a hostname to start DNS and SSL checks.",
+      };
+    }
+    if (current.domainLive || current.domainStatus === "active") {
+      return {
+        key: "live",
+        title: "Live",
+        detail: `https://${current.domain} is serving this studio over HTTPS.`,
+      };
+    }
+    if (current.domainStatus === "error") {
+      return {
+        key: "error",
+        title: "Needs attention",
+        detail:
+          current.note ??
+          "Provisioning failed. Fix DNS, then save or check status again.",
+      };
+    }
+    if (current.domainVerified) {
+      return {
+        key: "ssl",
+        title: "Waiting on SSL",
+        detail:
+          "DNS looks correct. Certificate usually finishes in a few minutes — check status again shortly.",
+      };
+    }
+    const target = current.expectedDnsTarget ?? "sites.studiofront.ca";
+    return {
+      key: "dns",
+      title: "Waiting on DNS",
+      detail: `Add a CNAME from ${current.domain} → ${target}, wait for propagation (often minutes), then check status.`,
+    };
+  }
+
+  async function checkDomainStatus() {
+    setBusy(true);
+    setError(null);
+    try {
+      await load();
+      setMessage("Domain status refreshed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!state?.domain || state.domainLive || state.domainStatus === "active") {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void load();
+    }, 20_000);
+    return () => window.clearInterval(timer);
+  }, [state?.domain, state?.domainLive, state?.domainStatus]);
+
+  async function checkout(plan: PlanChoice) {
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -216,6 +317,7 @@ export function StudioSettingsPanel() {
 
   const usedGb = state ? (state.storageBytesUsed / 1e9).toFixed(2) : "—";
   const quotaGb = state ? (state.mediaQuotaBytes / 1e9).toFixed(0) : "—";
+  const phase = domainPhase(state);
   const storagePct = state
     ? Math.min(100, (state.storageBytesUsed / Math.max(state.mediaQuotaBytes, 1)) * 100)
     : 0;
@@ -261,21 +363,53 @@ export function StudioSettingsPanel() {
                 ? ` · trial through ${trialLabel}`
                 : ` · ${billing.subscriptionStatus}`}
               <br />
-              {billing.listingsUsedYear} of {billing.listingQuotaAnnual} listings this year ·{" "}
-              {billing.seatsQuota} {billing.seatsQuota === 1 ? "seat" : "seats"}
+              {billing.plan === "payg"
+                ? `${billing.listingsUsedYear} listings this year · billed per listing`
+                : `${billing.listingsUsedYear} of ${billing.listingQuotaAnnual} listings this year`}{" "}
+              · {billing.seatsQuota} {billing.seatsQuota === 1 ? "seat" : "seats"}
             </>
           ) : (
             "Loading…"
           )}
         </p>
+
+        {billing ? (
+          <dl className="usage-meter">
+            <div>
+              <dt>Listings this period</dt>
+              <dd>
+                {billing.listingsUsedYear}
+                {billing.plan === "payg"
+                  ? ""
+                  : ` / ${billing.listingQuotaAnnual}`}
+              </dd>
+            </div>
+            <div>
+              <dt>{billing.plan === "payg" ? "Per listing" : "Beyond plan"}</dt>
+              <dd>
+                {billing.metering.enabled
+                  ? `${billing.metering.meteredListings} × ${usd(billing.metering.unitUsd)} = ${usd(billing.metering.meteredUsd)}`
+                  : "Not metered"}
+              </dd>
+            </div>
+            <div>
+              <dt>Custom domains</dt>
+              <dd>
+                {billing.domains.active} ×{" "}
+                {usd(billing.domains.unitUsd)} = {usd(billing.domains.monthlyUsd)}
+              </dd>
+            </div>
+            <div>
+              <dt>Projected invoice</dt>
+              <dd>
+                <strong>{usd(billing.projectedMonthlyUsd)}</strong>
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+
         <div className="plan-pick">
-          {(
-            [
-              ["starter", "Starter", "$49"],
-              ["growth", "Growth", "$99"],
-              ["studio", "Studio", "$179"],
-            ] as const
-          ).map(([id, label, price]) => (
+          {PLAN_CHOICES.map(([id, label, price]) => (
             <button
               key={id}
               type="button"
@@ -284,10 +418,15 @@ export function StudioSettingsPanel() {
               onClick={() => checkout(id)}
             >
               <strong>{label}</strong>
-              <span>{price} / month</span>
+              <span>{price}</span>
             </button>
           ))}
         </div>
+        <p className="field-hint">
+          Pay as you go has no monthly fee: every listing you complete is billed
+          at {usd(billing?.metering.unitUsd ?? 5)}. Flat plans include a listing
+          allowance and only meter what you shoot beyond it.
+        </p>
         <button type="button" className="btn btn-outline" disabled={busy} onClick={openPortal}>
           Manage billing
         </button>
@@ -307,11 +446,18 @@ export function StudioSettingsPanel() {
       <section className="studio-section">
         <h2>Custom domain</h2>
         {!state?.canCustomDomain ? (
-          <p className="field-hint">Available on Growth and Studio.</p>
+          <p className="field-hint">
+            Custom domains are available on Growth and Studio (and during trial).
+            Upgrade to edit this field on Starter.
+          </p>
         ) : (
           <p className="field-hint">
-            CNAME your hostname to the platform root domain, then save here to
-            verify DNS.
+            Use a subdomain (for example <code>photos.yourstudio.com</code>).
+            Create a CNAME to{" "}
+            <code>{state.expectedDnsTarget ?? "sites.studiofront.ca"}</code>,
+            then save here. SSL usually finishes a few minutes after DNS
+            propagates. Apex domains need ALIAS/ANAME at your registrar if they
+            cannot CNAME.
           </p>
         )}
         <label className="field">
@@ -323,19 +469,77 @@ export function StudioSettingsPanel() {
             disabled={!state?.canCustomDomain}
           />
         </label>
-        <button
-          type="button"
-          className="btn btn-outline"
-          disabled={busy || !state?.canCustomDomain}
-          onClick={saveDomain}
-        >
-          Save domain
-        </button>
+        {state?.canCustomDomain ? (
+          <div
+            className={`domain-status domain-status--${phase.key}`}
+            role="status"
+          >
+            <div className="domain-status__head">
+              <strong>{phase.title}</strong>
+              {state.domain ? <code>{state.domain}</code> : null}
+            </div>
+            <p>{phase.detail}</p>
+            <ul className="domain-status__checks">
+              <li data-ok={state.domainVerified ? "1" : "0"}>
+                DNS {state.domainVerified ? "verified" : "pending"}
+                {state.expectedDnsTarget ? (
+                  <span className="muted"> → {state.expectedDnsTarget}</span>
+                ) : null}
+              </li>
+              <li
+                data-ok={
+                  state.domainLive || state.domainSslStatus === "active"
+                    ? "1"
+                    : "0"
+                }
+              >
+                SSL{" "}
+                {state.domainLive || state.domainSslStatus === "active"
+                  ? "active"
+                  : state.domainSslStatus
+                    ? state.domainSslStatus.replace(/_/g, " ")
+                    : "pending"}
+              </li>
+            </ul>
+            {state.domain &&
+            !state.domainLive &&
+            state.domainStatus !== "active" ? (
+              <p className="field-hint domain-status__hint">
+                Propagation is often a few minutes; some registrars take longer.
+                This panel refreshes automatically while waiting.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="domain-actions">
+          <button
+            type="button"
+            className="btn btn-outline"
+            disabled={busy || !state?.canCustomDomain}
+            onClick={saveDomain}
+          >
+            Save domain
+          </button>
+          {state?.canCustomDomain && state.domain ? (
+            <button
+              type="button"
+              className="btn btn-outline"
+              disabled={busy}
+              onClick={checkDomainStatus}
+            >
+              Check status
+            </button>
+          ) : null}
+        </div>
       </section>
 
       <section className="studio-section">
         <h2>Team</h2>
-        <p className="field-hint">Seat limit follows your plan.</p>
+        <p className="field-hint">
+          Invite an editor by email. They get a link to join this studio and can
+          manage orders, galleries, and site content — same day-to-day tools as
+          you, without billing ownership. Seat limit follows your plan.
+        </p>
         <label className="field">
           <span>Editor email</span>
           <input

@@ -89,21 +89,25 @@ async function writeLocal(relativePath: string, data: Buffer) {
   await fs.writeFile(absolute, data);
 }
 
-async function writeR2(relativePath: string, data: Buffer) {
+async function writeR2(relativePath: string, data: Buffer, contentType: string) {
   const client = getS3Client();
   await client.send(
     new PutObjectCommand({
       Bucket: r2Bucket(),
       Key: relativePath,
       Body: data,
-      ContentType: "image/jpeg",
+      ContentType: contentType,
     }),
   );
 }
 
-export async function writeMediaFile(relativePath: string, data: Buffer) {
+export async function writeMediaFile(
+  relativePath: string,
+  data: Buffer,
+  contentType = "image/jpeg",
+) {
   if (r2Configured()) {
-    await writeR2(relativePath, data);
+    await writeR2(relativePath, data, contentType);
     if (!forceRemote()) {
       await writeLocal(relativePath, data);
     }

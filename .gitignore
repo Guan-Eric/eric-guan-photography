@@ -23,4 +23,6 @@ yarn-error.log*
 .wrangler
 .dev.vars
 cloudflare-env.d.ts
+test-results/
+playwright-report/
 

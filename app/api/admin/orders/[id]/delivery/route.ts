@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireTenantMembership } from "@/lib/auth";
-import { orderStatusEmail, sendEmail } from "@/lib/email";
 import {
   galleryPublicUrl,
   getGalleryByOrderId,
@@ -12,6 +11,10 @@ import {
   listingPagePublicUrl,
   publishListingPage,
 } from "@/lib/listing-pages";
+import {
+  notifyGalleryPaid,
+  notifyOrderStatusChange,
+} from "@/lib/order-notify";
 import { getOrder } from "@/lib/orders";
 import { getTenant } from "@/lib/tenants";
 
@@ -53,16 +56,22 @@ export async function POST(
     if (!gallery) {
       return NextResponse.json({ ok: false, error: "No gallery yet." }, { status: 404 });
     }
-    const result = await unlockGallery(gallery.id, { markOrderPaid: Boolean(body.markPaid) });
-    if (result.ok) {
-      const galleryUrl = galleryPublicUrl(gallery.publicToken, "branded", tenant.siteUrl);
-      const mail = orderStatusEmail({
-        tenant,
-        order: { ...order, status: "paid" },
-        status: "paid",
-        galleryUrl,
+    const result = await unlockGallery(gallery.id, {
+      markOrderPaid: Boolean(body.markPaid),
+    });
+    if (result.ok && body.markPaid) {
+      await notifyGalleryPaid({
+        tenantId: order.tenantId,
+        orderId,
+        galleryToken: gallery.publicToken,
       });
-      if (mail) await sendEmail(mail);
+    } else if (result.ok) {
+      await notifyOrderStatusChange({
+        tenantId: order.tenantId,
+        order: { ...order, status: "delivered" },
+        status: "delivered",
+        galleryUrl: galleryPublicUrl(gallery.publicToken, "branded", tenant.siteUrl),
+      });
     }
     return NextResponse.json(result);
   }
@@ -89,15 +98,14 @@ export async function POST(
     tenant.siteUrl,
   );
 
-  const mail = orderStatusEmail({
-    tenant,
+  const emailResults = await notifyOrderStatusChange({
+    tenantId: order.tenantId,
     order: { ...order, status: "delivered" },
     status: "delivered",
     galleryUrl: brandedUrl,
     listingUrl: listingUrl ?? undefined,
-    prepUrl: `${tenant.siteUrl}/prep`,
   });
-  const emailResult = mail ? await sendEmail(mail) : null;
+  const emailResult = emailResults[0] ?? null;
 
   return NextResponse.json({
     ok: true,

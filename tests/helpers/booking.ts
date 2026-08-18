@@ -1,10 +1,14 @@
 import type { Tenant } from "@/lib/tenant-schema";
 
+let slotSeq = 0;
+
 /** Far-future preferred slot so lead-time / calendar checks pass. */
 export function futurePreferredSlot(durationMinutes = 60) {
+  slotSeq += 1;
   const start = new Date();
   start.setUTCDate(start.getUTCDate() + 10);
   start.setUTCHours(15, 0, 0, 0);
+  start.setUTCMinutes(start.getUTCMinutes() + slotSeq * 180);
   const end = new Date(start.getTime() + durationMinutes * 60_000);
   return {
     start: start.toISOString(),

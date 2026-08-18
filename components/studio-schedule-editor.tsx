@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { StudioCalendarSync } from "@/components/studio-calendar-sync";
 import { TimezoneSelect } from "@/components/timezone-select";
 import { useUnsavedChanges } from "@/components/unsaved-changes";
 import type { Order } from "@/lib/db/schema";
@@ -100,8 +101,8 @@ export function StudioScheduleEditor({
         <section className="studio-section">
           <h2>Weekly hours</h2>
           <p className="studio-section-lede">
-            Agents only see start times that finish by close, with travel buffer between
-            confirmed shoots.
+            Agents only see start times that finish by close. Requested and
+            confirmed shoots, plus a travel buffer, hide overlapping times.
           </p>
           <div className="schedule-day-list">
             {WEEKDAY_KEYS.map((key) => {
@@ -220,11 +221,13 @@ export function StudioScheduleEditor({
         </button>
       </form>
 
+      <StudioCalendarSync />
+
       <section className="studio-section">
         <h2>Incoming bookings</h2>
         <p className="studio-section-lede">
-          Requested and confirmed shoots. Confirm on the Orders board to hold the primary
-          slot on your calendar.
+          Requested times are already held so nobody else can pick them. Confirm
+          on the Orders board to lock the shoot and push it to Google Calendar.
         </p>
         {bookings.length === 0 ? (
           <p className="studio-empty-inline">No open bookings yet.</p>

@@ -73,7 +73,7 @@ const PHOTO_TOUR: CoachStep[] = [
   {
     selector: '[data-tour="schedule"]',
     title: "Set your hours",
-    body: "Weekly availability and slot interval drive what agents can book.",
+    body: "Weekly availability, slot interval, and Google Calendar sync drive what agents can book.",
   },
   {
     selector: '[data-tour="pricing"]',

@@ -103,6 +103,13 @@ const checks = [
       : "optional; address fields fall back to plain text inputs",
   ),
   check(
+    "Google Calendar (GOOGLE_CALENDAR_CLIENT_ID + SECRET)",
+    present("GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET"),
+    present("GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET")
+      ? undefined
+      : "optional; Schedule page shows connect once these are set",
+  ),
+  check(
     "Resend (RESEND_API_KEY)",
     present("RESEND_API_KEY"),
     present("RESEND_API_KEY") ? undefined : "Without this, email logs to console only",
@@ -144,10 +151,13 @@ let failed = 0;
 for (const item of checks) {
   const mark = item.ok ? "PASS" : "FAIL";
   // Custom domains are optional — warn only
-  const isOptionalCustom =
-    item.label.startsWith("Custom domains") && !item.ok;
-  if (!item.ok && !isOptionalCustom) failed += 1;
-  const displayMark = isOptionalCustom ? "WARN" : mark;
+  const isOptional =
+    (item.label.startsWith("Custom domains") ||
+      item.label.startsWith("Google Calendar") ||
+      item.label.startsWith("Address lookup")) &&
+    !item.ok;
+  if (!item.ok && !isOptional) failed += 1;
+  const displayMark = isOptional ? "WARN" : mark;
   const suffix = item.detail ? ` — ${item.detail}` : "";
   console.log(`${displayMark}  ${item.label}${suffix}`);
 }

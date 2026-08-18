@@ -1,6 +1,8 @@
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, lte, ne } from "drizzle-orm";
+import { getExternalBusyIntervals } from "@/lib/calendar";
 import { getDb, qAll, schema } from "@/lib/db";
-import type { Appointment } from "@/lib/db/schema";
+import type { Appointment, Order } from "@/lib/db/schema";
+import { parsePreferredSlotsJson } from "@/lib/preferred-slots";
 import { resolveSchedule, startTimesForDay } from "@/lib/schedule";
 import type { WeeklySchedule, WeekdayKey } from "@/lib/tenant-schema";
 import { getTenantRow, tenantFromRow } from "@/lib/tenant-store";
@@ -92,51 +94,103 @@ function intervalsOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
   return aStart < bEnd && bStart < aEnd;
 }
 
+function paddedInterval(
+  startIso: string,
+  endIso: string,
+  bufferMinutes = DRIVE_BUFFER_MINUTES,
+): BusyInterval {
+  return {
+    startsAt: addMinutes(new Date(startIso), -bufferMinutes),
+    endsAt: addMinutes(new Date(endIso), bufferMinutes),
+    source: "local",
+  };
+}
+
+export function holdIntervalsForOrder(order: Pick<
+  Order,
+  "preferredStart" | "preferredEnd" | "preferredSlotsJson"
+>): BusyInterval[] {
+  const slots = parsePreferredSlotsJson(order.preferredSlotsJson);
+  const windows =
+    slots.length > 0
+      ? slots
+      : [{ start: order.preferredStart, end: order.preferredEnd }];
+  return windows
+    .filter((slot) => slot.start && slot.end)
+    .map((slot) => paddedInterval(slot.start, slot.end));
+}
+
 export async function getLocalBusyIntervals(
   tenantId: string,
   from: Date,
   to: Date,
+  options?: { excludeOrderId?: string },
 ): Promise<BusyInterval[]> {
   const db = getDb();
+  const appointmentFilters = [
+    eq(schema.appointments.tenantId, tenantId),
+    lte(schema.appointments.startsAt, to.toISOString()),
+    gte(schema.appointments.endsAt, from.toISOString()),
+  ];
+  if (options?.excludeOrderId) {
+    appointmentFilters.push(ne(schema.appointments.orderId, options.excludeOrderId));
+  }
+
   const rows = await qAll<Appointment>(
     db
       .select()
       .from(schema.appointments)
-      .where(
-        and(
-          eq(schema.appointments.tenantId, tenantId),
-          lte(schema.appointments.startsAt, to.toISOString()),
-          gte(schema.appointments.endsAt, from.toISOString()),
-        ),
-      ),
+      .where(and(...appointmentFilters)),
   );
 
-  return rows.map((row) => ({
-    startsAt: addMinutes(new Date(row.startsAt), -row.bufferMinutes),
-    endsAt: addMinutes(new Date(row.endsAt), row.bufferMinutes),
-    source: "local" as const,
-  }));
-}
+  const busy = rows.map((row) =>
+    paddedInterval(row.startsAt, row.endsAt, row.bufferMinutes),
+  );
 
-/**
- * Google Calendar free/busy stub. Returns [] until GOOGLE_CALENDAR_ID and
- * GOOGLE_SERVICE_ACCOUNT_JSON are set and the freeBusy call is wired.
- */
-export async function getGoogleBusyIntervals(
-  _tenantId: string,
-  _from: Date,
-  _to: Date,
-): Promise<BusyInterval[]> {
-  if (!process.env.GOOGLE_CALENDAR_ID || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-    return [];
+  const holdFilters = [
+    eq(schema.orders.tenantId, tenantId),
+    eq(schema.orders.status, "requested"),
+  ];
+  if (options?.excludeOrderId) {
+    holdFilters.push(ne(schema.orders.id, options.excludeOrderId));
   }
-  console.info("[calendar] Google credentials present but freeBusy not wired yet.");
-  return [];
+
+  const pending = await qAll<Order>(
+    db
+      .select()
+      .from(schema.orders)
+      .where(and(...holdFilters)),
+  );
+
+  const fromMs = from.getTime();
+  const toMs = to.getTime();
+  for (const order of pending) {
+    for (const interval of holdIntervalsForOrder(order)) {
+      if (interval.startsAt.getTime() <= toMs && interval.endsAt.getTime() >= fromMs) {
+        busy.push(interval);
+      }
+    }
+  }
+
+  return busy;
 }
 
-export async function getBusyIntervals(tenantId: string, from: Date, to: Date) {
+export async function getGoogleBusyIntervals(
+  tenantId: string,
+  from: Date,
+  to: Date,
+): Promise<BusyInterval[]> {
+  return getExternalBusyIntervals(tenantId, from, to);
+}
+
+export async function getBusyIntervals(
+  tenantId: string,
+  from: Date,
+  to: Date,
+  options?: { excludeOrderId?: string },
+) {
   const [local, google] = await Promise.all([
-    getLocalBusyIntervals(tenantId, from, to),
+    getLocalBusyIntervals(tenantId, from, to, options),
     getGoogleBusyIntervals(tenantId, from, to),
   ]);
   return [...local, ...google];
@@ -172,7 +226,8 @@ async function scheduleForTenant(tenantId: string): Promise<{
 
 /**
  * Offer shoot slots from the studio weekly schedule in the tenant timezone.
- * Applies lead time and drive-time buffer against existing appointments.
+ * Applies lead time and drive-time buffer against confirmed appointments,
+ * requested holds, and (when enabled) Google Calendar events.
  */
 export async function listAvailableSlots(options: {
   tenantId: string;
@@ -228,6 +283,7 @@ export async function assertSlotAvailable(options: {
   tenantId: string;
   startIso: string;
   endIso: string;
+  excludeOrderId?: string;
 }) {
   const start = new Date(options.startIso);
   const end = new Date(options.endIso);
@@ -239,13 +295,14 @@ export async function assertSlotAvailable(options: {
     options.tenantId,
     addMinutes(start, -DRIVE_BUFFER_MINUTES),
     addMinutes(end, DRIVE_BUFFER_MINUTES),
+    { excludeOrderId: options.excludeOrderId },
   );
 
   if (!isSlotFree(start, end, busy)) {
     return {
       ok: false as const,
       error:
-        "That slot is no longer free (another shoot or the travel buffer). Pick another time.",
+        "That slot is no longer free (another shoot, a held request, or the travel buffer). Pick another time.",
     };
   }
 

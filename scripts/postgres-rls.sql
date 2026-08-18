@@ -18,6 +18,7 @@ ALTER TABLE membership_invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE billing_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE upload_rate_limits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reminder_sends ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calendar_connections ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenants_isolation ON tenants
   USING (id = current_setting('app.tenant_id', true));
@@ -56,6 +57,9 @@ CREATE POLICY upload_rate_limits_isolation ON upload_rate_limits
   USING (tenant_id = current_setting('app.tenant_id', true));
 
 CREATE POLICY reminder_sends_isolation ON reminder_sends
+  USING (tenant_id = current_setting('app.tenant_id', true));
+
+CREATE POLICY calendar_connections_isolation ON calendar_connections
   USING (tenant_id = current_setting('app.tenant_id', true));
 
 -- users is global identity (email login across tenants); isolate via memberships.

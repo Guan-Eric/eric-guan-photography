@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PLAN_DEFS } from "@/lib/plan-defs";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 type ConnectState = {
@@ -57,12 +58,14 @@ type BillingState = {
   projectedMonthlyUsd: number;
 };
 
-const PLAN_CHOICES = [
-  ["payg", "Pay as you go", "$0 + $5 / listing"],
-  ["starter", "Starter", "$49 / month"],
-  ["growth", "Growth", "$99 / month"],
-  ["studio", "Studio", "$179 / month"],
-] as const;
+const PLAN_CHOICES = (
+  [
+    ["payg", PLAN_DEFS.payg.label, `$0 + $${PLAN_DEFS.payg.meteredUsd} / listing`],
+    ["starter", PLAN_DEFS.starter.label, `$${PLAN_DEFS.starter.monthlyUsd} / month`],
+    ["growth", PLAN_DEFS.growth.label, `$${PLAN_DEFS.growth.monthlyUsd} / month`],
+    ["studio", PLAN_DEFS.studio.label, `$${PLAN_DEFS.studio.monthlyUsd} / month`],
+  ] as const
+);
 
 type PlanChoice = (typeof PLAN_CHOICES)[number][0];
 

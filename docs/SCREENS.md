@@ -126,7 +126,7 @@ First-run **coach tour** (`photo_v1`) highlights Work → Schedule → Pricing �
 
 **Studios (`#studios`):** two numbered steps — Working alone / Growing a bench.
 
-**Plans (`#plans`):** three numbered rows from `PLAN_DEFS` — Starter $49, Growth $99, Studio $179 (listings/year + seats). Button **Compare plans**.
+**Plans (`#plans`):** three numbered rows from `PLAN_DEFS` — Starter $49, Growth $99, Studio $149 (listings/year + seats). Button **Compare plans** → `/pricing#compare`.
 
 **Get started:** h2 *Your brand on the site. Your files in the zip.* Button **Start 14-day trial**.
 
@@ -136,7 +136,7 @@ First-run **coach tour** (`photo_v1`) highlights Work → Schedule → Pricing �
 
 **Purpose:** Pick a software plan. Header is solid (no hero photo).
 
-**H1:** *Pay per listing, or go flat as you grow.* Copy mentions $5/listing payg, 14-day trial, no agent accounts.
+**H1:** *Pay per listing, or go flat as you grow.* Copy mentions $5/listing payg, $49 / $99 / $149 flats, 14-day trial, no agent accounts. Jump link **Compare plans and the PAYG math** → `#compare`.
 
 **Four cards:**
 
@@ -145,9 +145,11 @@ First-run **coach tour** (`photo_v1`) highlights Work → Schedule → Pricing �
 | Pay as you go | $5/listing | — |
 | Starter | $49/mo | — |
 | Growth | $99/mo | **Most studios** (featured) |
-| Studio | $179/mo | — |
+| Studio | $149/mo | — |
 
 Each lists listings or unlimited, seats, white-label + booking, gated galleries + MLS zips, subdomain vs custom domain, property websites / share kit where entitled, overage $3/listing on flat plans. CTA **Start free** (payg) or **Start trial** → `/signup?plan={id}`.
+
+**Compare (`#compare`):** feature matrix (price, listings, overage, seats, storage, domain, property pages, share kit, reports, upsells) plus PAYG break-even cards and a yearly cost table at 24 / 48 / 96 / 120 / 250 / 500 listings. Starter includes 125 listings so the $49 rent beats PAYG inside the quota (118 listings/year).
 
 ---
 

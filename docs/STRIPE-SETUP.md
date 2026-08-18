@@ -12,7 +12,7 @@ Create three **recurring monthly** Products (USD):
 |---|---|---|
 | Starter | $49 / month | `STRIPE_PRICE_STARTER=price_...` |
 | Growth | $99 / month | `STRIPE_PRICE_GROWTH=price_...` |
-| Studio | $179 / month | `STRIPE_PRICE_STUDIO=price_...` |
+| Studio | $149 / month | `STRIPE_PRICE_STUDIO=price_...` |
 
 Copy each Price ID (starts with `price_`) into production secrets / `.env.local`.
 

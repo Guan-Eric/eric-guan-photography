@@ -229,7 +229,7 @@ Phases below are **product milestones for the SaaS**. Dogfooding on tenant #1 is
 
 **Done**
 
-- [x] Platform billing: $49 / $99 / $179 + trial + listing/seat quotas
+- [x] Platform billing: $49 / $99 / $149 + PAYG + trial + listing/seat quotas
 - [x] Editor invites with seat limits
 - [x] Legal pack: `/terms`, `/privacy`
 - [x] Isolation tests include billing + listing pages
@@ -260,13 +260,14 @@ Never ship multi-tenant money movement without Connect + isolation tests.
 
 ## Pricing thesis (platform)
 
-Match Aryeo Pro ladders in USD via Stripe Billing:
+Match Aryeo Pro ladders in USD via Stripe Billing, undercutting only the top public rung:
 
 1. **14-day trial** of Starter (full booking + galleries).
-2. **Starter $49/mo** — 100 listings/year, 1 seat, subdomain.
+2. **Starter $49/mo** — 125 listings/year, 1 seat, subdomain.
 3. **Growth $99/mo** — 250 listings/year, 3 seats, custom domain, property pages.
-4. **Studio $179/mo** — 500 listings/year, 5 seats, share kit, reports, in-gallery upsells.
-5. **Payment fees** — Stripe + optional platform % on Connect (`PLATFORM_FEE_BPS`).
+4. **Studio $149/mo** — 500 listings/year, 5 seats, share kit, reports, in-gallery upsells.
+5. **Pay as you go $5/listing** — no monthly fee; switch to a flat plan once volume makes rent cheaper (Starter from 118 listings/year).
+6. **Payment fees** — Stripe + optional platform % on Connect (`PLATFORM_FEE_BPS`).
 
 No perpetual free Lite in v1. Env: `STRIPE_PRICE_STARTER` / `GROWTH` / `STUDIO`.
 
@@ -304,7 +305,7 @@ No perpetual free Lite in v1. Env: `STRIPE_PRICE_STARTER` / `GROWTH` / `STUDIO`.
 
 **Platform**
 
-1. Create Stripe products/prices ($49 / $99 / $179) and set `STRIPE_PRICE_*`.
+1. Create Stripe products/prices ($49 / $99 / $149 + PAYG meter) and set `STRIPE_PRICE_*`.
 2. Point a real `DATABASE_URL` (Postgres) and apply `scripts/postgres-rls.sql` before inviting an external studio.
 3. Complete Stripe Connect on dogfood tenant; verify destination Checkout.
 4. Wire signed R2 uploads; drop local mirror for production media.
@@ -350,3 +351,4 @@ year-plan-slides.html # Eric’s business ops plan (not the SaaS product roadmap
 | 2026-08-14 | Phase 3 MVP: photographer auth, DB tenants, proxy host routing, Connect stubs, isolation |
 | 2026-08-14 | Apex host is the **SaaS marketing site**; Eric Guan lives at `ericguan.{platform}` |
 | 2026-08-14 | Photographer billing: Aryeo-matched **$49 / $99 / $179** Stripe subscriptions + 14-day trial |
+| 2026-08-18 | Public ladder **$49 / $99 / $149** + PAYG math on `/pricing#compare`; Starter includes 125 listings |

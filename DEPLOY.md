@@ -64,7 +64,7 @@ Note your Account ID (dashboard sidebar).
 
 Follow [`docs/STRIPE-SETUP.md`](docs/STRIPE-SETUP.md):
 
-- Products: Starter $49 · Growth $99 · Studio $179 → Price IDs  
+- Products: Starter $49 · Growth $99 · Studio $149 → Price IDs  
 - API keys  
 - Webhook: `https://studiofront.ca/api/stripe/webhook` (after DNS)  
 - Customer Portal + Connect Express  

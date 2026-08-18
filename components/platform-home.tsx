@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PlatformFooter } from "@/components/platform-footer";
 import { PlatformHeader } from "@/components/platform-header";
 import { RevealObserver } from "@/components/reveal-observer";
-import { PLAN_DEFS } from "@/lib/billing";
+import { PLAN_DEFS } from "@/lib/plan-defs";
 import { platformName } from "@/lib/platform";
 
 const HERO = {
@@ -169,7 +169,7 @@ export function PlatformHome() {
               ))}
             </ol>
             <p className="section-copy" style={{ marginTop: "2rem" }}>
-              <Link className="btn btn-solid" href="/pricing">
+              <Link className="btn btn-solid" href="/pricing#compare">
                 Compare plans
               </Link>
             </p>

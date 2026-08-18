@@ -43,8 +43,9 @@ function row(partial: Partial<TenantRow>): TenantRow {
 
 describe("billing entitlements & access", () => {
   it("exposes plan quotas", () => {
-    expect(PLAN_DEFS.starter.listingQuota).toBe(100);
+    expect(PLAN_DEFS.starter.listingQuota).toBe(125);
     expect(PLAN_DEFS.growth.listingQuota).toBe(250);
+    expect(PLAN_DEFS.studio.monthlyUsd).toBe(149);
     expect(PLAN_DEFS.studio.seats).toBe(5);
   });
 

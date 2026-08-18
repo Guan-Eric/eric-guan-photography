@@ -221,6 +221,6 @@ export function platformSeo() {
   const name = platformName();
   return {
     title: `${name} — White-label software for real estate photographers`,
-    description: `${name} gives photographers a branded site, booking, gated galleries, and property pages. $49 / $99 / $179 per month.`,
+    description: `${name} gives photographers a branded site, booking, gated galleries, and property pages. $49 / $99 / $149 per month, or $5 per listing.`,
   };
 }

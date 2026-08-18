@@ -6,10 +6,10 @@ import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { PreferredTimesPicker } from "@/components/preferred-times-picker";
 import { CoachTour, type CoachStep } from "@/components/coach-tour";
 import type { PreferredSlot } from "@/lib/preferred-slots";
-import { isInServiceArea, normalizePostalCode } from "@/lib/service-area";
+import { isInServiceArea, normalizePostalCode, serviceAreaMessage } from "@/lib/service-area";
 import { isBookablePackage } from "@/lib/quoting";
 import { toastError, toastSuccess } from "@/lib/toast";
-import type { Package, ServiceAreaGate } from "@/lib/tenant-schema";
+import type { Package, ServiceAreaGate, Tenant } from "@/lib/tenant-schema";
 
 type Slot = { start: string; end: string; label: string };
 
@@ -34,6 +34,7 @@ type Props = {
   timeZone?: string;
   serviceAreaGate?: ServiceAreaGate | null;
   serviceAreaMessage?: string;
+  children?: React.ReactNode;
 };
 
 type FieldKey =
@@ -115,12 +116,14 @@ function QuoteSummary({
   quoteError,
   email,
   submitting,
+  includes,
 }: {
   quote: QuoteOk | null;
   loadingQuote: boolean;
   quoteError: string | null;
   email: string;
   submitting: boolean;
+  includes: string[];
 }) {
   return (
     <aside className="booking-quote" aria-live="polite" data-tour="book-quote">
@@ -143,6 +146,13 @@ function QuoteSummary({
               <span>{quote.durationMinutes} min</span>
             </li>
           </ul>
+          {includes.length > 0 ? (
+            <ul className="booking-includes">
+              {includes.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
           <p className="booking-quote-total">
             <span>Total Quote</span>
             <span className="booking-quote-price">{quote.priceLabel}</span>
@@ -178,7 +188,8 @@ export function BookingForm({
   defaultCity = "",
   timeZone = "America/Toronto",
   serviceAreaGate,
-  serviceAreaMessage,
+  serviceAreaMessage: serviceAreaMessageProp,
+  children,
 }: Props) {
   const router = useRouter();
   const bookable = useMemo(
@@ -191,6 +202,7 @@ export function BookingForm({
       ? defaultPackageId
       : bookable[0]?.id ?? "",
   );
+  const selectedPackage = bookable.find((pkg) => pkg.id === packageId) ?? bookable[0];
   const [squareFootage, setSquareFootage] = useState("1800");
   const [quote, setQuote] = useState<QuoteOk | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -249,8 +261,16 @@ export function BookingForm({
     if (propertyAddress.trim().length < 5) {
       errors.propertyAddress = "Enter the full property address.";
     }
+    const areaMessage =
+      serviceAreaMessageProp ??
+      serviceAreaMessage({ serviceAreaGate } as Tenant);
     if (normalizePostalCode(postalCode).length < 3) {
       errors.postalCode = "Enter a postal or ZIP code.";
+    } else if (
+      !isInServiceArea(postalCode, { serviceAreaGate } as Tenant)
+    ) {
+      errors.postalCode = areaMessage;
+      errors.propertyAddress = areaMessage;
     }
     if (!city.trim()) errors.city = "Enter the city.";
 
@@ -338,9 +358,15 @@ export function BookingForm({
     const errors = validate();
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setFormError("Check the highlighted fields.");
-      toastError("Check the highlighted fields.");
-      const firstKey = Object.keys(errors)[0];
+      const areaBlocked =
+        Boolean(errors.postalCode) &&
+        errors.postalCode === errors.propertyAddress;
+      const message = areaBlocked
+        ? errors.postalCode!
+        : "Check the highlighted fields.";
+      setFormError(message);
+      toastError(message);
+      const firstKey = areaBlocked ? "propertyAddress" : Object.keys(errors)[0];
       const el = document.querySelector(`[data-field="${firstKey}"]`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
@@ -381,8 +407,11 @@ export function BookingForm({
         const message = json.error ?? "Could not submit the booking.";
         setFormError(message);
         toastError(message);
-        if (/postal/i.test(message) || /Montréal|Montreal|cover/i.test(message)) {
-          setFieldErrors({ postalCode: message });
+        if (/postal|ZIP|cover|service area|Montréal|Montreal/i.test(message)) {
+          setFieldErrors({ postalCode: message, propertyAddress: message });
+          document
+            .querySelector('[data-field="propertyAddress"]')
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
         } else if (/time|slot|preferred/i.test(message)) {
           setFieldErrors({ preferredSlots: message });
         }
@@ -405,6 +434,7 @@ export function BookingForm({
 
   return (
     <form className="booking-form" onSubmit={onSubmit} noValidate>
+      {children}
       <p className="field-hint form-legend">
         Fields marked <abbr className="required-marker" title="Required">*</abbr> are
         required.
@@ -416,6 +446,7 @@ export function BookingForm({
         quoteError={quoteError}
         email={email}
         submitting={submitting}
+        includes={selectedPackage?.includes ?? []}
       />
 
       <div className="booking-panel">
@@ -477,9 +508,24 @@ export function BookingForm({
             ) : null}
           </label>
         </div>
+        {selectedPackage?.summary ? (
+          <p className="field-hint booking-package-summary">{selectedPackage.summary}</p>
+        ) : null}
+        {selectedPackage?.includes.length ? (
+          <ul className="booking-includes" aria-label={`${selectedPackage.name} includes`}>
+            {selectedPackage.includes.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        ) : null}
       </section>
 
-      <section className="booking-step" data-tour="book-property">
+      <section
+        className={`booking-step${
+          fieldErrors.propertyAddress || fieldErrors.postalCode ? " is-invalid" : ""
+        }`}
+        data-tour="book-property"
+      >
         <h2>2. Property</h2>
         <div className="form-grid">
           <label
@@ -506,21 +552,27 @@ export function BookingForm({
                 setPlaceId(address.placeId);
                 setMapLat(address.lat);
                 setMapLng(address.lng);
-                clearFieldError("propertyAddress");
-                clearFieldError("city");
-                clearFieldError("postalCode");
-                if (
+                const areaMessage =
+                  serviceAreaMessageProp ??
+                  serviceAreaMessage({ serviceAreaGate } as Tenant);
+                const outOfArea = Boolean(
                   address.postalCode &&
-                  !isInServiceArea(address.postalCode, {
-                    serviceAreaGate,
-                  } as import("@/lib/tenant-schema").Tenant) &&
-                  serviceAreaMessage
-                ) {
-                  setFieldErrors((current) => ({
-                    ...current,
-                    postalCode: serviceAreaMessage,
-                  }));
-                }
+                    !isInServiceArea(address.postalCode, {
+                      serviceAreaGate,
+                    } as Tenant),
+                );
+                setFieldErrors((current) => {
+                  const next = { ...current };
+                  delete next.city;
+                  if (outOfArea) {
+                    next.propertyAddress = areaMessage;
+                    next.postalCode = areaMessage;
+                  } else {
+                    delete next.propertyAddress;
+                    delete next.postalCode;
+                  }
+                  return next;
+                });
               }}
             />
             {fieldErrors.propertyAddress ? (
@@ -541,7 +593,17 @@ export function BookingForm({
               aria-describedby={fieldErrors.postalCode ? "err-postalCode" : undefined}
               onChange={(event) => {
                 setPostalCode(event.target.value.toUpperCase());
-                clearFieldError("postalCode");
+                setFieldErrors((current) => {
+                  const next = { ...current };
+                  delete next.postalCode;
+                  const area =
+                    serviceAreaMessageProp ??
+                    serviceAreaMessage({ serviceAreaGate } as Tenant);
+                  if (next.propertyAddress === area) {
+                    delete next.propertyAddress;
+                  }
+                  return next;
+                });
               }}
               required
             />
@@ -787,7 +849,9 @@ export function BookingForm({
         >
           {submitting ? "Sending request…" : "Send request"}
         </button>
-        {triedSubmit && Object.keys(fieldErrors).length > 0 ? (
+        {triedSubmit &&
+        Object.keys(fieldErrors).length > 0 &&
+        fieldErrors.postalCode !== fieldErrors.propertyAddress ? (
           <p className="field-hint">
             {Object.keys(fieldErrors).length} required field
             {Object.keys(fieldErrors).length === 1 ? "" : "s"} still need attention.

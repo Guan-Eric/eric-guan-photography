@@ -385,6 +385,7 @@ export function orderStatusEmail(options: {
   status: OrderStatus;
   galleryUrl?: string;
   listingUrl?: string;
+  listingCopyUrl?: string;
   prepUrl?: string;
   scheduledLabel?: string;
 }): OutboundEmail | null {
@@ -458,12 +459,16 @@ export function orderStatusEmail(options: {
     if (options.listingUrl) {
       secondaryLinks.push({ label: "Listing page", url: options.listingUrl });
     }
+    if (options.listingCopyUrl) {
+      secondaryLinks.push({ label: "Add listing copy", url: options.listingCopyUrl });
+    }
 
     return composeEmail(order.agentEmail, `Your photos are ready — ${order.propertyAddress}`, {
       preview: `Your gallery for ${order.propertyAddress} is ready to review.`,
       greeting: `Hi ${name},`,
       intro: [
         `Your gallery for ${order.propertyAddress} is ready. You can preview the images now; unlock full-resolution and MLS downloads from the gallery page.`,
+        "Add a headline and description for the listing page when you’re ready — that’s your copy, not the photographer’s.",
       ],
       cta: options.galleryUrl
         ? { label: "Open gallery", url: options.galleryUrl }
@@ -738,6 +743,7 @@ export function orderLifecycleEmails(options: {
   status: OrderStatus;
   galleryUrl?: string;
   listingUrl?: string;
+  listingCopyUrl?: string;
   prepUrl?: string;
   scheduledLabel?: string;
   adminUrl?: string;

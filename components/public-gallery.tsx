@@ -63,7 +63,7 @@ export function PublicGallery({
   allowStubUnlock?: boolean;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"pay" | "stub" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const unlocked = state === "unlocked";
@@ -106,7 +106,7 @@ export function PublicGallery({
   }
 
   async function checkout(stub = false) {
-    setBusy(true);
+    setBusy(stub ? "stub" : "pay");
     setError(null);
     try {
       const response = await fetch(`/api/g/${token}/checkout`, {
@@ -143,7 +143,7 @@ export function PublicGallery({
       setError("Network error starting checkout.");
       toastError("Network error starting checkout.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -207,20 +207,20 @@ export function PublicGallery({
             <div className="delivery-download-row">
               <button
                 type="button"
-                className={`btn btn-solid${busy ? " is-busy" : ""}`}
-                disabled={busy}
+                className={`btn btn-solid${busy === "pay" ? " is-busy" : ""}`}
+                disabled={busy !== null}
                 onClick={() => checkout(false)}
               >
-                {busy ? "Starting…" : `Pay ${price} & unlock`}
+                {busy === "pay" ? "Starting…" : `Pay ${price} & unlock`}
               </button>
               {allowStubUnlock ? (
                 <button
                   type="button"
-                  className={`btn btn-outline${busy ? " is-busy" : ""}`}
-                  disabled={busy}
+                  className={`btn btn-outline${busy === "stub" ? " is-busy" : ""}`}
+                  disabled={busy !== null}
                   onClick={() => checkout(true)}
                 >
-                  {busy ? "Unlocking…" : "Dev stub unlock"}
+                  {busy === "stub" ? "Unlocking…" : "Dev stub unlock"}
                 </button>
               ) : null}
             </div>

@@ -32,6 +32,19 @@ describe("booking-schema", () => {
       accessType: "lockbox",
     });
     expect(booking.success).toBe(true);
+
+    const usZip = bookingRequestSchema.safeParse({
+      packageId: "standard",
+      squareFootage: 1500,
+      propertyAddress: "123 Main Street",
+      postalCode: "10001",
+      preferredSlots: [slot],
+      agentName: "Alex Agent",
+      agentEmail: "alex@example.com",
+      occupancy: "vacant",
+      accessType: "lockbox",
+    });
+    expect(usZip.success).toBe(true);
   });
 
   it("rejects invalid booking fixtures", () => {

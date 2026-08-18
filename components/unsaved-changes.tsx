@@ -43,7 +43,7 @@ export function UnsavedChangesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    function onClick(event: MouseEvent) {
+    function onClick(event: Event) {
       const anchor = (event.target as HTMLElement | null)?.closest("a");
       if (!anchor || !(anchor instanceof HTMLAnchorElement)) return;
       if (anchor.target === "_blank" || anchor.hasAttribute("download")) return;

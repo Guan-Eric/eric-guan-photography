@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import type { ThemeTokens } from "@/lib/tenant-schema";
 
 /**
- * Listing-page looks an agent can pick. Pure data plus a CSS-variable mapper,
+ * Listing-page looks the photographer can pick. Pure data plus a CSS-variable mapper,
  * so both the editor preview and the public page can import this.
  */
 export const LISTING_THEMES = ["gallery", "editorial", "coastal"] as const;

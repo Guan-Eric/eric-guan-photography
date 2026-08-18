@@ -48,6 +48,19 @@ export function hostnameFromHost(host: string | null | undefined) {
 }
 
 /**
+ * Allow only same-origin portal paths after magic-link sign-in.
+ */
+export function safePortalPath(value: unknown) {
+  if (typeof value !== "string") return null;
+  const path = value.trim();
+  if (!path.startsWith("/portal")) return null;
+  if (path.startsWith("//") || path.includes("://") || path.includes("\\")) {
+    return null;
+  }
+  return path;
+}
+
+/**
  * Public origin for redirects. Prefer forwarded Host over `request.url`,
  * which on Cloudflare Workers can be the `*.workers.dev` URL.
  */

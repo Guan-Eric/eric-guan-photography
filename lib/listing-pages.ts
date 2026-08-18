@@ -7,6 +7,7 @@ import { getGalleryByOrderId, listMedia, updateMediaCaptions } from "@/lib/galle
 import type { ListingSection, OpenHouse } from "@/lib/listing-content";
 import { type ListingTheme, listingTheme } from "@/lib/listing-themes";
 import { listMediaLinksForOrder, visibleLinks } from "@/lib/media-links";
+import { getOrder } from "@/lib/orders";
 import { getTenantRow } from "@/lib/tenant-store";
 import { getTenant } from "@/lib/tenants";
 
@@ -173,6 +174,21 @@ export async function getListingPage(pageId: string, tenantId: string) {
   return page;
 }
 
+export async function getListingPageForAgent(
+  pageId: string,
+  tenantId: string,
+  email: string,
+) {
+  const page = await getListingPage(pageId, tenantId);
+  if (!page) return null;
+  const order = await getOrder(page.orderId, tenantId);
+  if (!order) return null;
+  if (order.agentEmail.trim().toLowerCase() !== email.trim().toLowerCase()) {
+    return null;
+  }
+  return page;
+}
+
 export type ListingPagePatch = {
   title?: string;
   headline?: string | null;
@@ -198,7 +214,11 @@ export async function updateListingPage(
   const updatedAt = nowIso();
   const values: Record<string, unknown> = { updatedAt };
   if (patch.title !== undefined) values.title = patch.title.trim() || page.title;
-  if (patch.headline !== undefined) values.headline = patch.headline?.trim() || null;
+  if (patch.headline !== undefined) {
+    const headline = patch.headline?.trim() || null;
+    values.headline = headline;
+    values.title = headline || page.propertyAddress;
+  }
   if (patch.description !== undefined) {
     values.description = patch.description?.trim() || null;
   }
@@ -226,6 +246,10 @@ export async function updateListingPage(
 
 export function listingPagePublicUrl(page: ListingPage, siteUrl: string) {
   return new URL(`/p/${page.slug}`, siteUrl).toString();
+}
+
+export function listingCopyUrl(page: ListingPage, siteUrl: string) {
+  return new URL(`/portal/listings/${page.id}`, siteUrl).toString();
 }
 
 export async function listingPageMedia(page: ListingPage) {

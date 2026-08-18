@@ -122,7 +122,7 @@ export function AddressAutocomplete({
   }
 
   return (
-    <div className="address-suggest">
+    <div className={`address-suggest${invalid ? " is-invalid" : ""}`}>
       <input
         value={value}
         placeholder={placeholder}

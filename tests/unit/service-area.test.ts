@@ -39,6 +39,7 @@ describe("service-area", () => {
     expect(isValidPostalForTenant("H2X 1Y4", montrealTenant)).toBe(true);
     expect(isInServiceArea("H2X 1Y4", montrealTenant)).toBe(true);
     expect(isInServiceArea("M5V 2T6", montrealTenant)).toBe(false);
+    expect(isInServiceArea("10001", montrealTenant)).toBe(false);
     expect(serviceAreaMessage(montrealTenant)).toBe("Montréal only");
   });
 

@@ -37,6 +37,7 @@ export async function notifyOrderStatusChange(options: {
   status: OrderStatus;
   galleryUrl?: string;
   listingUrl?: string;
+  listingCopyUrl?: string;
   scheduledLabel?: string;
 }) {
   const tenant = await getTenant(options.tenantId);
@@ -56,6 +57,7 @@ export async function notifyOrderStatusChange(options: {
     status: options.status,
     galleryUrl,
     listingUrl: options.listingUrl,
+    listingCopyUrl: options.listingCopyUrl,
     prepUrl: `${tenant.siteUrl.replace(/\/$/, "")}/prep`,
     scheduledLabel: options.scheduledLabel,
     adminUrl: `${tenant.siteUrl.replace(/\/$/, "")}/admin`,

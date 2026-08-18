@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { publicStudioUrl, requestPublicOrigin, studioOrigin } from "@/lib/platform";
+import { publicStudioUrl, requestPublicOrigin, safePortalPath, studioOrigin } from "@/lib/platform";
 
 describe("public studio URLs", () => {
   const previous = {
@@ -83,5 +83,12 @@ describe("public studio URLs", () => {
       },
     });
     expect(requestPublicOrigin(request)).toBe("https://silentshutter.studiofront.ca");
+  });
+
+  it("only allows in-app portal next paths", () => {
+    expect(safePortalPath("/portal/listings/lp_1")).toBe("/portal/listings/lp_1");
+    expect(safePortalPath("//evil.example/portal")).toBeNull();
+    expect(safePortalPath("https://evil.example/portal")).toBeNull();
+    expect(safePortalPath("/admin")).toBeNull();
   });
 });

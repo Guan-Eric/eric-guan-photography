@@ -369,19 +369,20 @@ export function StudioPricingEditor({
         })}
       </div>
 
-      <button
-        type="button"
-        className="btn btn-outline"
-        onClick={() => setPackages((current) => [...current, emptyPackage()])}
-      >
-        Add package
-      </button>
-
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy}>
-        {busy ? "Saving…" : "Save pricing"}
-      </button>
+      <div className="listing-index-actions">
+        <button
+          type="button"
+          className="btn btn-outline"
+          onClick={() => setPackages((current) => [...current, emptyPackage()])}
+        >
+          Add package
+        </button>
+        <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy}>
+          {busy ? "Saving…" : "Save pricing"}
+        </button>
+      </div>
     </form>
   );
 }

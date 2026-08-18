@@ -19,7 +19,6 @@ import { quotePackage } from "@/lib/quoting";
 import {
   formatPostalCode,
   isInServiceArea,
-  isValidPostalForTenant,
   normalizePostalCode,
   serviceAreaMessage,
 } from "@/lib/service-area";
@@ -67,8 +66,8 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
   if (!quota.ok) return quota;
 
   const postal = normalizePostalCode(input.postalCode);
-  if (!isValidPostalForTenant(postal, tenant)) {
-    return { ok: false as const, error: "Enter a valid postal or ZIP code." };
+  if (postal.length < 3) {
+    return { ok: false as const, error: "Enter a postal or ZIP code." };
   }
   if (!isInServiceArea(postal, tenant)) {
     return { ok: false as const, error: serviceAreaMessage(tenant) };

@@ -84,7 +84,9 @@ export function StudioSettingsPanel() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<
+    "connect" | "domain" | "domainCheck" | "checkout" | "portal" | "invite" | null
+  >(null);
   const [loaded, setLoaded] = useState(false);
 
   async function load() {
@@ -110,7 +112,7 @@ export function StudioSettingsPanel() {
   }, []);
 
   async function startConnect() {
-    setBusy(true);
+    setBusy("connect");
     setError(null);
     setMessage(null);
     try {
@@ -132,12 +134,12 @@ export function StudioSettingsPanel() {
       setMessage("Connect link created.");
       toastSuccess("Connect link created.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   async function saveDomain() {
-    setBusy(true);
+    setBusy("domain");
     setError(null);
     setMessage(null);
     try {
@@ -167,7 +169,7 @@ export function StudioSettingsPanel() {
       toastSuccess(json.note ? `${status} ${json.note}` : status);
       await load();
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -216,14 +218,14 @@ export function StudioSettingsPanel() {
   }
 
   async function checkDomainStatus() {
-    setBusy(true);
+    setBusy("domainCheck");
     setError(null);
     try {
       await load();
       setMessage("Domain status refreshed.");
       toastSuccess("Domain status refreshed.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -238,7 +240,7 @@ export function StudioSettingsPanel() {
   }, [state?.domain, state?.domainLive, state?.domainStatus]);
 
   async function checkout(plan: PlanChoice) {
-    setBusy(true);
+    setBusy("checkout");
     setError(null);
     setMessage(null);
     try {
@@ -261,12 +263,12 @@ export function StudioSettingsPanel() {
       toastSuccess(json.stubbed ? `Local plan set to ${plan}.` : "Opening checkout…");
       await load();
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   async function openPortal() {
-    setBusy(true);
+    setBusy("portal");
     setError(null);
     try {
       const response = await fetch("/api/billing/portal", { method: "POST" });
@@ -278,12 +280,12 @@ export function StudioSettingsPanel() {
       }
       if (json.url) window.location.href = json.url;
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   async function invite() {
-    setBusy(true);
+    setBusy("invite");
     setError(null);
     setMessage(null);
     try {
@@ -303,7 +305,7 @@ export function StudioSettingsPanel() {
       setInviteEmail("");
       await load();
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -425,7 +427,7 @@ export function StudioSettingsPanel() {
               key={id}
               type="button"
               className={billing?.plan === id ? "is-current" : undefined}
-              disabled={busy}
+              disabled={busy !== null}
               onClick={() => checkout(id)}
             >
               <strong>{label}</strong>
@@ -438,8 +440,8 @@ export function StudioSettingsPanel() {
           at {usd(billing?.metering.unitUsd ?? 5)}. Flat plans include a listing
           allowance and only meter what you shoot beyond it.
         </p>
-        <button type="button" className={`btn btn-outline${busy ? " is-busy" : ""}`} disabled={busy} onClick={openPortal}>
-          {busy ? "Opening…" : "Manage billing"}
+        <button type="button" className={`btn btn-outline${busy === "portal" ? " is-busy" : ""}`} disabled={busy !== null} onClick={openPortal}>
+          {busy === "portal" ? "Opening…" : "Manage billing"}
         </button>
       </section>
 
@@ -449,8 +451,8 @@ export function StudioSettingsPanel() {
         <p className="field-hint">
           Connect Stripe so gallery payments land in your account.
         </p>
-        <button type="button" className={`btn btn-solid${busy ? " is-busy" : ""}`} disabled={busy} onClick={startConnect}>
-          {busy ? "Working…" : state?.connectStatus === "complete" ? "Update payouts" : "Connect payouts"}
+        <button type="button" className={`btn btn-solid${busy === "connect" ? " is-busy" : ""}`} disabled={busy !== null} onClick={startConnect}>
+          {busy === "connect" ? "Working…" : state?.connectStatus === "complete" ? "Update payouts" : "Connect payouts"}
         </button>
       </section>
 
@@ -525,20 +527,20 @@ export function StudioSettingsPanel() {
         <div className="domain-actions">
           <button
             type="button"
-            className={`btn btn-outline${busy ? " is-busy" : ""}`}
-            disabled={busy || !state?.canCustomDomain}
+            className={`btn btn-outline${busy === "domain" ? " is-busy" : ""}`}
+            disabled={busy !== null || !state?.canCustomDomain}
             onClick={saveDomain}
           >
-            {busy ? "Saving…" : "Save domain"}
+            {busy === "domain" ? "Saving…" : "Save domain"}
           </button>
           {state?.canCustomDomain && state.domain ? (
             <button
               type="button"
-              className={`btn btn-outline${busy ? " is-busy" : ""}`}
-              disabled={busy}
+              className={`btn btn-outline${busy === "domainCheck" ? " is-busy" : ""}`}
+              disabled={busy !== null}
               onClick={checkDomainStatus}
             >
-              {busy ? "Checking…" : "Check status"}
+              {busy === "domainCheck" ? "Checking…" : "Check status"}
             </button>
           ) : null}
         </div>
@@ -560,8 +562,8 @@ export function StudioSettingsPanel() {
             placeholder="editor@studio.com"
           />
         </label>
-        <button type="button" className={`btn btn-outline${busy ? " is-busy" : ""}`} disabled={busy} onClick={invite}>
-          {busy ? "Sending…" : "Send invite"}
+        <button type="button" className={`btn btn-outline${busy === "invite" ? " is-busy" : ""}`} disabled={busy !== null} onClick={invite}>
+          {busy === "invite" ? "Sending…" : "Send invite"}
         </button>
         {invites.length > 0 ? (
           <ul className="settings-invite-list">

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createAgentLoginToken } from "@/lib/agent-auth";
 import { agentPortalLoginEmail, sendEmail } from "@/lib/email";
 import { listOrdersByAgentEmail } from "@/lib/orders";
-import { publicStudioUrl } from "@/lib/platform";
+import { publicStudioUrl, safePortalPath } from "@/lib/platform";
 import { checkRateLimit } from "@/lib/quotas";
 import { getRequestTenant } from "@/lib/tenants";
 import { getTenantRow } from "@/lib/tenant-store";
@@ -12,6 +12,7 @@ export const runtime = "nodejs";
 
 const bodySchema = z.object({
   email: z.string().trim().email().max(160),
+  next: z.string().trim().max(200).optional(),
 });
 
 export async function POST(request: Request) {
@@ -43,7 +44,10 @@ export async function POST(request: Request) {
     siteUrl: tenant.siteUrl,
     domainStatus: row?.domainStatus,
   });
-  const loginUrl = `${siteUrl.replace(/\/$/, "")}/portal/callback?token=${token}`;
+  const next = safePortalPath(parsed.data.next);
+  const loginUrl = `${siteUrl.replace(/\/$/, "")}/portal/callback?token=${token}${
+    next ? `&next=${encodeURIComponent(next)}` : ""
+  }`;
   await sendEmail(
     agentPortalLoginEmail({
       tenant,

@@ -3,7 +3,9 @@ import { getDb, qRun, schema } from "@/lib/db";
 import {
   getListingPageByOrder,
   getListingPageBySlug,
+  getListingPageForAgent,
   slugifyAddress,
+  updateListingPage,
 } from "@/lib/listing-pages";
 import { createBooking, getOrder } from "@/lib/orders";
 import { getTenant } from "@/lib/tenants";
@@ -60,5 +62,25 @@ describe("listing pages", () => {
 
     const crossOrder = await getListingPageByOrder(order!.id, "demo-studio");
     expect(crossOrder).toBeNull();
+
+    const forAgent = await getListingPageForAgent(
+      byOrder!.id,
+      tenant.id,
+      order!.agentEmail,
+    );
+    expect(forAgent?.id).toBe(byOrder!.id);
+    expect(
+      await getListingPageForAgent(byOrder!.id, tenant.id, "other@example.com"),
+    ).toBeNull();
+
+    await updateListingPage(byOrder!.id, tenant.id, {
+      headline: "Sun-filled semi",
+      description: "Two beds near the park.",
+    });
+    await updateListingPage(byOrder!.id, tenant.id, { theme: "editorial" });
+    const afterPhotoSave = await getListingPageByOrder(order!.id, tenant.id);
+    expect(afterPhotoSave?.headline).toBe("Sun-filled semi");
+    expect(afterPhotoSave?.description).toBe("Two beds near the park.");
+    expect(afterPhotoSave?.title).toBe("Sun-filled semi");
   });
 });

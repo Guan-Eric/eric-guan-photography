@@ -15,7 +15,7 @@ export const bookingRequestSchema = z.object({
   packageId: z.string().min(1),
   squareFootage: z.coerce.number().int().min(400).max(20000),
   propertyAddress: z.string().trim().min(5).max(200),
-  postalCode: z.string().trim().min(6).max(10),
+  postalCode: z.string().trim().min(3).max(12),
   city: z.string().trim().max(80).optional(),
   placeId: z.string().trim().max(256).optional(),
   mapLat: z.string().trim().max(32).optional(),

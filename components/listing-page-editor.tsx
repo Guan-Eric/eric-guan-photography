@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { ListingSection, OpenHouse } from "@/lib/listing-content";
 import {
   LISTING_THEMES,
   LISTING_THEME_DEFS,
@@ -13,14 +12,8 @@ import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 type EditorState = {
-  title: string;
-  headline: string;
-  description: string;
   theme: ListingTheme;
   heroAssetId: string;
-  sections: ListingSection[];
-  openHouses: OpenHouse[];
-  leadCapture: boolean;
   brandMode: "branded" | "unbranded";
   published: boolean;
   captions: Record<string, string>;
@@ -61,16 +54,8 @@ export function ListingPageEditor({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: state.title,
-          headline: state.headline,
-          description: state.description,
           theme: state.theme,
           heroAssetId: state.heroAssetId || null,
-          sections: state.sections.filter(
-            (section) => section.heading.trim() || section.body.trim(),
-          ),
-          openHouses: state.openHouses.filter((entry) => entry.date.trim()),
-          leadCapture: state.leadCapture,
           brandMode: state.brandMode,
           published: state.published,
           captions: photos.map((photo) => ({
@@ -118,6 +103,11 @@ export function ListingPageEditor({
       {error ? <p className="form-error">{error}</p> : null}
       {notice ? <p className="form-success">{notice}</p> : null}
 
+      <p className="field-hint">
+        Headline, description, extra sections, and open houses are written by the
+        agent in their listings portal.
+      </p>
+
       <section className="studio-section">
         <h2>Look</h2>
         <div className="theme-pick">
@@ -134,34 +124,6 @@ export function ListingPageEditor({
             </button>
           ))}
         </div>
-      </section>
-
-      <section className="studio-section">
-        <h2>Copy</h2>
-        <label className="field">
-          <span>Page title</span>
-          <input
-            value={state.title}
-            onChange={(event) => patch({ title: event.target.value })}
-          />
-        </label>
-        <label className="field">
-          <span>Headline</span>
-          <input
-            value={state.headline}
-            placeholder="Sun-filled semi steps from the park"
-            onChange={(event) => patch({ headline: event.target.value })}
-          />
-        </label>
-        <label className="field">
-          <span>Description</span>
-          <textarea
-            rows={5}
-            value={state.description}
-            placeholder="Two paragraphs on what makes this home worth a showing."
-            onChange={(event) => patch({ description: event.target.value })}
-          />
-        </label>
       </section>
 
       <section className="studio-section">
@@ -221,140 +183,6 @@ export function ListingPageEditor({
       </section>
 
       <section className="studio-section">
-        <h2>Sections</h2>
-        <p className="field-hint">
-          Optional blocks under the photos — features, neighbourhood notes, school
-          catchment.
-        </p>
-        {state.sections.map((section, index) => (
-          <div key={index} className="editor-block">
-            <label className="field">
-              <span>Heading</span>
-              <input
-                value={section.heading}
-                onChange={(event) =>
-                  patch({
-                    sections: state.sections.map((item, i) =>
-                      i === index ? { ...item, heading: event.target.value } : item,
-                    ),
-                  })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Body</span>
-              <textarea
-                rows={3}
-                value={section.body}
-                onChange={(event) =>
-                  patch({
-                    sections: state.sections.map((item, i) =>
-                      i === index ? { ...item, body: event.target.value } : item,
-                    ),
-                  })
-                }
-              />
-            </label>
-            <button
-              type="button"
-              className="text-link"
-              onClick={() =>
-                patch({ sections: state.sections.filter((_, i) => i !== index) })
-              }
-            >
-              Remove section
-            </button>
-          </div>
-        ))}
-        {state.sections.length < 8 ? (
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={() =>
-              patch({ sections: [...state.sections, { heading: "", body: "" }] })
-            }
-          >
-            Add section
-          </button>
-        ) : null}
-      </section>
-
-      <section className="studio-section">
-        <h2>Open houses</h2>
-        {state.openHouses.map((entry, index) => (
-          <div key={index} className="editor-block editor-block--row">
-            <label className="field">
-              <span>Date</span>
-              <input
-                type="date"
-                value={entry.date}
-                onChange={(event) =>
-                  patch({
-                    openHouses: state.openHouses.map((item, i) =>
-                      i === index ? { ...item, date: event.target.value } : item,
-                    ),
-                  })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>From</span>
-              <input
-                type="time"
-                value={entry.start}
-                onChange={(event) =>
-                  patch({
-                    openHouses: state.openHouses.map((item, i) =>
-                      i === index ? { ...item, start: event.target.value } : item,
-                    ),
-                  })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>To</span>
-              <input
-                type="time"
-                value={entry.end}
-                onChange={(event) =>
-                  patch({
-                    openHouses: state.openHouses.map((item, i) =>
-                      i === index ? { ...item, end: event.target.value } : item,
-                    ),
-                  })
-                }
-              />
-            </label>
-            <button
-              type="button"
-              className="text-link"
-              onClick={() =>
-                patch({ openHouses: state.openHouses.filter((_, i) => i !== index) })
-              }
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-        {state.openHouses.length < 8 ? (
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={() =>
-              patch({
-                openHouses: [
-                  ...state.openHouses,
-                  { date: "", start: "", end: "", note: "" },
-                ],
-              })
-            }
-          >
-            Add open house
-          </button>
-        ) : null}
-      </section>
-
-      <section className="studio-section">
         <h2>Visibility</h2>
         <label className="field-check">
           <span>
@@ -364,16 +192,6 @@ export function ListingPageEditor({
               onChange={(event) => patch({ published: event.target.checked })}
             />
             Published
-          </span>
-        </label>
-        <label className="field-check">
-          <span>
-            <input
-              type="checkbox"
-              checked={state.leadCapture}
-              onChange={(event) => patch({ leadCapture: event.target.checked })}
-            />
-            Show the enquiry form (emails the agent)
           </span>
         </label>
         <label className="field">

@@ -9,6 +9,7 @@ import {
 } from "@/lib/galleries";
 import {
   listingPagePublicUrl,
+  listingCopyUrl,
   publishListingPage,
 } from "@/lib/listing-pages";
 import {
@@ -82,9 +83,13 @@ export async function POST(
   }
 
   const listing = await publishListingPage((await getOrder(orderId, order.tenantId))!);
-  const listingUrl =
+  const publicListingUrl =
     listing.ok && listing.page
       ? listingPagePublicUrl(listing.page, tenant.siteUrl)
+      : null;
+  const copyUrl =
+    listing.ok && listing.page
+      ? listingCopyUrl(listing.page, tenant.siteUrl)
       : null;
 
   const brandedUrl = galleryPublicUrl(
@@ -103,7 +108,8 @@ export async function POST(
     order: { ...order, status: "delivered" },
     status: "delivered",
     galleryUrl: brandedUrl,
-    listingUrl: listingUrl ?? undefined,
+    listingUrl: publicListingUrl ?? undefined,
+    listingCopyUrl: copyUrl ?? undefined,
   });
   const emailResult = emailResults[0] ?? null;
 
@@ -112,7 +118,7 @@ export async function POST(
     gallery: result.gallery,
     brandedUrl,
     unbrandedUrl,
-    listingUrl,
+    listingUrl: publicListingUrl,
     listingSkipped: Boolean(!listing.ok && "skipped" in listing && listing.skipped),
     listingError: listing.ok ? null : listing.error,
     emailSent: Boolean(emailResult?.ok && !("stubbed" in emailResult && emailResult.stubbed)),

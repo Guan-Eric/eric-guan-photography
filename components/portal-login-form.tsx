@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toastError, toastSuccess } from "@/lib/toast";
 
-export function PortalLoginForm() {
+export function PortalLoginForm({ next }: { next?: string | null }) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -17,7 +17,7 @@ export function PortalLoginForm() {
       const response = await fetch("/api/portal/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, next: next || undefined }),
       });
       const json = await response.json().catch(() => null);
       if (!json?.ok) {

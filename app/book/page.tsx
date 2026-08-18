@@ -29,18 +29,7 @@ export default async function BookPage({
     <>
       <SiteHeader tenant={tenant} solid />
       <main id="main">
-        <header className="page-header">
-          <div className="page-header-inner">
-            <p className="eyebrow">Book</p>
-            <h1>Request a shoot with a firm quote.</h1>
-            <p className="section-copy">
-              Enter the size, pick a package, choose an open slot, and send access
-              notes. I&rsquo;ll confirm shortly — no back-and-forth for the basics.
-            </p>
-          </div>
-        </header>
-
-        <section className="page-section" style={{ paddingTop: 0 }}>
+        <section className="page-section booking-page">
           <div className="page-inner page-inner--booking">
             <BookingForm
               packages={tenant.packages}
@@ -50,7 +39,16 @@ export default async function BookPage({
               timeZone={row?.timezone ?? "America/Toronto"}
               serviceAreaGate={tenant.serviceAreaGate}
               serviceAreaMessage={tenant.serviceAreaGate?.message}
-            />
+            >
+              <header className="booking-page-intro">
+                <p className="eyebrow">Book</p>
+                <h1>Request a shoot with a firm quote.</h1>
+                <p className="section-copy">
+                  Enter the size, pick a package, choose an open slot, and send access
+                  notes. I&rsquo;ll confirm shortly — no back-and-forth for the basics.
+                </p>
+              </header>
+            </BookingForm>
           </div>
         </section>
       </main>

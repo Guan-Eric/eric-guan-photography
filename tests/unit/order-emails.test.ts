@@ -66,9 +66,12 @@ describe("order lifecycle emails", () => {
       order,
       status: "delivered",
       galleryUrl: "https://test.studiofront.ca/g/abc",
+      listingCopyUrl: "https://test.studiofront.ca/portal/listings/lp_1",
     })[0];
     expect(delivered.text).toMatch(/Your listings/);
     expect(delivered.text).toMatch(/https:\/\/test\.studiofront\.ca\/portal/);
+    expect(delivered.text).toMatch(/Add listing copy/);
+    expect(delivered.text).toMatch(/\/portal\/listings\/lp_1/);
   });
 
   it("emails both parties on price change", () => {

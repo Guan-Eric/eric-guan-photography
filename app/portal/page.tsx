@@ -45,6 +45,8 @@ export default async function AgentPortalPage() {
           ? galleryPublicUrl(gallery.publicToken, "branded", siteUrl)
           : null,
         listingUrl: listing ? `${siteUrl.replace(/\/$/, "")}/p/${listing.slug}` : null,
+        listingId: listing?.id ?? null,
+        hasCopy: Boolean(listing?.headline?.trim() || listing?.description?.trim()),
       };
     }),
   );
@@ -72,7 +74,7 @@ export default async function AgentPortalPage() {
           <p>No listings yet. Book a shoot to see it here.</p>
         ) : (
           <ul className="listing-index">
-            {cards.map(({ order, galleryUrl, listingUrl }) => (
+            {cards.map(({ order, galleryUrl, listingUrl, listingId, hasCopy }) => (
               <li key={order.id}>
                 <div>
                   <strong>{order.propertyAddress}</strong>
@@ -90,6 +92,11 @@ export default async function AgentPortalPage() {
                     <a className="text-link" href={listingUrl}>
                       Listing page
                     </a>
+                  ) : null}
+                  {listingId ? (
+                    <Link className="text-link" href={`/portal/listings/${listingId}`}>
+                      {hasCopy ? "Edit listing" : "Add listing copy"}
+                    </Link>
                   ) : null}
                   <Link className="btn btn-outline" href={`/book?package=${order.packageId}`}>
                     Book again

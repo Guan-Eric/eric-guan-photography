@@ -420,8 +420,8 @@ export function StudioWorkEditor({
 
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      <button className={`btn btn-solid${busy || uploading ? " is-busy" : ""}`} type="submit" disabled={busy || Boolean(uploading)}>
-        {busy ? "Saving…" : uploading ? "Uploading…" : "Save work"}
+      <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy || Boolean(uploading)}>
+        {busy ? "Saving…" : "Save work"}
       </button>
     </form>
   );

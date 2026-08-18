@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
 import { requireRequestTenant } from "@/lib/tenants";
+import { safePortalPath } from "@/lib/platform";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -13,11 +14,12 @@ export const dynamic = "force-dynamic";
 export default async function PortalCallbackPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; next?: string }>;
 }) {
   const tenant = await requireRequestTenant();
-  const { token } = await searchParams;
+  const { token, next: rawNext } = await searchParams;
   if (!token) redirect("/portal/login");
+  const next = safePortalPath(rawNext);
 
   return (
     <AuthShell line={`Listings and downloads from ${tenant.studioName}.`}>
@@ -27,6 +29,7 @@ export default async function PortalCallbackPage({
       </div>
       <form className="auth-form" action="/api/portal/callback" method="POST">
         <input type="hidden" name="token" value={token} />
+        {next ? <input type="hidden" name="next" value={next} /> : null}
         <button className="btn btn-solid" type="submit">
           Continue to your listings
         </button>

@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ListingPageEditor } from "@/components/listing-page-editor";
 import { getPhotographerSession } from "@/lib/auth";
 import { getListingPage, listingPageMedia } from "@/lib/listing-pages";
-import { parseOpenHouses, parseSections } from "@/lib/listing-content";
 import { listingTheme } from "@/lib/listing-themes";
 import { publicStudioUrl } from "@/lib/platform";
 import { getTenant } from "@/lib/tenants";
@@ -41,14 +40,8 @@ export default async function EditListingPage({
       pageId={page.id}
       publicUrl={`${siteUrl.replace(/\/$/, "")}/p/${page.slug}`}
       initial={{
-        title: page.title,
-        headline: page.headline ?? "",
-        description: page.description ?? "",
         theme: listingTheme(page.theme),
         heroAssetId: page.heroAssetId ?? "",
-        sections: parseSections(page.sectionsJson),
-        openHouses: parseOpenHouses(page.openHouseJson),
-        leadCapture: page.leadCapture === 1,
         brandMode: page.brandMode,
         published: Boolean(page.publishedAt),
         captions: Object.fromEntries(

@@ -36,5 +36,19 @@ describe("booking create", () => {
       bookingFixture(tenant, { postalCode: "M5V 2T6" }),
     );
     expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatch(/cover|Montréal|Montreal|service/i);
+  });
+
+  it("rejects a US ZIP outside the photographer's service area", async () => {
+    const tenant = await getTenant("demo-studio");
+    const result = await createBooking(
+      tenant,
+      bookingFixture(tenant, { postalCode: "10001" }),
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatch(/cover|Montréal|Montreal|service/i);
+    expect(result.error).not.toMatch(/invalid/i);
   });
 });

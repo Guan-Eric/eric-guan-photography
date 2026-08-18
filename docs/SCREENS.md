@@ -251,11 +251,11 @@ Eyebrow *Book*. H1 *Request a shoot with a firm quote.* Optional coach tour for 
 
 Legend: required fields marked `*`.
 
-Desktop is two columns: one **solid white form card** (all four steps) on the left, a **sticky Shoot Summary** on the right. On small screens the summary sits under the required-fields legend, then the form card.
+Desktop is two columns flush to the viewport gutters: title + form on the left, **sticky Shoot Summary** top-right. On small screens the summary sits under the required-fields legend, then the form card.
 
 **Shoot Summary** — heading *Shoot Summary*. Rows: package + `{priceLabel}`, `{bandLabel}` + sq ft, On site + minutes. **Total Quote** with large Syne `{priceLabel}`. *No credit card charged today. Gallery payment required upon delivery of previews.* Loading: *Calculating quote…* Retainer fallback emails the studio. **Send request** on this card (desktop); the left column repeats it on small screens.
 
-**1. Package & size** — Package select (`Name (price)`), Square footage (400–20,000, default 1800). Changing either updates `/api/quote` (and the sticky summary).
+**1. Package & size** — Package select (`Name (price)`), Square footage (400–20,000, default 1800). Changing either updates `/api/quote` (and the sticky summary). Selected package **includes** list (and summary, if set) under the fields and on Shoot Summary.
 
 **2. Property** — Address autocomplete, Postal/ZIP (placeholder `H2X 1Y4`), City. Button **Add access details** / **Hide access details**. Access: Occupied or vacant; Access (Lockbox / Meet / Key / Other); Access notes; Pets (`None / dog crated upstairs`); Parking (`Street / driveway`); Who is meeting (`Name + phone`). If collapsed: *Optional for now — occupancy defaults to vacant with lockbox access.* Out-of-area postal shows the studio’s service-area message.
 
@@ -295,7 +295,7 @@ No studio header. Same sage paper as booking. Optional `?brand=off` or gallery `
 
 **Intro:** eyebrow studio name (if branded), gallery **title** (Syne, book-page size), property address.
 
-**Pay card** (under the intro on mobile; sticky right column on desktop, matching **Your quote**):
+**Pay card** (under the intro on mobile; sticky top-right beside the title on desktop, matching **Your quote**):
 
 - Proofing: eyebrow *Your quote*, large `{price}`, *Watermarked proofs until payment. Same link unlocks full + MLS files.* Optional add-on checkboxes. Button **Pay {price} & unlock** (solid). Dev-only **Dev stub unlock**.
 - Unlocked: *Unlocked* / large *Ready* / *Full-resolution and MLS zips are on this same link.* **Download MLS zip** (solid), **Download full-res zip** (outline).
@@ -347,7 +347,9 @@ Auth shell; tagline *Listings and downloads from {studio}.* H1 *Agent portal.* *
 
 ### B12. Agent portal — `/portal`
 
-Requires magic-link session. Agents reach it from booking confirmation, gallery footer, studio footer **Your listings**, and confirmation/gallery-ready emails. Eyebrow studio, h1 *Your listings*, email, **Sign out**. Referral URL in a `<code>` block. Each order: address, package · status, links **Gallery** / **Listing page**, button **Book again**. Empty: *No listings yet. Book a shoot to see it here.*
+Requires magic-link session. Agents reach it from booking confirmation, gallery footer, studio footer **Your listings**, and confirmation/gallery-ready emails. Eyebrow studio, h1 *Your listings*, email, **Sign out**. Referral URL in a `<code>` block. Each order: address, package · status, links **Gallery** / **Listing page** / **Add listing copy** (or **Edit listing**), button **Book again**. Empty: *No listings yet. Book a shoot to see it here.*
+
+Copy editor `/portal/listings/[id]`: headline, description, extra sections, open houses, enquiry-form toggle. Photos and theme stay with the photographer.
 
 ---
 
@@ -379,11 +381,11 @@ Eyebrow *Shoot day*, h1 *Today*. Empty: *No shoots today.* Else paper cards: tim
 
 ### C3. Listings — `/admin/listings`
 
-H1 *Property websites.* *Every published delivery gets a property page…* Starter plan hint if property pages aren’t included (Trial, Growth, Studio, and pay-as-you-go create pages). Visiting the page backfills delivered/paid galleries that never got a row. Empty → **Go to orders**. Rows: title, address · Published/Draft · theme; **Edit**, open public `/p/{slug}`.
+H1 *Property websites.* *Every published delivery gets a property page. You pick the look and photos; the agent writes the headline and description from their portal.* Starter plan hint if property pages aren’t included (Trial, Growth, Studio, and pay-as-you-go create pages). Visiting the page backfills delivered/paid galleries that never got a row. Empty → **Go to orders**. Rows: title, address · Published/Draft · theme; **Edit**, open public `/p/{slug}`.
 
 ### C4. Listing editor — `/admin/listings/[id]`
 
-H1 = property address. Link **View listing page** opens the public page. Sections: **Look** (theme), **Copy** (title, headline, description), **Photos** (hero picker with thumbnails, optional caption per photo — filenames never appear on the public page), **Sections**, **Open houses**, **Visibility**. Save / view public page.
+H1 = property address. Link **View listing page** opens the public page. Hint that headline/description/open houses are written by the agent. Sections: **Look** (theme), **Photos** (hero picker with thumbnails, optional caption per photo — filenames never appear on the public page), **Visibility** (published + branding). Save / view public page. No copy fields.
 
 ### C5. Reviews — `/admin/reviews`
 

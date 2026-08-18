@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
-import { listingSectionSchema, openHouseSchema } from "@/lib/listing-content";
 import { LISTING_THEMES } from "@/lib/listing-themes";
 import { getListingPage, updateListingPage } from "@/lib/listing-pages";
 
@@ -10,14 +9,8 @@ export const runtime = "nodejs";
 type Params = { id: string };
 
 const patchSchema = z.object({
-  title: z.string().trim().max(140).optional(),
-  headline: z.string().trim().max(160).nullable().optional(),
-  description: z.string().trim().max(4000).nullable().optional(),
   theme: z.enum(LISTING_THEMES).optional(),
   heroAssetId: z.string().trim().max(40).nullable().optional(),
-  sections: z.array(listingSectionSchema).max(8).optional(),
-  openHouses: z.array(openHouseSchema).max(8).optional(),
-  leadCapture: z.boolean().optional(),
   brandMode: z.enum(["branded", "unbranded"]).optional(),
   published: z.boolean().optional(),
   captions: z

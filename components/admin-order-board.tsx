@@ -11,7 +11,10 @@ import {
 } from "@/lib/db/schema";
 import type { GallerySummary } from "@/lib/galleries";
 import { allowedManualStatuses, confirmBlockers } from "@/lib/order-flow";
-import { parsePreferredSlotsJson } from "@/lib/preferred-slots";
+import {
+  parsePreferredSlotsJson,
+  type PreferredSlot,
+} from "@/lib/preferred-slots";
 import { AdminGettingStarted } from "@/components/admin-getting-started";
 import { OrderMediaLinks } from "@/components/order-media-links";
 import { toastError, toastSuccess } from "@/lib/toast";
@@ -37,6 +40,46 @@ function formatSlot(iso: string) {
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(iso));
+}
+
+function slotOrdinal(index: number) {
+  return index === 0 ? "1st" : index === 1 ? "2nd" : "3rd";
+}
+
+function OrderSlotPicker({
+  orderId,
+  preferred,
+  selectedStart,
+  onSelect,
+  legend,
+}: {
+  orderId: string;
+  preferred: PreferredSlot[];
+  selectedStart: string;
+  onSelect: (start: string) => void;
+  legend?: string;
+}) {
+  if (preferred.length === 0) return null;
+  return (
+    <fieldset className="order-slot-pick">
+      <legend className={legend ? undefined : "visually-hidden"}>
+        {legend ?? "Pick the shoot time to confirm"}
+      </legend>
+      {preferred.map((slot, index) => (
+        <label key={slot.start}>
+          <input
+            type="radio"
+            name={`slot-${orderId}`}
+            checked={selectedStart === slot.start}
+            onChange={() => onSelect(slot.start)}
+          />
+          <span>
+            {slotOrdinal(index)}: {slot.label}
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  );
 }
 
 function mediaBadges(gallery: GallerySummary | null) {
@@ -82,7 +125,18 @@ export function AdminOrderBoard({
   const [galleries, setGalleries] = useState(initialGalleries);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const [busy, setBusy] = useState<{
+    orderId: string;
+    action:
+      | "confirm"
+      | "cancel"
+      | "status"
+      | "savePrice"
+      | "saveAddress"
+      | "upload"
+      | "publish"
+      | "unlock";
+  } | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [links, setLinks] = useState<
@@ -227,7 +281,15 @@ export function AdminOrderBoard({
     extra?: Record<string, unknown>,
   ) {
     setError(null);
-    setBusyOrderId(orderId);
+    setBusy({
+      orderId,
+      action:
+        status === "confirmed"
+          ? "confirm"
+          : status === "cancelled"
+            ? "cancel"
+            : "status",
+    });
     try {
       const response = await fetch(`/api/admin/orders/${orderId}`, {
         method: "PATCH",
@@ -246,7 +308,7 @@ export function AdminOrderBoard({
     } catch {
       fail("Network error updating status.");
     } finally {
-      setBusyOrderId(null);
+      setBusy(null);
     }
   }
 
@@ -263,7 +325,7 @@ export function AdminOrderBoard({
       fail("Enter a price greater than zero.");
       return;
     }
-    setBusyOrderId(orderId);
+    setBusy({ orderId, action: "savePrice" });
     try {
       const response = await fetch(`/api/admin/orders/${orderId}`, {
         method: "PATCH",
@@ -287,7 +349,7 @@ export function AdminOrderBoard({
     } catch {
       fail("Network error saving price.");
     } finally {
-      setBusyOrderId(null);
+      setBusy(null);
     }
   }
 
@@ -296,7 +358,7 @@ export function AdminOrderBoard({
     if (!order) return;
     const draft = addressDraft(order);
     setError(null);
-    setBusyOrderId(orderId);
+    setBusy({ orderId, action: "saveAddress" });
     try {
       const response = await fetch(`/api/admin/orders/${orderId}`, {
         method: "PATCH",
@@ -327,7 +389,7 @@ export function AdminOrderBoard({
     } catch {
       fail("Network error saving address.");
     } finally {
-      setBusyOrderId(null);
+      setBusy(null);
     }
   }
 
@@ -338,7 +400,7 @@ export function AdminOrderBoard({
       return;
     }
 
-    setBusyOrderId(orderId);
+    setBusy({ orderId, action: "upload" });
     setError(null);
     const form = new FormData();
     Array.from(input.files).forEach((file) => form.append("files", file));
@@ -396,12 +458,12 @@ export function AdminOrderBoard({
           : "Network error during upload.";
       fail(message);
     } finally {
-      setBusyOrderId(null);
+      setBusy(null);
     }
   }
 
   async function publish(orderId: string) {
-    setBusyOrderId(orderId);
+    setBusy({ orderId, action: "publish" });
     setError(null);
     setNotice(null);
     try {
@@ -456,12 +518,12 @@ export function AdminOrderBoard({
         ok("Gallery published.");
       }
     } finally {
-      setBusyOrderId(null);
+      setBusy(null);
     }
   }
 
   async function forceUnlock(orderId: string) {
-    setBusyOrderId(orderId);
+    setBusy({ orderId, action: "unlock" });
     setError(null);
     try {
       const response = await fetch(`/api/admin/orders/${orderId}/delivery`, {
@@ -487,7 +549,7 @@ export function AdminOrderBoard({
         ),
       );
     } finally {
-      setBusyOrderId(null);
+      setBusy(null);
     }
   }
 
@@ -571,7 +633,9 @@ export function AdminOrderBoard({
             {visibleOrders.map((order) => {
               const gallery = galleryFor(order.id);
               const orderLinks = links[order.id];
-              const busy = busyOrderId === order.id;
+              const orderLocked = busy?.orderId === order.id;
+              const pending = (action: NonNullable<typeof busy>["action"]) =>
+                orderLocked && busy?.action === action;
               const phase = deliveryPhase(gallery, order.status);
               const branded =
                 orderLinks?.branded ??
@@ -675,7 +739,7 @@ export function AdminOrderBoard({
                         <select
                           className="status-select"
                           value={order.status}
-                          disabled={busy}
+                          disabled={orderLocked}
                           onClick={(event) => event.stopPropagation()}
                           onChange={(event) => {
                             const next = event.target.value as OrderStatus;
@@ -699,36 +763,87 @@ export function AdminOrderBoard({
 
                   {expanded ? (
                     <>
+                  {order.status === "requested" ? (
+                    <div className="confirm-checklist">
+                      <p className="eyebrow">Before you confirm</p>
+                      <ul>
+                        <li className={order.propertyAddress && order.postalCode && order.city ? "is-ready" : undefined}>
+                          Address{order.city ? ` · ${order.city}` : " — add city"}
+                        </li>
+                        <li className={selectedStart ? "is-ready" : undefined}>
+                          Time{selectedStart && selectedSlot ? ` · ${selectedSlot.label}` : " — pick a preferred time"}
+                        </li>
+                        <li className={order.priceCents > 0 ? "is-ready" : undefined}>
+                          Price{order.priceCents > 0 ? ` · ${formatMoney(order.priceCents, order.currency)}` : " — set a price"}
+                        </li>
+                      </ul>
+                      {preferred.length > 0 ? (
+                        <OrderSlotPicker
+                          orderId={order.id}
+                          preferred={preferred}
+                          selectedStart={selectedStart}
+                          legend="Pick a preferred time"
+                          onSelect={(start) =>
+                            setSlotDrafts((current) => ({
+                              ...current,
+                              [order.id]: start,
+                            }))
+                          }
+                        />
+                      ) : (
+                        <p>{formatSlot(order.preferredStart)}</p>
+                      )}
+                      {blockers.length > 0 ? (
+                        <p className="muted">{blockers[0]}</p>
+                      ) : null}
+                      <div className="listing-index-actions">
+                        <button
+                          type="button"
+                          className={`btn btn-solid${pending("confirm") ? " is-busy" : ""}`}
+                          disabled={orderLocked || blockers.length > 0}
+                          onClick={() => {
+                            const slot =
+                              preferred.find((item) => item.start === selectedStart) ??
+                              preferred[0];
+                            void setStatus(order.id, "confirmed", slot
+                              ? {
+                                  preferredStart: slot.start,
+                                  preferredEnd: slot.end,
+                                }
+                              : undefined);
+                          }}
+                        >
+                          {pending("confirm") ? "Confirming…" : "Confirm shoot"}
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-outline${pending("cancel") ? " is-busy" : ""}`}
+                          disabled={orderLocked}
+                          onClick={() => void setStatus(order.id, "cancelled")}
+                        >
+                          {pending("cancel") ? "Cancelling…" : "Cancel request"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div className="admin-order-grid">
                     <div>
                       <p className="eyebrow">Preferred times</p>
                       {preferred.length === 0 ? (
                         <div>{formatSlot(order.preferredStart)}</div>
                       ) : order.status === "requested" ? (
-                        <fieldset className="order-slot-pick">
-                          <legend className="visually-hidden">
-                            Pick the shoot time to confirm
-                          </legend>
-                          {preferred.map((slot, index) => (
-                            <label key={slot.start}>
-                              <input
-                                type="radio"
-                                name={`slot-${order.id}`}
-                                checked={selectedStart === slot.start}
-                                onChange={() =>
-                                  setSlotDrafts((current) => ({
-                                    ...current,
-                                    [order.id]: slot.start,
-                                  }))
-                                }
-                              />
-                              <span>
-                                {index === 0 ? "1st" : index === 1 ? "2nd" : "3rd"}:{" "}
-                                {slot.label}
-                              </span>
-                            </label>
-                          ))}
-                        </fieldset>
+                        preferred.map((slot, index) => (
+                          <div
+                            key={slot.start}
+                            className={
+                              selectedStart === slot.start ? "is-booked-slot" : undefined
+                            }
+                          >
+                            {slotOrdinal(index)}: {slot.label}
+                            {selectedStart === slot.start ? " · selected" : ""}
+                          </div>
+                        ))
                       ) : (
                         preferred.map((slot, index) => (
                           <div
@@ -739,8 +854,7 @@ export function AdminOrderBoard({
                                 : undefined
                             }
                           >
-                            {index === 0 ? "1st" : index === 1 ? "2nd" : "3rd"}:{" "}
-                            {slot.label}
+                            {slotOrdinal(index)}: {slot.label}
                             {slot.start === order.preferredStart ? " · booked" : ""}
                           </div>
                         ))
@@ -801,11 +915,15 @@ export function AdminOrderBoard({
                             </div>
                             <button
                               type="button"
-                              className={`btn btn-outline${busy ? " is-busy" : ""}`}
-                              disabled={busy}
+                              className={`btn btn-outline${pending("saveAddress") ? " is-busy" : ""}`}
+                              disabled={orderLocked}
                               onClick={() => void saveAddress(order.id)}
                             >
-                              {busy ? "Saving…" : order.status === "requested" ? "Confirm address" : "Save address"}
+                              {pending("saveAddress")
+                                ? "Saving…"
+                                : order.status === "requested"
+                                  ? "Confirm address"
+                                  : "Save address"}
                             </button>
                             <div className="admin-order-meta">
                               <div>
@@ -896,64 +1014,16 @@ export function AdminOrderBoard({
                           </label>
                           <button
                             type="button"
-                            className={`btn btn-outline${busy ? " is-busy" : ""}`}
-                            disabled={busy}
+                            className={`btn btn-outline${pending("savePrice") ? " is-busy" : ""}`}
+                            disabled={orderLocked}
                             onClick={() => void savePrice(order.id)}
                           >
-                            {busy ? "Saving…" : "Save price"}
+                            {pending("savePrice") ? "Saving…" : "Save price"}
                           </button>
                         </div>
                       ) : null}
                     </div>
                   </div>
-
-                  {order.status === "requested" ? (
-                    <div className="confirm-checklist">
-                      <p className="eyebrow">Before you confirm</p>
-                      <ul>
-                        <li className={order.propertyAddress && order.postalCode && order.city ? "is-ready" : undefined}>
-                          Address{order.city ? ` · ${order.city}` : " — add city"}
-                        </li>
-                        <li className={selectedStart ? "is-ready" : undefined}>
-                          Time{selectedStart && selectedSlot ? ` · ${selectedSlot.label}` : " — pick a preferred time"}
-                        </li>
-                        <li className={order.priceCents > 0 ? "is-ready" : undefined}>
-                          Price{order.priceCents > 0 ? ` · ${formatMoney(order.priceCents, order.currency)}` : " — set a price"}
-                        </li>
-                      </ul>
-                      {blockers.length > 0 ? (
-                        <p className="muted">{blockers[0]}</p>
-                      ) : null}
-                      <div className="listing-index-actions">
-                        <button
-                          type="button"
-                          className={`btn btn-solid${busy ? " is-busy" : ""}`}
-                          disabled={busy || blockers.length > 0}
-                          onClick={() => {
-                            const slot =
-                              preferred.find((item) => item.start === selectedStart) ??
-                              preferred[0];
-                            void setStatus(order.id, "confirmed", slot
-                              ? {
-                                  preferredStart: slot.start,
-                                  preferredEnd: slot.end,
-                                }
-                              : undefined);
-                          }}
-                        >
-                          {busy ? "Confirming…" : "Confirm shoot"}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-outline"
-                          disabled={busy}
-                          onClick={() => void setStatus(order.id, "cancelled")}
-                        >
-                          Cancel request
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
 
                   <div className="admin-delivery">
                     <div className="delivery-flow-head">
@@ -1003,11 +1073,11 @@ export function AdminOrderBoard({
                             </label>
                             <button
                               type="button"
-                              className={`btn btn-solid${busy ? " is-busy" : ""}`}
-                              disabled={busy}
+                              className={`btn btn-solid${pending("upload") ? " is-busy" : ""}`}
+                              disabled={orderLocked}
                               onClick={() => uploadPhotos(order.id)}
                             >
-                              {busy && phase === 1 ? "Uploading…" : "Upload"}
+                              {pending("upload") ? "Uploading…" : "Upload"}
                             </button>
                             {gallery && gallery.mediaCount > 0 && branded ? (
                               <a
@@ -1047,13 +1117,13 @@ export function AdminOrderBoard({
                             ) : null}
                             <button
                               type="button"
-                              className={`btn btn-solid${busy && phase === 2 ? " is-busy" : ""}`}
+                              className={`btn btn-solid${pending("publish") ? " is-busy" : ""}`}
                               disabled={
-                                busy || !gallery || gallery.mediaCount === 0
+                                orderLocked || !gallery || gallery.mediaCount === 0
                               }
                               onClick={() => publish(order.id)}
                             >
-                              {busy && phase === 2
+                              {pending("publish")
                                 ? "Publishing…"
                                 : published
                                   ? "Publish again"
@@ -1169,11 +1239,11 @@ export function AdminOrderBoard({
                           <div className="delivery-step-actions">
                             <button
                               type="button"
-                              className={`btn btn-outline${busy && phase === 4 ? " is-busy" : ""}`}
-                              disabled={busy || !gallery || paid}
+                              className={`btn btn-outline${pending("unlock") ? " is-busy" : ""}`}
+                              disabled={orderLocked || !gallery || paid}
                               onClick={() => forceUnlock(order.id)}
                             >
-                              {busy && phase === 4
+                              {pending("unlock")
                                 ? "Unlocking…"
                                 : paid
                                   ? "Already unlocked"

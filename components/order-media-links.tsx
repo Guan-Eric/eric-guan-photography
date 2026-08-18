@@ -27,7 +27,7 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<MediaLinkKind>("video");
   const [brandMode, setBrandMode] = useState<"both" | "branded" | "unbranded">("both");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -47,7 +47,7 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
   const preview = url.trim() ? parseEmbed(url, kind) : null;
 
   async function addLink() {
-    setBusy(true);
+    setBusy("add");
     setError(null);
     setNotice(null);
     try {
@@ -71,7 +71,7 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
       setError("Network error.");
       toastError("Network error.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -82,7 +82,7 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
       toastError("Choose a PDF floor plan first.");
       return;
     }
-    setBusy(true);
+    setBusy("upload");
     setError(null);
     setNotice(null);
     try {
@@ -110,12 +110,12 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
       setError("Network error.");
       toastError("Network error.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   async function remove(linkId: string) {
-    setBusy(true);
+    setBusy(`remove:${linkId}`);
     setError(null);
     try {
       const response = await fetch(
@@ -134,7 +134,7 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
       setError("Network error.");
       toastError("Network error.");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -182,11 +182,11 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
         </label>
         <button
           type="button"
-          className={`btn btn-solid${busy ? " is-busy" : ""}`}
-          disabled={busy}
+          className={`btn btn-solid${busy === "add" ? " is-busy" : ""}`}
+          disabled={busy !== null}
           onClick={addLink}
         >
-          {busy ? "Adding…" : "Add"}
+          {busy === "add" ? "Adding…" : "Add"}
         </button>
       </div>
 
@@ -206,11 +206,11 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
         </label>
         <button
           type="button"
-          className={`btn btn-outline${busy ? " is-busy" : ""}`}
-          disabled={busy}
+          className={`btn btn-outline${busy === "upload" ? " is-busy" : ""}`}
+          disabled={busy !== null}
           onClick={uploadPdf}
         >
-          {busy ? "Uploading…" : "Upload PDF"}
+          {busy === "upload" ? "Uploading…" : "Upload PDF"}
         </button>
       </div>
 
@@ -249,10 +249,10 @@ export function OrderMediaLinks({ orderId }: { orderId: string }) {
               <button
                 type="button"
                 className="text-link"
-                disabled={busy}
+                disabled={busy !== null}
                 onClick={() => remove(link.id)}
               >
-                Remove
+                {busy === `remove:${link.id}` ? "Removing…" : "Remove"}
               </button>
             </li>
           ))}

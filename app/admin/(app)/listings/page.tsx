@@ -37,8 +37,9 @@ export default async function AdminListingsPage() {
           <p className="eyebrow">Listings</p>
           <h1>Property websites</h1>
           <p className="muted">
-            Every published delivery gets a property page. Edit the copy, pick a
-            look, and share the link.
+            Every published delivery gets a property page. You pick the look and
+            photos; the agent writes the headline and description from their
+            portal.
           </p>
         </div>
       </div>

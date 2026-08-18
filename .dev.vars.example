@@ -29,6 +29,10 @@ PLATFORM_EMAIL_FROM=Studiofront <hello@studiofront.ca>
 # Per-domain add-on (quantity = active custom hostnames)
 # STRIPE_PRICE_DOMAIN_ADDON=
 # GOOGLE_PLACES_API_KEY=
+# Google Calendar (photographer OAuth — optional)
+# GOOGLE_CALENDAR_CLIENT_ID=
+# GOOGLE_CALENDAR_CLIENT_SECRET=
+# GOOGLE_CALENDAR_REDIRECT_URI=http://localhost:3000/api/admin/calendar/callback
 # RESEND_API_KEY=
 # CRON_SECRET=
 # CLOUDFLARE_R2_ACCOUNT_ID=

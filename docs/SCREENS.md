@@ -407,7 +407,7 @@ H1 *How agents request a shoot.* **Contact** (public email, etc.). **Service are
 
 ### C9. Schedule — `/admin/schedule`
 
-H1 *Availability & bookings.* **Weekly hours** (open/close per day). **Booking window** (interval, lead time, horizon). **Incoming bookings** list of requested/confirmed orders.
+H1 *Availability & bookings.* **Weekly hours** (open/close per day). **Booking window** (interval, lead time, horizon). **Google Calendar** (connect, pick calendar, toggle blocking other events). **Incoming bookings** list of requested/confirmed orders.
 
 ### C10. Settings — `/admin/settings`
 

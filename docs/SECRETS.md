@@ -27,6 +27,8 @@ npx wrangler secret put STRIPE_PRICE_PAYG_LISTING
 npx wrangler secret put STRIPE_PRICE_OVERAGE_LISTING
 npx wrangler secret put STRIPE_PRICE_DOMAIN_ADDON
 npx wrangler secret put GOOGLE_PLACES_API_KEY
+npx wrangler secret put GOOGLE_CALENDAR_CLIENT_ID
+npx wrangler secret put GOOGLE_CALENDAR_CLIENT_SECRET
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put CRON_SECRET
 npx wrangler secret put CLOUDFLARE_R2_ACCOUNT_ID
@@ -47,6 +49,9 @@ Also set in the Cloudflare dashboard (or extend `vars`) if not already there:
 |---|---|
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_…` / `pk_live_…` |
 | `PLATFORM_EMAIL_FROM` | `Studiofront <hello@studiofront.ca>` |
+| `GOOGLE_CALENDAR_REDIRECT_URI` | Optional override. Default is `{PLATFORM_PUBLIC_URL}/api/admin/calendar/callback`. Add that exact URI in the Google Cloud OAuth client. |
+
+Scopes: `calendar.events`, `calendar.calendarlist.readonly`, `userinfo.email`.
 
 Local preview: copy [`.dev.vars.example`](../.dev.vars.example) → `.dev.vars`.
 

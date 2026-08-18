@@ -93,7 +93,8 @@ Quote modes:
 4. Re-quote + slot availability + duration match  
 5. Insert order: `status = "requested"`  
 6. Increment listings used  
-7. **Do not** create calendar appointment yet  
+7. **Hold** all preferred times immediately (they disappear from `/api/availability`)  
+8. If Google Calendar is connected, upsert a **tentative** event for the primary slot 
 
 Redirect:
 
@@ -255,15 +256,15 @@ Defined in [`lib/db/schema.ts`](../lib/db/schema.ts). Enforced loosely: admin ma
 
 | New status | Calendar | Emails |
 |---|---|---|
-| `requested` | — | **None** (lifecycle templates skip it) |
-| `confirmed` | Create appointment from **primary** preferred slot (`preferredStart`/`preferredEnd`) if missing | Agent + photographer |
+| `requested` | Preferred times already held; Google event is tentative if connected | **None** (lifecycle templates skip it) |
+| `confirmed` | Create appointment from the chosen preferred slot; Google event becomes confirmed | Agent + photographer |
 | `shot` | Keep appointment | Agent + photographer |
 | `editing` | Keep | Agent + photographer |
 | `delivered` | Keep | Agent + photographer |
 | `paid` | Keep | Agent + photographer |
-| `cancelled` | **Delete** appointments for order | Agent + photographer |
+| `cancelled` | **Delete** appointments and Google event; slot is bookable again | Agent + photographer |
 
-**Confirm note:** confirmation uses the **first** preferred slot only — there is no admin slot picker yet.
+**Confirm note:** pick one of the agent's preferred times on the order (primary is used when there is only one). Confirm re-checks that the slot is still free, ignoring this order's own hold.
 
 Confirmed agent email includes a **Scheduled** line when an appointment exists.
 
@@ -487,7 +488,7 @@ Editors can run the full order board. They cannot invite seats.
 | Gap | Notes |
 |---|---|
 | Agent-initiated change / reschedule request | No public “request change” form; quote changes are photographer-driven |
-| Confirm with alternate preferred slot | Confirm always uses primary preferred window |
+| Outlook / Apple Calendar sync | Google Calendar only |
 | Hard status transition rules | Dropdown allows any status |
 | Email when only uploading | Intentional — wait for publish |
 | Separate “change requested” status | Not in `ORDER_STATUSES` |
@@ -498,7 +499,8 @@ Editors can run the full order board. They cannot invite seats.
 
 | Area | Files |
 |---|---|
-| Booking UI / APIs | `components/booking-form.tsx`, `lib/booking-schema.ts`, `app/api/book`, `app/api/quote`, `app/api/availability`, `lib/orders.ts` |
+| Booking UI / APIs | `components/booking-form.tsx`, `lib/booking-schema.ts`, `app/api/book`, `app/api/quote`, `app/api/availability`, `lib/orders.ts`, `lib/availability.ts` |
+| Calendar sync | `lib/calendar.ts`, `lib/google-calendar.ts`, `app/api/admin/calendar`, `components/studio-calendar-sync.tsx` |
 | Admin board | `components/admin-order-board.tsx`, `app/admin/(app)/page.tsx` |
 | Order APIs | `app/api/admin/orders/[id]/route.ts`, `…/upload`, `…/delivery`, `…/share`, `…/report` |
 | Gallery / pay | `lib/galleries.ts`, `lib/stripe.ts`, `app/api/g/[token]/checkout`, `app/api/stripe/webhook`, `components/public-gallery.tsx` |
@@ -529,6 +531,7 @@ When testing without Resend, watch Worker / server logs for `[email:stub]` to co
 | Referrals | `?ref=` on `/book` credits the referrer $25 on their next booking (`referral_credits`). |
 | Reviews | After gallery pay, `ensureReviewRequest` queues an email (cron, 3 days later) to `/review/{token}`. Admin `/admin/reviews` approves; approved reviews render on the home page + LocalBusiness JSON-LD. |
 | Shoot day | `/admin/today` lists today's appointments. On my way / arrived emails the agent. |
+| Google Calendar | Photographer connects on `/admin/schedule`. Requested/confirmed shoots upsert events. Optional **Block booking times when I have other calendar events** treats non-Studiofront events as busy. |
 | Listing custom domain | Photographer saves a hostname on `/admin/listings/[id]`. SSL via Cloudflare for SaaS. Agent can pay via Connect checkout on the listing page. Platform bills the photographer $5/mo per live hostname (`STRIPE_PRICE_DOMAIN_ADDON`). A live listing hostname on `/` redirects to `/p/{slug}`. |
 
 ## 13. Parity backlog (not in this ship)

@@ -202,6 +202,7 @@ export const orders = pgTable("orders", {
   mapLng: text("map_lng"),
 
   publicToken: text("public_token").notNull(),
+  calendarEventId: text("calendar_event_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -220,6 +221,28 @@ export const appointments = pgTable("appointments", {
   arrivedAt: text("arrived_at"),
   completedAt: text("completed_at"),
   createdAt: text("created_at").notNull(),
+});
+
+/**
+ * Per-studio Google Calendar OAuth. Tokens are stored encrypted.
+ * `blockExternalEvents` lets the photographer treat non-Studiofront
+ * events on the connected calendar as booking blockers.
+ */
+export const calendarConnections = pgTable("calendar_connections", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id),
+  provider: text("provider").notNull().default("google"),
+  accountEmail: text("account_email"),
+  calendarId: text("calendar_id").notNull().default("primary"),
+  calendarName: text("calendar_name"),
+  accessTokenEnc: text("access_token_enc"),
+  refreshTokenEnc: text("refresh_token_enc"),
+  tokenExpiresAt: text("token_expires_at"),
+  blockExternalEvents: integer("block_external_events").notNull().default(0),
+  connectedAt: text("connected_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
 });
 
 export const galleries = pgTable("galleries", {
@@ -309,6 +332,7 @@ export const payments = pgTable("payments", {
 export type Order = typeof orders.$inferSelect;
 export type NewOrder = typeof orders.$inferInsert;
 export type Appointment = typeof appointments.$inferSelect;
+export type CalendarConnection = typeof calendarConnections.$inferSelect;
 export type Gallery = typeof galleries.$inferSelect;
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type MediaLink = typeof mediaLinks.$inferSelect;

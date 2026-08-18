@@ -140,6 +140,7 @@ function ensureSchema(db: import("better-sqlite3").Database) {
       map_lat TEXT,
       map_lng TEXT,
       public_token TEXT NOT NULL,
+      calendar_event_id TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -156,6 +157,21 @@ function ensureSchema(db: import("better-sqlite3").Database) {
       arrived_at TEXT,
       completed_at TEXT,
       created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS calendar_connections (
+      id TEXT PRIMARY KEY NOT NULL,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      provider TEXT NOT NULL DEFAULT 'google',
+      account_email TEXT,
+      calendar_id TEXT NOT NULL DEFAULT 'primary',
+      calendar_name TEXT,
+      access_token_enc TEXT,
+      refresh_token_enc TEXT,
+      token_expires_at TEXT,
+      block_external_events INTEGER NOT NULL DEFAULT 0,
+      connected_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS galleries (
@@ -229,6 +245,7 @@ function ensureSchema(db: import("better-sqlite3").Database) {
     CREATE UNIQUE INDEX IF NOT EXISTS memberships_user_tenant_idx ON memberships(user_id, tenant_id);
     CREATE INDEX IF NOT EXISTS orders_tenant_status_idx ON orders(tenant_id, status);
     CREATE INDEX IF NOT EXISTS appointments_tenant_starts_idx ON appointments(tenant_id, starts_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS calendar_connections_tenant_idx ON calendar_connections(tenant_id);
     CREATE UNIQUE INDEX IF NOT EXISTS galleries_token_idx ON galleries(public_token);
     CREATE INDEX IF NOT EXISTS galleries_order_idx ON galleries(order_id);
     CREATE INDEX IF NOT EXISTS media_gallery_idx ON media_assets(gallery_id, sort_order);
@@ -440,6 +457,7 @@ function ensureSchema(db: import("better-sqlite3").Database) {
   addColumnIfMissing(db, "appointments", "on_my_way_at", "TEXT");
   addColumnIfMissing(db, "appointments", "arrived_at", "TEXT");
   addColumnIfMissing(db, "appointments", "completed_at", "TEXT");
+  addColumnIfMissing(db, "orders", "calendar_event_id", "TEXT");
   db.exec(
     `CREATE UNIQUE INDEX IF NOT EXISTS tenants_domain_unique_idx ON tenants(domain) WHERE domain IS NOT NULL AND domain != ''`,
   );

@@ -31,8 +31,8 @@ Core loop (vs Aryeo-style extras): solo photographer workflow only — not Zillo
                                 │
               ┌─────────────────┼─────────────────┐
               ▼                 ▼                 ▼
-         Neon Postgres      Stripe API         Resend
-         (tenants, users,   (Billing +         (email)
+         Neon Postgres      Stripe API         Resend / Google
+         (tenants, users,   (Billing +         (email + Calendar)
           orders, RLS)       Connect)
 ```
 
@@ -47,6 +47,7 @@ Core loop (vs Aryeo-style extras): solo photographer workflow only — not Zillo
 | Object storage | **Cloudflare R2** bucket `studiofront-media` | Gallery & portfolio media |
 | Payments | **Stripe** Billing + Connect (Express) | Studio subscriptions + gallery unlocks / payouts |
 | Email | **Resend** | Reminders, auth mail, notifications |
+| Calendar | **Google Calendar API** (optional, per studio OAuth) | Push Studiofront holds; optionally block other events |
 | Auth | Custom (cookies + password hashes in DB) | Platform users & studio memberships — **not** Neon Auth |
 | Cron | HTTP `/api/cron/reminders` + GitHub Actions | Day-before shoot emails |
 | Package manager | npm | `package.json` |

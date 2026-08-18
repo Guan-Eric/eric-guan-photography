@@ -3,6 +3,7 @@ import {
   assertSlotAvailable,
   DRIVE_BUFFER_MINUTES,
 } from "@/lib/availability";
+import { deleteOrderCalendarEvent, syncOrderToCalendar } from "@/lib/calendar";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { Appointment, Order, OrderStatus } from "@/lib/db/schema";
 import { isManualOrderStatus, ORDER_STATUSES } from "@/lib/db/schema";
@@ -164,9 +165,14 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
     currency: quote.currency,
   });
 
-  // Preferences are not calendar holds. The appointment is created when you
-  // mark the order confirmed, using the primary preferred slot.
-  // Always link into this studio’s host — not the platform apex SITE_URL.
+  const created = (await getOrder(id, tenant.id))!;
+  void syncOrderToCalendar(created).catch((error) => {
+    console.warn("[calendar] booking sync failed:", error);
+  });
+
+  // Preferred times are held immediately so another agent cannot pick them.
+  // The photographer confirms one slot; unused holds then drop. Always link
+  // into this studio’s host — not the platform apex SITE_URL.
   const siteBase = tenant.siteUrl.replace(/\/$/, "");
   const confirmationUrl = `${siteBase}/book/confirmation/${id}?token=${publicToken}`;
   const adminUrl = `${siteBase}/admin`;
@@ -322,7 +328,23 @@ async function ensureAppointmentForOrder(order: Order) {
       .where(eq(schema.appointments.orderId, order.id)),
   );
 
-  if (existing) return;
+  if (existing) {
+    if (
+      existing.startsAt !== order.preferredStart ||
+      existing.endsAt !== order.preferredEnd
+    ) {
+      await qRun(
+        db
+          .update(schema.appointments)
+          .set({
+            startsAt: order.preferredStart,
+            endsAt: order.preferredEnd,
+          })
+          .where(eq(schema.appointments.id, existing.id)),
+      );
+    }
+    return;
+  }
 
   await qRun(
     db.insert(schema.appointments).values({
@@ -371,7 +393,15 @@ export async function updateOrderSchedule(
       .where(eq(schema.orders.id, orderId)),
   );
 
-  return { ok: true as const, order: (await getOrder(orderId, tenantId))! };
+  const latest = (await getOrder(orderId, tenantId))!;
+  if (latest.status !== "requested" && latest.status !== "cancelled") {
+    await ensureAppointmentForOrder(latest);
+  }
+  void syncOrderToCalendar(latest).catch((error) => {
+    console.warn("[calendar] schedule sync failed:", error);
+  });
+
+  return { ok: true as const, order: latest };
 }
 
 export async function updateOrderStatus(
@@ -396,6 +426,9 @@ export async function updateOrderStatus(
     }
   }
 
+  let confirmStart = existing.preferredStart;
+  let confirmEnd = existing.preferredEnd;
+
   if (status === "confirmed") {
     const slots = parsePreferredSlotsJson(existing.preferredSlotsJson);
     const selectedStart =
@@ -405,13 +438,33 @@ export async function updateOrderStatus(
     if (blockers.length > 0) {
       return { ok: false as const, error: blockers[0] };
     }
+
+    const chosen =
+      slots.find((slot) => slot.start === selectedStart) ??
+      (selectedStart
+        ? null
+        : { start: existing.preferredStart, end: existing.preferredEnd });
+    confirmStart = chosen?.start ?? existing.preferredStart;
+    confirmEnd = chosen?.end ?? existing.preferredEnd;
+    const available = await assertSlotAvailable({
+      tenantId: existing.tenantId,
+      startIso: confirmStart,
+      endIso: confirmEnd,
+      excludeOrderId: existing.id,
+    });
+    if (!available.ok) return available;
   }
 
   const db = getDb();
   await qRun(
     db
       .update(schema.orders)
-      .set({ status, updatedAt: nowIso() })
+      .set({
+        status,
+        preferredStart: confirmStart,
+        preferredEnd: confirmEnd,
+        updatedAt: nowIso(),
+      })
       .where(eq(schema.orders.id, orderId)),
   );
 
@@ -419,9 +472,15 @@ export async function updateOrderStatus(
     await qRun(
       db.delete(schema.appointments).where(eq(schema.appointments.orderId, orderId)),
     );
+    void deleteOrderCalendarEvent(existing).catch((error) => {
+      console.warn("[calendar] cancel sync failed:", error);
+    });
   } else if (status === "confirmed") {
     const latest = (await getOrder(orderId, tenantId))!;
     await ensureAppointmentForOrder(latest);
+    void syncOrderToCalendar(latest).catch((error) => {
+      console.warn("[calendar] confirm sync failed:", error);
+    });
   }
 
   return { ok: true as const, order: (await getOrder(orderId, tenantId))! };

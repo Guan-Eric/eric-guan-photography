@@ -84,6 +84,19 @@ async function main() {
   }
   console.log("ok: listing domains miss is null");
 
+  const { getCalendarConnection } = await import("../lib/calendar");
+  const ericCal = await getCalendarConnection("eric-guan");
+  const demoCal = await getCalendarConnection("demo-studio");
+  if (ericCal && demoCal && ericCal.id === demoCal.id) {
+    console.error("FAIL: calendar connections collapsed across tenants");
+    process.exit(1);
+  }
+  if (ericCal && ericCal.tenantId !== "eric-guan") {
+    console.error("FAIL: calendar connection tenant mismatch");
+    process.exit(1);
+  }
+  console.log("ok: calendar connections are tenant-scoped");
+
   console.log("PASS isolation check");
 }
 

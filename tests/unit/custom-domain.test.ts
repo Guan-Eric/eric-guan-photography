@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { expectedDomainTarget, verifyCustomDomain } from "@/lib/custom-domain";
+import { expectedDomainTarget, normalizeCustomDomain, verifyCustomDomain } from "@/lib/custom-domain";
 
 describe("custom-domain", () => {
   const previous = {
@@ -38,5 +38,11 @@ describe("custom-domain", () => {
     expect(local.verified).toBe(true);
     expect(local.domain).toBe("mystudio.localhost");
     expect(local.message).toMatch(/DNS check skipped/);
+  });
+
+  it("strips protocol and trailing slashes from hostnames", () => {
+    expect(normalizeCustomDomain("https://Photos.Example.com/path")).toBe(
+      "photos.example.com",
+    );
   });
 });

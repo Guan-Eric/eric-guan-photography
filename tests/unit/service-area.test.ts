@@ -25,6 +25,7 @@ describe("service-area", () => {
     expect(formatPostalCode("H2X1Y4")).toBe("H2X 1Y4");
     expect(formatPostalCode("10001")).toBe("10001");
     expect(formatPostalCode("100011234")).toBe("10001-1234");
+    expect(formatPostalCode("H2X")).toBe("H2X");
   });
 
   it("validates CA and US shapes", () => {
@@ -54,5 +55,38 @@ describe("service-area", () => {
     } as unknown as Tenant;
     expect(isValidPostalForTenant("XYZ", open)).toBe(true);
     expect(isInServiceArea("XYZ", open)).toBe(true);
+  });
+
+  it("validates US ZIPs when the gate is US", () => {
+    const us = {
+      serviceAreaGate: {
+        enabled: true,
+        region: "US" as const,
+        prefixes: ["100"],
+        message: "NYC only",
+      },
+    } as unknown as Tenant;
+    expect(isValidPostalForTenant("10001", us)).toBe(true);
+    expect(isInServiceArea("10001", us)).toBe(true);
+    expect(isInServiceArea("90210", us)).toBe(false);
+    expect(isInServiceArea("H2X 1Y4", us)).toBe(false);
+  });
+
+  it("allows any valid postal when prefixes are empty", () => {
+    const wide = {
+      serviceAreaGate: {
+        enabled: true,
+        region: "CA" as const,
+        prefixes: [] as string[],
+        message: "Canada",
+      },
+    } as unknown as Tenant;
+    expect(isInServiceArea("M5V 2T6", wide)).toBe(true);
+  });
+
+  it("uses the default Greater Montréal gate when none is set", () => {
+    expect(isInServiceArea("H2X 1Y4")).toBe(true);
+    expect(isInServiceArea("M5V 2T6")).toBe(false);
+    expect(serviceAreaMessage()).toMatch(/Montréal|Montreal/);
   });
 });

@@ -83,5 +83,22 @@ describe("booking-schema", () => {
       true,
     );
     expect(statusUpdateSchema.safeParse({}).success).toBe(false);
+    expect(
+      statusUpdateSchema.safeParse({
+        preferredStart: "2026-08-20T14:00:00.000Z",
+      }).success,
+    ).toBe(false);
+    expect(
+      statusUpdateSchema.safeParse({
+        propertyAddress: "123 Main Street",
+      }).success,
+    ).toBe(false);
+    expect(
+      statusUpdateSchema.safeParse({
+        propertyAddress: "123 Main Street",
+        postalCode: "H2X 1Y4",
+        city: "Montreal",
+      }).success,
+    ).toBe(true);
   });
 });

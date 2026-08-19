@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { parseAddressComponents, regionCodesForGate } from "@/lib/places";
+import { parseAddressComponents, regionCodesForGate, newPlacesSessionToken } from "@/lib/places";
 
 describe("parseAddressComponents", () => {
   it("builds a Canadian street address", () => {
@@ -31,6 +31,16 @@ describe("parseAddressComponents", () => {
     ]);
     expect(address.city).toBe("Toronto");
   });
+
+  it("falls back to sublocality and premise", () => {
+    const address = parseAddressComponents([
+      { longText: "Unit 4", types: ["premise"] },
+      { longText: "Plateau", types: ["sublocality"] },
+      { longText: "Quebec", shortText: "QC", types: ["administrative_area_level_1"] },
+    ]);
+    expect(address.line1).toBe("Unit 4");
+    expect(address.city).toBe("Plateau");
+  });
 });
 
 describe("regionCodesForGate", () => {
@@ -39,6 +49,12 @@ describe("regionCodesForGate", () => {
     expect(regionCodesForGate(undefined)).toEqual([]);
     expect(regionCodesForGate("CA")).toEqual(["CA"]);
     expect(regionCodesForGate("US")).toEqual(["US"]);
+  });
+});
+
+describe("newPlacesSessionToken", () => {
+  it("returns a non-empty token", () => {
+    expect(newPlacesSessionToken().length).toBeGreaterThan(8);
   });
 });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ericGuan } from "@/content/tenants/eric-guan";
-import { quotePackage, bookablePackages } from "@/lib/quoting";
+import { quotePackage, bookablePackages, priceBandsFor, isBookablePackage } from "@/lib/quoting";
+import type { Package } from "@/lib/tenant-schema";
 
 describe("quoting", () => {
   it("lists bookable packages", () => {
@@ -68,5 +69,71 @@ describe("quoting", () => {
       expect(quoted.priceCents).toBe(0);
       expect(quoted.priceLabel).toBe("Quote after request");
     }
+  });
+
+  it("rejects unknown packages and adds duration for large homes", () => {
+    expect(
+      quotePackage(ericGuan, { packageId: "nope", squareFootage: 1500 }).ok,
+    ).toBe(false);
+    const huge = quotePackage(ericGuan, {
+      packageId: "standard",
+      squareFootage: 4500,
+    });
+    expect(huge.ok).toBe(true);
+    if (huge.ok) expect(huge.durationMinutes).toBe(90);
+  });
+
+  it("falls back to a flat priceCents band and rejects quote-later without duration", () => {
+    const flat: Package = {
+      id: "flat",
+      name: "Flat",
+      summary: "One price",
+      price: "$99",
+      durationMinutes: 45,
+      includes: [],
+      priceCents: 9900,
+      priceBands: [],
+    };
+    expect(priceBandsFor(flat)?.[0]?.priceCents).toBe(9900);
+    expect(isBookablePackage(flat)).toBe(true);
+
+    const later = quotePackage(
+      {
+        ...ericGuan,
+        packages: [
+          {
+            id: "ask",
+            name: "Ask",
+            summary: "Later",
+            price: "Quote",
+            durationMinutes: null,
+            includes: [],
+            quoteLater: true,
+          },
+        ],
+      },
+      { packageId: "ask", squareFootage: 1500 },
+    );
+    expect(later.ok).toBe(false);
+
+    const noDuration = quotePackage(
+      {
+        ...ericGuan,
+        packages: [
+          {
+            id: "bands",
+            name: "Bands",
+            summary: "Has bands",
+            price: "$150",
+            durationMinutes: null,
+            includes: [],
+            priceBands: [{ maxSqft: 99999, priceCents: 15000, label: "any" }],
+          },
+        ],
+      },
+      { packageId: "bands", squareFootage: 1500 },
+    );
+    expect(noDuration.ok).toBe(false);
+    if (!noDuration.ok) expect(noDuration.contactOnly).toBe(true);
   });
 });

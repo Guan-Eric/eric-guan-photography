@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  dayChipLabel,
+  formatSlotInZone,
   groupSlotsByDay,
   parsePreferredSlotsJson,
+  timeOnlyLabel,
 } from "@/lib/preferred-slots";
 
 describe("preferred-slots", () => {
@@ -18,6 +21,7 @@ describe("preferred-slots", () => {
     expect(parsePreferredSlotsJson("{")).toEqual([]);
     expect(parsePreferredSlotsJson(null)).toEqual([]);
     expect(parsePreferredSlotsJson("[]")).toEqual([]);
+    expect(parsePreferredSlotsJson(JSON.stringify({ start: "x" }))).toEqual([]);
   });
 
   it("groups availability slots by calendar day", () => {
@@ -44,5 +48,12 @@ describe("preferred-slots", () => {
     expect(days).toHaveLength(2);
     expect(days[0]!.slots).toHaveLength(2);
     expect(days[1]!.slots).toHaveLength(1);
+  });
+
+  it("formats compact chip and time labels", () => {
+    const iso = "2026-08-20T14:00:00.000Z";
+    expect(dayChipLabel(iso, "America/Toronto")).toMatch(/\d/);
+    expect(timeOnlyLabel(iso, "America/Toronto")).toMatch(/\d/);
+    expect(formatSlotInZone(iso, "America/Toronto")).toMatch(/August/);
   });
 });

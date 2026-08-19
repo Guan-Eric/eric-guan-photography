@@ -1,5 +1,17 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { publicStudioUrl, requestPublicOrigin, safePortalPath, studioOrigin } from "@/lib/platform";
+import {
+  cookieDomain,
+  hostnameFromHost,
+  isLocalRequestHost,
+  isPlatformHostname,
+  platformEmailFrom,
+  platformSeo,
+  platformTheme,
+  publicStudioUrl,
+  requestPublicOrigin,
+  safePortalPath,
+  studioOrigin,
+} from "@/lib/platform";
 
 describe("public studio URLs", () => {
   const previous = {
@@ -90,5 +102,29 @@ describe("public studio URLs", () => {
     expect(safePortalPath("//evil.example/portal")).toBeNull();
     expect(safePortalPath("https://evil.example/portal")).toBeNull();
     expect(safePortalPath("/admin")).toBeNull();
+    expect(safePortalPath(12)).toBeNull();
+    expect(safePortalPath("/portal\\evil")).toBeNull();
+  });
+
+  it("derives cookie domain and platform hostnames", () => {
+    process.env.PLATFORM_ROOT_DOMAIN = "studiofront.ca";
+    expect(hostnameFromHost("silentshutter.studiofront.ca:443")).toBe(
+      "silentshutter.studiofront.ca",
+    );
+    expect(cookieDomain("localhost")).toBeUndefined();
+    expect(cookieDomain("silentshutter.localhost")).toBe(".localhost");
+    expect(cookieDomain("silentshutter.studiofront.ca")).toBe(".studiofront.ca");
+    expect(isPlatformHostname("studiofront.ca")).toBe(true);
+    expect(isPlatformHostname("www.studiofront.ca")).toBe(true);
+    expect(isPlatformHostname("silentshutter.studiofront.ca")).toBe(false);
+    expect(isLocalRequestHost("127.0.0.1")).toBe(true);
+    expect(platformSeo().title).toMatch(/Studiofront/);
+    expect(platformEmailFrom()).toMatch(/@/);
+    expect(platformTheme().accent).toBe("#2f5d50");
+  });
+
+  it("falls back to the request origin when no forwarded host is set", () => {
+    const request = new Request("https://example.test/book");
+    expect(requestPublicOrigin(request)).toBe("https://example.test");
   });
 });

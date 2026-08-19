@@ -59,5 +59,7 @@ describe("parseEmbed", () => {
     expect(parsed("vimeo.com/76979871").canonicalUrl).toBe("https://vimeo.com/76979871");
     expect(parseEmbed("javascript:alert(1)").ok).toBe(false);
     expect(parseEmbed("   ").ok).toBe(false);
+    expect(parseEmbed("https://www.youtube.com/embed/").ok).toBe(false);
+    expect(parseEmbed("https://www.youtube.com/watch").ok).toBe(false);
   });
 });

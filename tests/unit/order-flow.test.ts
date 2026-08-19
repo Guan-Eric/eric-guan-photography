@@ -41,5 +41,17 @@ describe("order status flow", () => {
     );
     expect(confirmBlockers(base, null)).toContain("Pick which preferred time to book.");
     expect(confirmBlockers(base, base.preferredStart)).toEqual([]);
+    expect(confirmBlockers(base, "2026-01-01T00:00:00.000Z")).toContain(
+      "Pick one of the agent's preferred times.",
+    );
+    expect(
+      confirmBlockers({ ...base, preferredSlotsJson: "[]", preferredStart: "" }, null),
+    ).toContain("Pick a shoot time.");
+    expect(
+      confirmBlockers({ ...base, propertyAddress: "x" }, base.preferredStart),
+    ).toContain("Confirm the property address.");
+    expect(
+      confirmBlockers({ ...base, postalCode: "H" }, base.preferredStart),
+    ).toContain("Confirm the postal or ZIP code.");
   });
 });

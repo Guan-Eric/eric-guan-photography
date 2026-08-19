@@ -4,6 +4,7 @@ import {
   isValidTimeZone,
   listTimeZones,
   normalizeTimeZone,
+  timeZoneLabel,
 } from "@/lib/timezones";
 
 describe("studio timezones", () => {
@@ -23,5 +24,6 @@ describe("studio timezones", () => {
     expect(normalizeTimeZone("Europe/Paris")).toBe("Europe/Paris");
     expect(normalizeTimeZone("bogus")).toBe(DEFAULT_STUDIO_TIMEZONE);
     expect(normalizeTimeZone(undefined)).toBe(DEFAULT_STUDIO_TIMEZONE);
+    expect(timeZoneLabel("America/New_York")).toBe("America/New York");
   });
 });

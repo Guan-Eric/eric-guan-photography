@@ -34,5 +34,7 @@ describe("studio currency", () => {
     expect(list.some((item) => item.code === "CAD")).toBe(true);
     expect(list.some((item) => item.code === "JPY")).toBe(true);
     expect(isStudioCurrency("EUR")).toBe(true);
+    expect(isStudioCurrency("nope")).toBe(false);
+    expect(normalizeStudioCurrency(12, "USD")).toBe("USD");
   });
 });

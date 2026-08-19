@@ -202,6 +202,9 @@ export function StudioWorkEditor({
         <div>
           <p className="eyebrow">Work</p>
           <h1>Home & portfolio</h1>
+          <p className="muted">
+            This is what agents see first. Keep the hero and selected work current.
+          </p>
         </div>
         <a className="btn btn-outline" href={viewUrl} target="_blank" rel="noreferrer">
           View on site

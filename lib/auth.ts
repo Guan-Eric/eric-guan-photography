@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { cache } from "react";
 import { customAlphabet } from "nanoid";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { Membership, MembershipRole, User } from "@/lib/db/schema";
@@ -147,8 +148,6 @@ export async function createPhotographerSession(userId: string, tenantId?: strin
 
 export async function clearPhotographerSession() {
   const jar = await cookies();
-  const host = await requestHost();
-  purgeLocalSessionCookies(jar, host);
   const opts = await sessionCookieOptions();
   const expired = { ...opts, maxAge: 0 };
   jar.set(SESSION_COOKIE, "", expired);
@@ -180,7 +179,7 @@ function parseSessionCookie(raw: string | undefined) {
   return { userId };
 }
 
-export async function getPhotographerSession(): Promise<PhotographerSession | null> {
+export const getPhotographerSession = cache(async (): Promise<PhotographerSession | null> => {
   const jar = await cookies();
   const parsed = parseSessionCookie(jar.get(SESSION_COOKIE)?.value);
   if (!parsed) return null;
@@ -203,7 +202,7 @@ export async function getPhotographerSession(): Promise<PhotographerSession | nu
     null;
 
   return { user, memberships, activeTenantId };
-}
+});
 
 export async function requirePhotographerSession() {
   const session = await getPhotographerSession();

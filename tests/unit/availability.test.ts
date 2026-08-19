@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  DRIVE_BUFFER_MINUTES,
   getGoogleBusyIntervals,
   isSlotFree,
   wallTimeToUtc,
@@ -22,7 +21,7 @@ describe("availability helpers", () => {
         source: "local" as const,
       },
     ];
-    expect(isSlotFree(start, end, busy, DRIVE_BUFFER_MINUTES)).toBe(false);
+    expect(isSlotFree(start, end, busy)).toBe(false);
     expect(
       isSlotFree(
         start,
@@ -34,7 +33,6 @@ describe("availability helpers", () => {
             source: "local",
           },
         ],
-        0,
       ),
     ).toBe(true);
   });

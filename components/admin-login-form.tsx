@@ -28,12 +28,12 @@ export function AdminLoginForm() {
       }
       toastSuccess("Signed in.");
       // Hard navigate so the new session cookie is always sent (soft push can race).
+      // Keep loading=true — the page will unload shortly.
       window.location.assign(json.hasStudio ? "/admin" : "/onboarding");
       return;
     } catch {
       setError("Network error.");
       toastError("Network error.");
-    } finally {
       setLoading(false);
     }
   }

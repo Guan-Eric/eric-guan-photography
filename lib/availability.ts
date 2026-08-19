@@ -196,16 +196,18 @@ export async function getBusyIntervals(
   return [...local, ...google];
 }
 
+/**
+ * Check whether a candidate slot fits without overlapping any busy interval.
+ * Busy intervals are already padded with their own buffer, so we compare
+ * the raw slot boundaries to avoid double-buffering.
+ */
 export function isSlotFree(
   start: Date,
   end: Date,
   busy: BusyInterval[],
-  bufferMinutes = DRIVE_BUFFER_MINUTES,
 ) {
-  const paddedStart = addMinutes(start, -bufferMinutes);
-  const paddedEnd = addMinutes(end, bufferMinutes);
   return !busy.some((interval) =>
-    intervalsOverlap(paddedStart, paddedEnd, interval.startsAt, interval.endsAt),
+    intervalsOverlap(start, end, interval.startsAt, interval.endsAt),
   );
 }
 

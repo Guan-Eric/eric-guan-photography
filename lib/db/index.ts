@@ -6,7 +6,7 @@
  *   - scripts/postgres-rls.sql
  * Postgres skips auto-seed; seed locally or via SQL.
  */
-import { neon } from "@neondatabase/serverless";
+import { neon, neonConfig } from "@neondatabase/serverless";
 import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { seedPlatform } from "@/lib/platform-seed";
 import * as sqliteSchema from "./schema";
@@ -507,6 +507,42 @@ function getSqliteDb(): AppDb {
 
   return sqliteDb;
 }
+
+function isRetryableNeonFetch(error: unknown) {
+  const text =
+    error instanceof Error
+      ? `${error.message} ${error.cause instanceof Error ? error.cause.message : error.cause ?? ""}`
+      : String(error);
+  return /fetch failed|ECONNRESET|ETIMEDOUT|UND_ERR|Connect Timeout|network|socket/i.test(
+    text,
+  );
+}
+
+async function neonFetchWithRetry(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const attempts = 4;
+  let last: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetch(input, init);
+      if (response.status >= 500 && attempt < attempts - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 400 * 2 ** attempt));
+        continue;
+      }
+      return response;
+    } catch (error) {
+      last = error;
+      if (attempt === attempts - 1 || !isRetryableNeonFetch(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 400 * 2 ** attempt));
+    }
+  }
+  throw last;
+}
+
+neonConfig.fetchConnectionCache = true;
+neonConfig.fetchFunction = neonFetchWithRetry;
 
 function getNeonDb(): AppDb {
   if (neonDb) return neonDb;

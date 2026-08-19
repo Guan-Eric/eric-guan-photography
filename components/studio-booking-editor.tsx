@@ -90,6 +90,9 @@ export function StudioBookingEditor({
         <div>
           <p className="eyebrow">Booking</p>
           <h1>How agents request a shoot</h1>
+          <p className="muted">
+            Public contact details and the service area that gates online booking.
+          </p>
         </div>
         <a className="btn btn-outline" href={viewUrl} target="_blank" rel="noreferrer">
           View on site

@@ -559,6 +559,9 @@ export function AdminOrderBoard({
         <div>
           <p className="eyebrow">Orders</p>
           <h1>Shoots</h1>
+          <p className="muted">
+            Confirm times, set the price, then deliver the gallery from one board.
+          </p>
         </div>
         <a className="btn btn-outline" href={bookingUrl} target="_blank" rel="noreferrer">
           Booking page

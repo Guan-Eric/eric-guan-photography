@@ -91,6 +91,9 @@ export function StudioScheduleEditor({
         <div>
           <p className="eyebrow">Schedule</p>
           <h1>Availability & bookings</h1>
+          <p className="muted">
+            Weekly hours, booking window, and Google Calendar so agents only see open times.
+          </p>
         </div>
         <Link className="btn btn-outline" href="/admin">
           All orders

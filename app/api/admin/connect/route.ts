@@ -13,6 +13,8 @@ import {
   expectedDomainTarget,
   normalizeCustomDomain,
   verifyCustomDomain,
+  customDomainsEnabled,
+  CUSTOM_DOMAINS_DISABLED_NOTE,
 } from "@/lib/custom-domain";
 import { createConnectOnboardingLink, refreshConnectStatus } from "@/lib/stripe-connect";
 import {
@@ -122,8 +124,12 @@ export async function GET(request: Request) {
   }
 
   const row = await getTenantRow(session.activeTenantId);
+  let connectNote: string | undefined;
   if (request.url.includes("refresh=1") && row?.stripeConnectAccountId) {
-    await refreshConnectStatus(session.activeTenantId);
+    const refreshed = await refreshConnectStatus(session.activeTenantId);
+    if (refreshed.ok && "note" in refreshed && refreshed.note) {
+      connectNote = refreshed.note;
+    }
   }
 
   const latest = await getTenantRow(session.activeTenantId);
@@ -140,7 +146,7 @@ export async function GET(request: Request) {
     domainSslStatus: null,
   };
 
-  if (latest?.domain && entitlements(latest.plan).customDomain) {
+  if (latest?.domain && entitlements(latest.plan).customDomain && customDomainsEnabled()) {
     const refreshed = await refreshDomainFromCloudflare(latest);
     domainFields = {
       domain: refreshed.domain,
@@ -160,11 +166,15 @@ export async function GET(request: Request) {
     ok: true,
     connectStatus: latest?.stripeConnectStatus ?? "not_started",
     connectAccountId: latest?.stripeConnectAccountId ?? null,
+    connectNote,
     slug: latest?.slug,
     storageBytesUsed: latest?.storageBytesUsed ?? 0,
     mediaQuotaBytes: latest?.mediaQuotaBytes ?? 0,
     serviceAreaGate: config?.serviceAreaGate ?? null,
-    canCustomDomain: latest ? entitlements(latest.plan).customDomain : false,
+    canCustomDomain:
+      latest && customDomainsEnabled() ? entitlements(latest.plan).customDomain : false,
+    customDomainsEnabled: customDomainsEnabled(),
+    customDomainNote: customDomainsEnabled() ? undefined : CUSTOM_DOMAINS_DISABLED_NOTE,
     ...domainFields,
   });
 }
@@ -183,6 +193,13 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
 
   if (body?.action === "domain") {
+    if (!customDomainsEnabled()) {
+      return NextResponse.json(
+        { ok: false, error: CUSTOM_DOMAINS_DISABLED_NOTE },
+        { status: 503 },
+      );
+    }
+
     const latest = await getTenantRow(session.activeTenantId);
     if (!latest || !entitlements(latest.plan).customDomain) {
       return NextResponse.json(

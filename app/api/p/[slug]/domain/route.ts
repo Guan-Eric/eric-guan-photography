@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CUSTOM_DOMAINS_DISABLED_NOTE, customDomainsEnabled } from "@/lib/custom-domain";
 import { createListingDomainCheckout } from "@/lib/listing-domains";
 import { listingPageForPublic } from "@/lib/listing-pages";
 import { publicStudioUrl } from "@/lib/platform";
@@ -8,6 +9,13 @@ import { getTenantRow } from "@/lib/tenant-store";
 export const runtime = "nodejs";
 
 export async function POST(_request: Request, context: { params: Promise<{ slug: string }> }) {
+  if (!customDomainsEnabled()) {
+    return NextResponse.json(
+      { ok: false, error: CUSTOM_DOMAINS_DISABLED_NOTE },
+      { status: 503 },
+    );
+  }
+
   const tenant = await getRequestTenant();
   if (!tenant) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });

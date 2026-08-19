@@ -37,6 +37,7 @@
     "NEXT_PUBLIC_SITE_URL": "https://studiofront.ca",
     "PLATFORM_EMAIL_FROM": "Studiofront <hello@studiofront.ca>",
     "CUSTOM_DOMAIN_TARGET": "sites.studiofront.ca",
+    "CUSTOM_DOMAIN_ENABLED": "0",
     "CLOUDFLARE_R2_BUCKET": "studiofront-media",
     "R2_FORCE_REMOTE": "1",
     "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_live_51RS0c2IzvGPbHejDU2jbfNRYxklfEa396tXDI3HDZrhwRjVAPOXYkRd8aYD7afrvv7wKCQsaQu9S6G3nuOw1DNC500PWgp4ay5"

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth-shell";
-import { getPhotographerSession, setActiveTenantCookie } from "@/lib/auth";
-import { acceptInvite, getInviteByToken } from "@/lib/invites";
+import { getPhotographerSession } from "@/lib/auth";
+import { getInviteByToken, isInviteEmailMismatch } from "@/lib/invites";
 
 export const metadata: Metadata = {
   title: "Accept invite",
@@ -13,15 +13,13 @@ export const dynamic = "force-dynamic";
 
 export default async function InvitePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
   const { token } = await params;
-  const session = await getPhotographerSession();
-  if (!session) {
-    redirect(`/signup?invite=${token}`);
-  }
-
+  const { error: acceptError } = await searchParams;
   const invite = await getInviteByToken(token);
   if (!invite) {
     return (
@@ -34,23 +32,30 @@ export default async function InvitePage({
     );
   }
 
-  const result = await acceptInvite({
-    token,
-    userId: session.user.id,
-    userEmail: session.user.email,
-  });
+  const session = await getPhotographerSession();
+  if (!session) {
+    redirect(`/signup?invite=${encodeURIComponent(token)}`);
+  }
 
-  if (!result.ok) {
+  if (isInviteEmailMismatch(invite, session.user.email)) {
+    redirect(`/api/auth/switch-account?invite=${encodeURIComponent(token)}`);
+  }
+
+  if (acceptError) {
     return (
       <AuthShell line="Join the studio that invited you.">
         <div className="auth-form-intro">
           <h1>Couldn’t join</h1>
-          <p>{result.error}</p>
+          <p>{acceptError}</p>
+          <p className="auth-form-foot">
+            <a href={`/signup?invite=${encodeURIComponent(token)}`}>Create an account</a>
+            {" · "}
+            <a href={`/login?invite=${encodeURIComponent(token)}`}>Sign in</a>
+          </p>
         </div>
       </AuthShell>
     );
   }
 
-  await setActiveTenantCookie(result.tenantId);
-  redirect("/admin");
+  redirect(`/api/invite/${encodeURIComponent(token)}/accept`);
 }

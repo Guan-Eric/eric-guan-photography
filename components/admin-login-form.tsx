@@ -1,10 +1,13 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toastError, toastSuccess } from "@/lib/toast";
 
-export function AdminLoginForm() {
-  const [email, setEmail] = useState("");
+export function AdminLoginForm({ inviteEmail }: { inviteEmail?: string | null }) {
+  const searchParams = useSearchParams();
+  const invite = searchParams.get("invite");
+  const [email, setEmail] = useState(inviteEmail ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,10 +31,11 @@ export function AdminLoginForm() {
         return;
       }
       toastSuccess("Signed in.");
-      // Hard navigate so the new session cookie is always sent (soft push can race).
-      // Keep loading=true — the page will unload shortly.
+      if (invite) {
+        window.location.assign(`/invite/${encodeURIComponent(invite)}`);
+        return;
+      }
       window.location.assign(json.hasStudio ? "/admin" : "/onboarding");
-      return;
     } catch {
       setError("Network error.");
       toastError("Network error.");
@@ -39,11 +43,21 @@ export function AdminLoginForm() {
     }
   }
 
+  const signupHref = invite
+    ? `/signup?invite=${encodeURIComponent(invite)}`
+    : "/signup";
+
   return (
     <form className="auth-form" onSubmit={onSubmit}>
       <div className="auth-form-intro">
         <h1>Sign in</h1>
-        <p>Use the email you registered with to open your studio.</p>
+        <p>
+          {invite
+            ? inviteEmail
+              ? `Sign in with ${inviteEmail} to accept your studio invite.`
+              : "Sign in to accept your studio invite."
+            : "Use the email you registered with to open your studio."}
+        </p>
       </div>
       <label className="field">
         <span>Email</span>
@@ -52,6 +66,7 @@ export function AdminLoginForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           autoComplete="email"
+          readOnly={Boolean(invite && inviteEmail)}
           autoFocus
           required
         />
@@ -72,10 +87,10 @@ export function AdminLoginForm() {
         type="submit"
         disabled={loading}
       >
-        {loading ? "Signing in…" : "Sign in"}
+        {loading ? "Signing in…" : invite ? "Sign in & join" : "Sign in"}
       </button>
       <p className="auth-form-foot">
-        New studio? <a href="/signup">Create an account</a>
+        New studio? <a href={signupHref}>Create an account</a>
         {" · "}
         <a href="/forgot-password">Forgot password?</a>
       </p>

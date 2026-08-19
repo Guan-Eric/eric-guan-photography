@@ -4,6 +4,7 @@ import {
   createMembership,
   registerUser,
 } from "@/lib/auth";
+import { acceptInvite, getInviteByToken, inviteAcceptanceError } from "@/lib/invites";
 import { passwordIssues } from "@/lib/password-rules";
 import { createTenantFromOnboarding } from "@/lib/tenant-store";
 
@@ -43,6 +44,14 @@ export async function POST(request: Request) {
     );
   }
 
+  if (invite) {
+    const inviteRow = await getInviteByToken(invite);
+    const inviteError = inviteAcceptanceError(inviteRow, email);
+    if (inviteError) {
+      return NextResponse.json({ ok: false, error: inviteError }, { status: 400 });
+    }
+  }
+
   const created = await registerUser({ email, password, name });
   if (!created.ok) {
     return NextResponse.json(created, { status: 400 });
@@ -50,7 +59,26 @@ export async function POST(request: Request) {
 
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
 
-  if (!invite && studioName.length >= 2) {
+  if (invite) {
+    const accepted = await acceptInvite({
+      token: invite,
+      userId: created.user.id,
+      userEmail: created.user.email,
+    });
+    if (!accepted.ok) {
+      return NextResponse.json(accepted, { status: 400 });
+    }
+    const response = NextResponse.json({
+      ok: true,
+      userId: created.user.id,
+      hasStudio: true,
+      joinedInvite: true,
+    });
+    attachPhotographerSession(response, created.user.id, accepted.tenantId, host);
+    return response;
+  }
+
+  if (studioName.length >= 2) {
     const provisioned = await createTenantFromOnboarding({
       studioName,
       photographerName: name,

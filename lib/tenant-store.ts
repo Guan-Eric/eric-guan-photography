@@ -119,7 +119,10 @@ export async function createTenantFromOnboarding(options: {
       subscriptionStatus: "trialing",
       trialEndsAt: trialEnd,
       listingQuotaAnnual: 100,
-      seatsQuota: 1,
+      seatsQuota:
+        Number(process.env.E2E_TRIAL_SEATS) > 0
+          ? Number(process.env.E2E_TRIAL_SEATS)
+          : 1,
       listingsUsedYear: 0,
       listingsYear: year,
       createdAt,
@@ -132,14 +135,16 @@ export async function createTenantFromOnboarding(options: {
 
 export async function updateTenantConnect(
   tenantId: string,
-  options: { accountId?: string; status: ConnectStatus },
+  options: { accountId?: string | null; status: ConnectStatus },
 ) {
   const db = getDb();
   await qRun(
     db
       .update(schema.tenants)
       .set({
-        stripeConnectAccountId: options.accountId,
+        ...(options.accountId !== undefined
+          ? { stripeConnectAccountId: options.accountId }
+          : {}),
         stripeConnectStatus: options.status,
         updatedAt: nowIso(),
       })

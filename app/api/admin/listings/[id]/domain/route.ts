@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
+import { CUSTOM_DOMAINS_DISABLED_NOTE, customDomainsEnabled } from "@/lib/custom-domain";
 import {
   refreshListingDomain,
   removeListingDomain,
@@ -26,6 +27,15 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   if (!tenantId) {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
   }
+  if (!customDomainsEnabled()) {
+    return NextResponse.json({
+      ok: true,
+      disabled: true,
+      note: CUSTOM_DOMAINS_DISABLED_NOTE,
+      expectedTarget: null,
+      domain: null,
+    });
+  }
   const { id } = await context.params;
   return NextResponse.json(await refreshListingDomain(tenantId, id));
 }
@@ -34,6 +44,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const tenantId = await tenantFor();
   if (!tenantId) {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
+  }
+  if (!customDomainsEnabled()) {
+    return NextResponse.json(
+      { ok: false, error: CUSTOM_DOMAINS_DISABLED_NOTE },
+      { status: 503 },
+    );
   }
   const { id } = await context.params;
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));

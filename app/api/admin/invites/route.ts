@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
-import { createInvite, listInvites } from "@/lib/invites";
+import {
+  createInvite,
+  listPendingInvites,
+  listTeamMembers,
+  removeTeamMember,
+  revokeInvite,
+} from "@/lib/invites";
 import type { MembershipRole } from "@/lib/db/schema";
 
 export const runtime = "nodejs";
@@ -16,7 +22,9 @@ export async function GET() {
   }
   return NextResponse.json({
     ok: true,
-    invites: await listInvites(session.activeTenantId),
+    canManageTeam: auth.membership.role === "owner",
+    members: await listTeamMembers(session.activeTenantId),
+    invites: await listPendingInvites(session.activeTenantId),
   });
 }
 
@@ -54,4 +62,44 @@ export async function POST(request: Request) {
     inviteId: result.invite.id,
     acceptPath: `/invite/${result.invite.token}`,
   });
+}
+
+export async function DELETE(request: Request) {
+  const session = await getPhotographerSession();
+  if (!session?.activeTenantId) {
+    return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
+  }
+  const auth = await requireTenantMembership(session.activeTenantId);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
+  }
+  if (auth.membership.role !== "owner") {
+    return NextResponse.json({ ok: false, error: "Only owners can manage the team." }, { status: 403 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const inviteId = typeof body.inviteId === "string" ? body.inviteId.trim() : "";
+  const membershipId =
+    typeof body.membershipId === "string" ? body.membershipId.trim() : "";
+
+  if (inviteId) {
+    const result = await revokeInvite(session.activeTenantId, inviteId);
+    if (!result.ok) return NextResponse.json(result, { status: 400 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (membershipId) {
+    const result = await removeTeamMember({
+      tenantId: session.activeTenantId,
+      membershipId,
+      actorUserId: session.user.id,
+    });
+    if (!result.ok) return NextResponse.json(result, { status: 400 });
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json(
+    { ok: false, error: "Specify inviteId or membershipId." },
+    { status: 400 },
+  );
 }

@@ -1,6 +1,15 @@
 import dns from "node:dns/promises";
 import { platformRootDomain } from "@/lib/platform";
 
+export const CUSTOM_DOMAINS_DISABLED_NOTE =
+  "Custom domains are temporarily unavailable while we finish setup. Any hostname you already saved is kept for when this goes live.";
+
+export function customDomainsEnabled() {
+  const raw = process.env.CUSTOM_DOMAIN_ENABLED?.trim().toLowerCase();
+  if (!raw) return false;
+  return raw === "1" || raw === "true" || raw === "yes";
+}
+
 export type DomainVerification = {
   domain: string;
   verified: boolean;

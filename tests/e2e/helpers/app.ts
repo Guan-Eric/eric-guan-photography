@@ -42,6 +42,36 @@ export async function clearUiOverlays(page: Page) {
   }
 }
 
+export async function provisionOwnerStudio(page: Page, stamp: string, prefix = "e2e") {
+  await skipCoachTours(page);
+  const email = `${prefix}-${stamp}@example.com`;
+  const password = "ValidPassw0rd!";
+  const studioName = `E2E Studio ${prefix} ${stamp}`;
+
+  const response = await page.request.post(`${apex}/api/auth/signup`, {
+    data: {
+      firstName: "E2E",
+      lastName: "Owner",
+      studioName,
+      email,
+      password,
+    },
+  });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  const json = (await response.json()) as { ok: boolean; slug?: string };
+  expect(json.ok).toBe(true);
+  expect(json.slug).toBeTruthy();
+
+  await ensureTeamInviteCapacity(page);
+
+  return { email, password, studioName, slug: json.slug! };
+}
+
+export async function ensureTeamInviteCapacity(page: Page) {
+  const response = await page.request.post(`${apex}/api/admin/invites/e2e-capacity`);
+  expect(response.ok(), await response.text()).toBeTruthy();
+}
+
 export async function signupStudio(page: Page, stamp: string, prefix = "e2e") {
   await skipCoachTours(page);
   const email = `${prefix}-${stamp}@example.com`;
@@ -60,9 +90,19 @@ export async function signupStudio(page: Page, stamp: string, prefix = "e2e") {
     (response) =>
       response.url().includes("/api/auth/signup") && response.request().method() === "POST",
   );
-  await page.getByRole("button", { name: /create account/i }).click();
-  const response = await responsePromise;
-  const json = (await response.json()) as { ok: boolean; slug?: string };
+  const [, response] = await Promise.all([
+    page.getByRole("button", { name: /create account/i }).click(),
+    responsePromise,
+  ]);
+  let json: { ok: boolean; slug?: string };
+  try {
+    json = (await response.json()) as { ok: boolean; slug?: string };
+  } catch {
+    await expect(page).toHaveURL(/\/admin/, { timeout: 30_000 });
+    const connect = await page.request.get(`${apex}/api/admin/connect`);
+    expect(connect.ok(), await connect.text()).toBeTruthy();
+    json = { ok: true, slug: ((await connect.json()) as { slug?: string }).slug };
+  }
   expect(json.ok).toBe(true);
   expect(json.slug).toBeTruthy();
   await expect(page).toHaveURL(/\/admin/, { timeout: 30_000 });
@@ -75,7 +115,64 @@ export async function login(page: Page, email: string, password: string) {
   await page.goto(`${apex}/login`);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: /^sign in$/i }).click();
+  await page.getByRole("button", { name: /sign in/i }).click();
+}
+
+export async function sendTeamInvite(page: Page, email: string) {
+  const response = await page.request.post(`${apex}/api/admin/invites`, {
+    data: { email, role: "editor" },
+  });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  const json = (await response.json()) as { ok: boolean; acceptPath?: string };
+  expect(json.ok).toBe(true);
+  expect(json.acceptPath).toMatch(/^\/invite\//);
+  return json.acceptPath!.replace("/invite/", "");
+}
+
+export async function signupViaInvite(
+  page: Page,
+  options: { token: string; email: string; password?: string },
+) {
+  const password = options.password ?? "ValidPassw0rd!";
+  await skipCoachTours(page);
+  await page.goto(`${apex}/signup?invite=${encodeURIComponent(options.token)}`);
+  await expect(page.getByLabel("Email")).toHaveValue(options.email);
+  await page.getByLabel("First name").fill("Editor");
+  await page.getByLabel("Last name").fill("Invitee");
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByLabel("Confirm password").fill(password);
+  await page.getByRole("button", { name: /create account & join/i }).click();
+  await expect(page).toHaveURL(/\/admin/, { timeout: 30_000 });
+  await clearUiOverlays(page);
+  return { password };
+}
+
+export async function loginViaInvite(
+  page: Page,
+  options: { token: string; email: string; password: string },
+) {
+  await skipCoachTours(page);
+  await page.goto(`${apex}/login?invite=${encodeURIComponent(options.token)}`);
+  if (!page.url().includes("/login")) {
+    await expect(page).toHaveURL(/\/admin/, { timeout: 30_000 });
+    await clearUiOverlays(page);
+    return;
+  }
+  await expect(page.getByLabel("Email")).toHaveValue(options.email);
+  await page.getByLabel("Password").fill(options.password);
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await expect(page).toHaveURL(/\/admin/, { timeout: 30_000 });
+  await clearUiOverlays(page);
+}
+
+export async function getTeam(page: Page) {
+  const response = await page.request.get(`${apex}/api/admin/invites`);
+  expect(response.ok(), await response.text()).toBeTruthy();
+  return (await response.json()) as {
+    ok: boolean;
+    members?: Array<{ email: string; role: string }>;
+    invites?: Array<{ email: string; role: string }>;
+  };
 }
 
 export async function logout(page: Page) {

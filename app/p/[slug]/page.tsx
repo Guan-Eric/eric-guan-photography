@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ListingLeadForm } from "@/components/listing-lead-form";
 import { ListingDomainCta } from "@/components/listing-domain-cta";
 import { MediaEmbeds } from "@/components/media-embeds";
+import { customDomainsEnabled } from "@/lib/custom-domain";
 import { TIME_ZONE } from "@/lib/availability";
 import {
   formatOpenHouse,
@@ -164,7 +165,7 @@ export default async function ListingPage({
         </section>
       ) : null}
 
-      {branded && listingDomain && !listingDomain.paidUntil ? (
+      {branded && customDomainsEnabled() && listingDomain && !listingDomain.paidUntil ? (
         <ListingDomainCta slug={slug} />
       ) : null}
 

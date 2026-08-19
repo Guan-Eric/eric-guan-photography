@@ -8,7 +8,7 @@ import { toastError, toastSuccess } from "@/lib/toast";
 /** Kept local so the client bundle never pulls in the Drizzle schema. */
 const PLAN_PARAMS = ["payg", "starter", "growth", "studio"];
 
-export function SignupForm() {
+export function SignupForm({ inviteEmail }: { inviteEmail?: string | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invite = searchParams.get("invite");
@@ -16,7 +16,7 @@ export function SignupForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [studioName, setStudioName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(inviteEmail ?? "");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -56,18 +56,20 @@ export function SignupForm() {
         toastError(message);
         return;
       }
-      toastSuccess("Account created.");
-      if (invite) {
-        router.push(`/invite/${invite}`);
-      } else if (json.hasStudio) {
-        const plan = searchParams.get("plan");
-        const allowed = plan ? PLAN_PARAMS.includes(plan) : false;
-        router.push(
-          allowed ? `/admin?welcome=1&plan=${plan}` : "/admin?welcome=1",
-        );
-      } else {
-        router.push("/onboarding");
+      toastSuccess(invite ? "Joined the studio." : "Account created.");
+      if (invite || json.hasStudio) {
+        if (!invite && json.hasStudio) {
+          const plan = searchParams.get("plan");
+          const allowed = plan ? PLAN_PARAMS.includes(plan) : false;
+          window.location.assign(
+            allowed ? `/admin?welcome=1&plan=${plan}` : "/admin?welcome=1",
+          );
+          return;
+        }
+        window.location.assign("/admin");
+        return;
       }
+      router.push("/onboarding");
       router.refresh();
     } catch {
       setError("Network error.");
@@ -77,13 +79,19 @@ export function SignupForm() {
     }
   }
 
+  const loginHref = invite
+    ? `/login?invite=${encodeURIComponent(invite)}`
+    : "/login";
+
   return (
     <form className="auth-form" onSubmit={onSubmit}>
       <div className="auth-form-intro">
         <h1>Create your account</h1>
         <p>
           {invite
-            ? "You’ll join the studio that invited you after this step."
+            ? inviteEmail
+              ? `Use ${inviteEmail} to join the studio that invited you.`
+              : "You’ll join the studio that invited you after this step."
             : "Enter the details below to set up your studio."}
         </p>
       </div>
@@ -131,6 +139,7 @@ export function SignupForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           autoComplete="email"
+          readOnly={Boolean(invite && inviteEmail)}
           required
         />
       </label>
@@ -174,11 +183,11 @@ export function SignupForm() {
         type="submit"
         disabled={!canSubmit}
       >
-        {loading ? "Creating…" : "Create account"}
+        {loading ? "Creating…" : invite ? "Create account & join" : "Create account"}
       </button>
 
       <p className="auth-form-foot">
-        Already have an account? <a href="/login">Sign in</a>
+        Already have an account? <a href={loginHref}>Sign in</a>
       </p>
     </form>
   );

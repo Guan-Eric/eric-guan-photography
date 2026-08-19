@@ -10,6 +10,8 @@ import {
   expectedDomainTarget,
   normalizeCustomDomain,
   verifyCustomDomain,
+  customDomainsEnabled,
+  CUSTOM_DOMAINS_DISABLED_NOTE,
 } from "@/lib/custom-domain";
 import { getDb, qGet, qRun, schema } from "@/lib/db";
 import type { ListingDomain, ListingPage } from "@/lib/db/schema";

@@ -2308,8 +2308,15 @@ span.status-select--locked {
 .settings-invite-list li {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 1rem;
   font-size: 0.92rem;
+}
+
+.settings-invite-list__main {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
 }
 
 .domain-status {

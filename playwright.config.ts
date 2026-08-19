@@ -17,14 +17,16 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "npm run dev",
+    command: `npm run dev:e2e -- -p ${PORT}`,
     url: baseURL,
     reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
     timeout: 180_000,
     env: {
       ...process.env,
       ALLOW_GALLERY_STUB_UNLOCK: "1",
+      ALLOW_E2E_TEAM_SETUP: "1",
       MEDIA_PROCESS_WITH_SHARP: "1",
+      E2E_TRIAL_SEATS: "3",
       PLATFORM_ROOT_DOMAIN: "localhost",
       NEXT_PUBLIC_SITE_URL: baseURL,
     },

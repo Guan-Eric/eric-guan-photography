@@ -7,6 +7,9 @@ import { toastError, toastSuccess } from "@/lib/toast";
 type ConnectState = {
   connectStatus: string;
   connectAccountId: string | null;
+  connectNote?: string;
+  customDomainsEnabled?: boolean;
+  customDomainNote?: string;
   domain: string | null;
   slug: string;
   storageBytesUsed: number;
@@ -81,35 +84,58 @@ function usd(amount: number) {
 export function StudioSettingsPanel() {
   const [state, setState] = useState<ConnectState | null>(null);
   const [billing, setBilling] = useState<BillingState | null>(null);
-  const [invites, setInvites] = useState<Array<{ email: string; role: string; acceptedAt: string | null }>>(
-    [],
-  );
+  const [members, setMembers] = useState<
+    Array<{ id: string; email: string; name: string; role: string }>
+  >([]);
+  const [invites, setInvites] = useState<
+    Array<{ id: string; email: string; role: string }>
+  >([]);
+  const [canManageTeam, setCanManageTeam] = useState(false);
   const [domain, setDomain] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<
-    "connect" | "domain" | "domainCheck" | "checkout" | "portal" | "invite" | null
+    | "connect"
+    | "domain"
+    | "domainCheck"
+    | "checkout"
+    | "portal"
+    | "invite"
+    | `remove-invite:${string}`
+    | `remove-member:${string}`
+    | null
   >(null);
   const [loaded, setLoaded] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanChoice | null>(null);
 
   async function load() {
-    const [connectRes, billingRes, invitesRes] = await Promise.all([
-      fetch("/api/admin/connect?refresh=1"),
-      fetch("/api/admin/billing"),
-      fetch("/api/admin/invites"),
-    ]);
-    const connectJson = await connectRes.json();
-    const billingJson = await billingRes.json();
-    const invitesJson = await invitesRes.json();
-    if (connectJson.ok) {
-      setState(connectJson);
-      setDomain(connectJson.domain ?? "");
+    try {
+      const [connectRes, billingRes, invitesRes] = await Promise.all([
+        fetch("/api/admin/connect?refresh=1"),
+        fetch("/api/admin/billing"),
+        fetch("/api/admin/invites"),
+      ]);
+      const connectJson = await connectRes.json().catch(() => null);
+      const billingJson = await billingRes.json().catch(() => null);
+      const invitesJson = await invitesRes.json().catch(() => null);
+      if (connectJson?.ok) {
+        setState(connectJson);
+        setDomain(connectJson.domain ?? "");
+      } else if (connectJson?.error) {
+        setError(connectJson.error);
+      }
+      if (billingJson?.ok) setBilling(billingJson);
+      if (invitesJson?.ok) {
+        setMembers(invitesJson.members ?? []);
+        setInvites(invitesJson.invites ?? []);
+        setCanManageTeam(Boolean(invitesJson.canManageTeam));
+      }
+    } catch {
+      setError("Could not load settings.");
+    } finally {
+      setLoaded(true);
     }
-    if (billingJson.ok) setBilling(billingJson);
-    if (invitesJson.ok) setInvites(invitesJson.invites ?? []);
-    setLoaded(true);
   }
 
   useEffect(() => {
@@ -126,10 +152,10 @@ export function StudioSettingsPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "connect" }),
       });
-      const json = await response.json();
-      if (!json.ok) {
-        setError(json.error ?? "Could not start Connect.");
-        toastError(json.error ?? "Could not start Connect.");
+      const json = await response.json().catch(() => null);
+      if (!json?.ok) {
+        setError(json?.error ?? "Could not start Connect.");
+        toastError(json?.error ?? "Could not start Connect.");
         return;
       }
       if (json.url) {
@@ -138,6 +164,9 @@ export function StudioSettingsPanel() {
       }
       setMessage("Connect link created.");
       toastSuccess("Connect link created.");
+    } catch {
+      setError("Could not start Connect.");
+      toastError("Could not start Connect.");
     } finally {
       setBusy(null);
     }
@@ -314,6 +343,54 @@ export function StudioSettingsPanel() {
     }
   }
 
+  async function cancelInvite(inviteId: string, email: string) {
+    setBusy(`remove-invite:${inviteId}`);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/invites", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteId }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!json?.ok) {
+        setError(json?.error ?? "Could not cancel invite.");
+        toastError(json?.error ?? "Could not cancel invite.");
+        return;
+      }
+      setMessage(`Invite cancelled for ${email}.`);
+      toastSuccess(`Invite cancelled for ${email}.`);
+      await load();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function removeMember(membershipId: string, email: string) {
+    setBusy(`remove-member:${membershipId}`);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/invites", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ membershipId }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!json?.ok) {
+        setError(json?.error ?? "Could not remove team member.");
+        toastError(json?.error ?? "Could not remove team member.");
+        return;
+      }
+      setMessage(`${email} removed from the team.`);
+      toastSuccess(`${email} removed from the team.`);
+      await load();
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (!loaded) {
     return (
       <div className="studio-settings">
@@ -482,6 +559,7 @@ export function StudioSettingsPanel() {
         <p className="field-hint">
           Connect Stripe so gallery payments land in your account.
         </p>
+        {state?.connectNote ? <p className="form-error">{state.connectNote}</p> : null}
         <button type="button" className={`btn btn-solid${busy === "connect" ? " is-busy" : ""}`} disabled={busy !== null} onClick={startConnect}>
           {busy === "connect" ? "Working…" : state?.connectStatus === "complete" ? "Update payouts" : "Connect payouts"}
         </button>
@@ -489,7 +567,12 @@ export function StudioSettingsPanel() {
 
       <section className="studio-section">
         <h2>Custom domain</h2>
-        {!state?.canCustomDomain ? (
+        {!state?.customDomainsEnabled ? (
+          <p className="field-hint">
+            {state?.customDomainNote ??
+              "Custom domains are temporarily unavailable. Your studio subdomain still works."}
+          </p>
+        ) : !state?.canCustomDomain ? (
           <p className="field-hint">
             Custom domains are available on Growth and Studio (and during trial).
             Upgrade to edit this field on Starter.
@@ -504,77 +587,81 @@ export function StudioSettingsPanel() {
             cannot CNAME.
           </p>
         )}
-        <label className="field">
-          <span>Domain</span>
-          <input
-            value={domain}
-            onChange={(event) => setDomain(event.target.value)}
-            placeholder="photos.yourstudio.com"
-            disabled={!state?.canCustomDomain}
-          />
-        </label>
-        {state?.canCustomDomain ? (
-          <div
-            className={`domain-status domain-status--${phase.key}`}
-            role="status"
-          >
-            <div className="domain-status__head">
-              <strong>{phase.title}</strong>
-              {state.domain ? <code>{state.domain}</code> : null}
-            </div>
-            <p>{phase.detail}</p>
-            <ul className="domain-status__checks">
-              <li data-ok={state.domainVerified ? "1" : "0"}>
-                DNS {state.domainVerified ? "verified" : "pending"}
-                {state.expectedDnsTarget ? (
-                  <span className="muted"> → {state.expectedDnsTarget}</span>
-                ) : null}
-              </li>
-              <li
-                data-ok={
-                  state.domainLive || state.domainSslStatus === "active"
-                    ? "1"
-                    : "0"
-                }
+        {state?.customDomainsEnabled ? (
+          <>
+            <label className="field">
+              <span>Domain</span>
+              <input
+                value={domain}
+                onChange={(event) => setDomain(event.target.value)}
+                placeholder="photos.yourstudio.com"
+                disabled={!state?.canCustomDomain}
+              />
+            </label>
+            {state?.canCustomDomain ? (
+              <div
+                className={`domain-status domain-status--${phase.key}`}
+                role="status"
               >
-                SSL{" "}
-                {state.domainLive || state.domainSslStatus === "active"
-                  ? "active"
-                  : state.domainSslStatus
-                    ? state.domainSslStatus.replace(/_/g, " ")
-                    : "pending"}
-              </li>
-            </ul>
-            {state.domain &&
-            !state.domainLive &&
-            state.domainStatus !== "active" ? (
-              <p className="field-hint domain-status__hint">
-                Propagation is often a few minutes; some registrars take longer.
-                This panel refreshes automatically while waiting.
-              </p>
+                <div className="domain-status__head">
+                  <strong>{phase.title}</strong>
+                  {state.domain ? <code>{state.domain}</code> : null}
+                </div>
+                <p>{phase.detail}</p>
+                <ul className="domain-status__checks">
+                  <li data-ok={state.domainVerified ? "1" : "0"}>
+                    DNS {state.domainVerified ? "verified" : "pending"}
+                    {state.expectedDnsTarget ? (
+                      <span className="muted"> → {state.expectedDnsTarget}</span>
+                    ) : null}
+                  </li>
+                  <li
+                    data-ok={
+                      state.domainLive || state.domainSslStatus === "active"
+                        ? "1"
+                        : "0"
+                    }
+                  >
+                    SSL{" "}
+                    {state.domainLive || state.domainSslStatus === "active"
+                      ? "active"
+                      : state.domainSslStatus
+                        ? state.domainSslStatus.replace(/_/g, " ")
+                        : "pending"}
+                  </li>
+                </ul>
+                {state.domain &&
+                !state.domainLive &&
+                state.domainStatus !== "active" ? (
+                  <p className="field-hint domain-status__hint">
+                    Propagation is often a few minutes; some registrars take longer.
+                    This panel refreshes automatically while waiting.
+                  </p>
+                ) : null}
+              </div>
             ) : null}
-          </div>
+            <div className="domain-actions">
+              <button
+                type="button"
+                className={`btn btn-outline${busy === "domain" ? " is-busy" : ""}`}
+                disabled={busy !== null || !state?.canCustomDomain}
+                onClick={saveDomain}
+              >
+                {busy === "domain" ? "Saving…" : "Save domain"}
+              </button>
+              {state?.canCustomDomain && state.domain ? (
+                <button
+                  type="button"
+                  className={`btn btn-outline${busy === "domainCheck" ? " is-busy" : ""}`}
+                  disabled={busy !== null}
+                  onClick={checkDomainStatus}
+                >
+                  {busy === "domainCheck" ? "Checking…" : "Check status"}
+                </button>
+              ) : null}
+            </div>
+          </>
         ) : null}
-        <div className="domain-actions">
-          <button
-            type="button"
-            className={`btn btn-outline${busy === "domain" ? " is-busy" : ""}`}
-            disabled={busy !== null || !state?.canCustomDomain}
-            onClick={saveDomain}
-          >
-            {busy === "domain" ? "Saving…" : "Save domain"}
-          </button>
-          {state?.canCustomDomain && state.domain ? (
-            <button
-              type="button"
-              className={`btn btn-outline${busy === "domainCheck" ? " is-busy" : ""}`}
-              disabled={busy !== null}
-              onClick={checkDomainStatus}
-            >
-              {busy === "domainCheck" ? "Checking…" : "Check status"}
-            </button>
-          ) : null}
-        </div>
       </section>
 
       <section className="studio-section">
@@ -591,26 +678,79 @@ export function StudioSettingsPanel() {
             value={inviteEmail}
             onChange={(event) => setInviteEmail(event.target.value)}
             placeholder="editor@studio.com"
+            disabled={!canManageTeam}
           />
         </label>
-        <button type="button" className={`btn btn-outline${busy === "invite" ? " is-busy" : ""}`} disabled={busy !== null} onClick={invite}>
-          {busy === "invite" ? "Sending…" : "Send invite"}
-        </button>
-        {invites.length > 0 ? (
-          <ul className="settings-invite-list">
-            {invites.map((inviteRow) => (
-              <li key={`${inviteRow.email}-${inviteRow.role}`}>
-                <strong>{inviteRow.email}</strong>
-                <span className="muted">
-                  {inviteRow.role}
-                  {inviteRow.acceptedAt ? " · joined" : " · pending"}
-                </span>
-              </li>
-            ))}
-          </ul>
+        {canManageTeam ? (
+          <button
+            type="button"
+            className={`btn btn-outline${busy === "invite" ? " is-busy" : ""}`}
+            disabled={busy !== null}
+            onClick={invite}
+          >
+            {busy === "invite" ? "Sending…" : "Send invite"}
+          </button>
         ) : (
-          <p className="field-hint">No invites yet.</p>
+          <p className="field-hint">Only the studio owner can invite or remove team members.</p>
         )}
+        {members.length > 0 ? (
+          <>
+            <p className="field-hint" style={{ marginTop: "0.75rem" }}>
+              Team members
+            </p>
+            <ul className="settings-invite-list">
+              {members.map((member) => (
+                <li key={member.id}>
+                  <div className="settings-invite-list__main">
+                    <strong>{member.email}</strong>
+                    <span className="muted">{member.role}</span>
+                  </div>
+                  {canManageTeam && member.role !== "owner" ? (
+                    <button
+                      type="button"
+                      className="text-link"
+                      disabled={busy !== null}
+                      onClick={() => removeMember(member.id, member.email)}
+                    >
+                      {busy === `remove-member:${member.id}` ? "Removing…" : "Remove"}
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        {invites.length > 0 ? (
+          <>
+            <p className="field-hint" style={{ marginTop: "0.75rem" }}>
+              Pending invites
+            </p>
+            <ul className="settings-invite-list">
+              {invites.map((inviteRow) => (
+                <li key={inviteRow.id}>
+                  <div className="settings-invite-list__main">
+                    <strong>{inviteRow.email}</strong>
+                    <span className="muted">
+                      {inviteRow.role} · pending
+                    </span>
+                  </div>
+                  {canManageTeam ? (
+                    <button
+                      type="button"
+                      className="text-link"
+                      disabled={busy !== null}
+                      onClick={() => cancelInvite(inviteRow.id, inviteRow.email)}
+                    >
+                      {busy === `remove-invite:${inviteRow.id}` ? "Cancelling…" : "Cancel"}
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : members.length === 0 ? (
+          <p className="field-hint">No team members yet.</p>
+        ) : null}
       </section>
 
       <section className="studio-section">

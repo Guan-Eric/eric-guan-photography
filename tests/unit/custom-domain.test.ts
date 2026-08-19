@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { expectedDomainTarget, normalizeCustomDomain, verifyCustomDomain } from "@/lib/custom-domain";
+import {
+  customDomainsEnabled,
+  expectedDomainTarget,
+  normalizeCustomDomain,
+  verifyCustomDomain,
+} from "@/lib/custom-domain";
 
 describe("custom-domain", () => {
   const previous = {
     custom: process.env.CUSTOM_DOMAIN_TARGET,
     root: process.env.PLATFORM_ROOT_DOMAIN,
+    enabled: process.env.CUSTOM_DOMAIN_ENABLED,
   };
 
   afterEach(() => {
@@ -12,6 +18,17 @@ describe("custom-domain", () => {
     else process.env.CUSTOM_DOMAIN_TARGET = previous.custom;
     if (previous.root === undefined) delete process.env.PLATFORM_ROOT_DOMAIN;
     else process.env.PLATFORM_ROOT_DOMAIN = previous.root;
+    if (previous.enabled === undefined) delete process.env.CUSTOM_DOMAIN_ENABLED;
+    else process.env.CUSTOM_DOMAIN_ENABLED = previous.enabled;
+  });
+
+  it("is disabled unless CUSTOM_DOMAIN_ENABLED is set to 1", () => {
+    delete process.env.CUSTOM_DOMAIN_ENABLED;
+    expect(customDomainsEnabled()).toBe(false);
+    process.env.CUSTOM_DOMAIN_ENABLED = "0";
+    expect(customDomainsEnabled()).toBe(false);
+    process.env.CUSTOM_DOMAIN_ENABLED = "1";
+    expect(customDomainsEnabled()).toBe(true);
   });
 
   it("resolves expected DNS target from env", () => {

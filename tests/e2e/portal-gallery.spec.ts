@@ -1,5 +1,9 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { apex, createBooking, signupStudio, studioOrigin } from "./helpers/app";
+import { apex, createBooking, signupStudio } from "./helpers/app";
+
+const e2ePhoto = readFileSync(join(__dirname, "../fixtures/e2e-photo.jpg"));
 
 test.describe("Portal and gallery scenarios", () => {
   test("@critical @regression delivered gallery can be opened and unlocked", async ({ page }) => {
@@ -9,10 +13,7 @@ test.describe("Portal and gallery scenarios", () => {
 
     await page.goto(`${apex}/admin`);
 
-    const jpeg = Buffer.from(
-      "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAGcP//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Bf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEABj8Cf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8hf//Z",
-      "base64",
-    );
+    const jpeg = e2ePhoto;
 
     const upload = await page.request.post(`${apex}/api/admin/orders/${orderId}/upload`, {
       multipart: {
@@ -48,7 +49,7 @@ test.describe("Portal and gallery scenarios", () => {
       await stub.click();
       await expect(page.getByText(/unlocked/i).first()).toBeVisible({ timeout: 15_000 });
     } else {
-      const unlock = await page.request.post(`${studioOrigin(slug)}/api/g/${token}/checkout`, {
+      const unlock = await page.request.post(`${origin}/api/g/${token}/checkout`, {
         data: { stub: true },
       });
       expect(unlock.ok()).toBeTruthy();

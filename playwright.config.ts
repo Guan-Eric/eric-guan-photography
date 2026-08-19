@@ -19,11 +19,12 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
     timeout: 180_000,
     env: {
       ...process.env,
       ALLOW_GALLERY_STUB_UNLOCK: "1",
+      MEDIA_PROCESS_WITH_SHARP: "1",
       PLATFORM_ROOT_DOMAIN: "localhost",
       NEXT_PUBLIC_SITE_URL: baseURL,
     },

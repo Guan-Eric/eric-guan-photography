@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:e2e": "PLATFORM_ROOT_DOMAIN=localhost NEXT_PUBLIC_SITE_URL=http://localhost:3000 ALLOW_GALLERY_STUB_UNLOCK=1 MEDIA_PROCESS_WITH_SHARP=1 next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",

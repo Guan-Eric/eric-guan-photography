@@ -313,9 +313,18 @@ export async function processUpload(options: {
     throw new Error("Each photo must be 20 MB or smaller.");
   }
 
-  const images = await getImagesBinding();
+  const preferSharp = process.env.MEDIA_PROCESS_WITH_SHARP === "1";
+  const images = preferSharp ? null : await getImagesBinding();
   if (images) {
-    return processUploadWithCfImages(images, options);
+    try {
+      return await processUploadWithCfImages(images, options);
+    } catch (error) {
+      if (await sharpAvailable()) {
+        console.warn("[media] CF Images failed, falling back to sharp:", error);
+        return processUploadWithSharp(options);
+      }
+      throw error;
+    }
   }
 
   if (await sharpAvailable()) {

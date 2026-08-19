@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signupStudio } from "./helpers/app";
+import { clearUiOverlays, signupStudio } from "./helpers/app";
 
 test.describe("Billing and settings scenarios", () => {
   test("@critical @regression plan selection previews before checkout", async ({ page }) => {
@@ -8,6 +8,7 @@ test.describe("Billing and settings scenarios", () => {
 
     await page.goto("/admin/settings");
     await expect(page.getByRole("heading", { name: /subscription/i })).toBeVisible();
+    await clearUiOverlays(page);
 
     await page.getByRole("button", { name: /growth/i }).click();
     await expect(page).toHaveURL(/\/admin\/settings/);

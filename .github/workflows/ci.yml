@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      e2e_suite:
+        description: "E2E suite to run"
+        type: choice
+        required: true
+        default: critical
+        options:
+          - smoke
+          - critical
+          - regression
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Typecheck + Unit/Integration
+    runs-on: ubuntu-latest
+    if: github.event_name != 'schedule'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run unit/integration tests
+        run: npm test
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke suite on pull requests
+        if: github.event_name == 'pull_request'
+        run: npm run test:e2e:smoke
+
+      - name: Run regression suite before deploy
+        if: github.event_name == 'push'
+        run: npm run test:e2e:regression
+
+      - name: Run regression suite nightly
+        if: github.event_name == 'schedule'
+        run: npm run test:e2e:regression
+
+      - name: Run selected suite manually
+        if: github.event_name == 'workflow_dispatch'
+        run: npm run test:e2e:${{ inputs.e2e_suite }}
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

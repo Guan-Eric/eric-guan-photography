@@ -8,7 +8,7 @@ test.describe("Auth scenarios", () => {
     await logout(page);
 
     await login(page, email, `${password}-wrong`);
-    await expect(page.getByText(/wrong email or password|login failed/i)).toBeVisible({
+    await expect(page.locator(".form-error")).toContainText(/wrong email or password|login failed/i, {
       timeout: 10_000,
     });
     await expect(page.getByRole("button", { name: /^sign in$/i })).toBeEnabled();

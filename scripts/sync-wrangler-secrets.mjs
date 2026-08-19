@@ -8,6 +8,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+const fromArg = process.argv.indexOf("--from");
+const envFile =
+  fromArg >= 0 && process.argv[fromArg + 1]
+    ? process.argv[fromArg + 1]
+    : process.env.STRIPE_ENV_FILE || ".env.local";
+
 const keys = [
   "AUTH_SESSION_SECRET",
   "ADMIN_SESSION_SECRET",
@@ -36,7 +43,13 @@ const keys = [
 ];
 
 const env = {};
-for (const line of fs.readFileSync(path.join(root, ".env.local"), "utf8").split("\n")) {
+const envPath = path.join(root, envFile);
+if (!fs.existsSync(envPath)) {
+  console.error("MISSING_ENV_FILE=" + envFile);
+  process.exit(1);
+}
+console.log("SYNC_ENV_FILE=" + envFile);
+for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
   const trimmed = line.trim();
   if (!trimmed || trimmed.startsWith("#")) continue;
   const eq = trimmed.indexOf("=");

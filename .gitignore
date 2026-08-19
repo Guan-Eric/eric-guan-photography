@@ -23,6 +23,7 @@ yarn-error.log*
 .wrangler
 .dev.vars
 cloudflare-env.d.ts
+.env.stripe.live
 test-results/
 playwright-report/
 .playwright-mcp/

@@ -1,12 +1,54 @@
 # Stripe setup (platform billing + Connect)
 
-Do this in the [Stripe Dashboard](https://dashboard.stripe.com) (use **Test mode** first).
+## Quick start — live production
 
-Stripe MCP is not required — all of this is Dashboard clicks + env vars.
+1. **Activate your Stripe account** (live mode) — see [Live activation](#live-activation) below.
+2. Copy [`docs/env-stripe-live.example`](env-stripe-live.example) → `.env.stripe.live` (gitignored).
+3. Paste `sk_live_...` and `pk_live_...` from [Dashboard → API keys](https://dashboard.stripe.com/apikeys) (Live toggle ON).
+4. Provision products, prices, meter, and webhook:
 
-## 1. Products & prices (photographer subscriptions)
+```bash
+npm run setup:stripe:production
+# or with Cloudflare sync:
+npm run setup:stripe:production:sync
+```
 
-Create three **recurring monthly** Products (USD):
+5. Verify readiness:
+
+```bash
+npm run stripe:activation-check   # must exit 0 before taking live charges
+npm run setup:check
+npm run deploy
+```
+
+**Test mode (local dev):** use `sk_test_...` in `.env.local` and `node scripts/setup-stripe-parity.mjs` (alias for `setup-stripe-production.mjs --allow-test`).
+
+---
+
+## Live activation
+
+Before live charges work, complete in the [Stripe Dashboard](https://dashboard.stripe.com) with **Test mode OFF**:
+
+| Step | Where | Notes |
+|---|---|---|
+| Account activation | Settings → Business | Business details, representative, bank account |
+| Terms of service | Activation checklist | Accept ToS (`tos_acceptance`) |
+| Business profile | Settings → Business | **Product description**, **support phone**, **website URL** (`https://studiofront.ca`) |
+| Customer Portal | Settings → Billing → Customer portal | Enable; allow payment method updates / cancel |
+| Connect Express | Connect → Settings | Enable **Express** accounts for photographer payouts |
+| Connect platform profile | Connect → Get started | Complete platform profile before live transfers |
+
+Check status anytime:
+
+```bash
+npm run stripe:activation-check
+```
+
+---
+
+## Products & prices (photographer subscriptions)
+
+Created automatically by `npm run setup:stripe:production`, or manually in Dashboard:
 
 | Product name | Price | Env var |
 |---|---|---|
@@ -14,16 +56,12 @@ Create three **recurring monthly** Products (USD):
 | Growth | $99 / month | `STRIPE_PRICE_GROWTH=price_...` |
 | Studio | $149 / month | `STRIPE_PRICE_STUDIO=price_...` |
 
-Copy each Price ID (starts with `price_`) into production secrets / `.env.local`.
+## Usage-based billing (pay-as-you-go + overage)
 
-## 1b. Usage-based billing (pay-as-you-go + overage)
-
-Billing → Meters → **Create meter**:
+Billing → Meters → **Create meter** (or let the setup script create it):
 
 - Event name: `listing_completed` (or set `STRIPE_METER_EVENT_LISTINGS`)
 - Aggregation: **Sum** of `value`
-
-Then create these prices against that meter:
 
 | Product name | Price | Env var |
 |---|---|---|
@@ -38,24 +76,22 @@ studio passes its included listings; without it, tiers hard-block at the cap.
 The domain add-on is a plain licensed price — the app keeps its quantity equal
 to the number of live custom hostnames.
 
-## 2. API keys
+## API keys
 
-Developers → API keys:
+Developers → API keys (live mode):
 
-- Secret key → `STRIPE_SECRET_KEY`
-- Publishable key → `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- Secret key → `STRIPE_SECRET_KEY` (Wrangler secret; prefer a [restricted key](https://docs.stripe.com/keys/restricted-api-keys))
+- Publishable key → `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`wrangler.jsonc` vars after setup script)
 
-## 3. Webhook
+## Webhook
 
-Developers → Webhooks → Add endpoint:
-
-Webhook URL after DNS:
+Developers → Webhooks → Add endpoint (or use setup script):
 
 ```text
 https://studiofront.ca/api/stripe/webhook
 ```
 
-Select events (minimum):
+Events (minimum):
 
 - `checkout.session.completed`
 - `customer.subscription.created`
@@ -63,9 +99,9 @@ Select events (minimum):
 - `customer.subscription.deleted`
 - `invoice.paid` (optional but useful)
 
-Copy Signing secret → `STRIPE_WEBHOOK_SECRET`
+Copy Signing secret → `STRIPE_WEBHOOK_SECRET` (Wrangler secret).
 
-## 4. Customer Portal
+## Customer Portal
 
 Settings → Billing → Customer portal:
 
@@ -74,16 +110,31 @@ Settings → Billing → Customer portal:
 
 No extra secret — the app opens portal via `/api/billing/portal`.
 
-## 5. Connect (studio payouts)
+## Connect (studio payouts)
 
 Connect → Get started → **Express** accounts.
 
 Photographers finish onboarding from **Admin → Settings → Connect payouts**.
 
-Optional platform fee: `PLATFORM_FEE_BPS=250` means 2.5%.
+Optional platform fee: `PLATFORM_FEE_BPS=250` means 2.5% (add to `wrangler.jsonc` vars).
 
-## 6. Smoke test
+## Cloudflare secrets
 
-1. Sign up a studio → Settings → pick Starter → Checkout should open.
-2. Publish a gallery → Pay & unlock should open Checkout (or Connect destination when connected).
-3. Confirm webhook deliveries are green in the Dashboard.
+After `.env.stripe.live` is populated:
+
+```bash
+npm run stripe:sync-secrets
+```
+
+See [`SECRETS.md`](SECRETS.md) for the full list.
+
+## Smoke test (live)
+
+1. Sign up a studio → Settings → pick Starter → Checkout should open (live).
+2. Complete checkout with a real card (refund from Dashboard if needed).
+3. Open **Manage billing** → Customer Portal opens.
+4. Settings → **Connect payouts** → complete Express onboarding.
+5. Publish a gallery → Pay & unlock → Checkout; gallery unlocks after payment.
+6. Stripe Dashboard → Webhooks → deliveries are 2xx from `studiofront.ca`.
+
+**Never** set `ALLOW_GALLERY_STUB_UNLOCK=1` in production.

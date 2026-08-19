@@ -19,6 +19,7 @@ export async function POST(request: Request) {
   const name = [firstName, lastName].filter(Boolean).join(" ") || legacyName;
   const studioName = typeof body?.studioName === "string" ? body.studioName.trim() : "";
   const invite = typeof body?.invite === "string" ? body.invite.trim() : "";
+  const referralCode = typeof body?.referralCode === "string" ? body.referralCode.trim() : "";
 
   if (!email || !password || !name) {
     return NextResponse.json(
@@ -60,6 +61,10 @@ export async function POST(request: Request) {
       tenantId: provisioned.tenant.id,
       role: "owner",
     });
+    if (referralCode) {
+      const { applyReferralOnSignup } = await import("@/lib/referrals");
+      await applyReferralOnSignup(referralCode, provisioned.tenant.id);
+    }
     const response = NextResponse.json({
       ok: true,
       userId: created.user.id,

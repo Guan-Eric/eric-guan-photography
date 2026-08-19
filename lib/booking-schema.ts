@@ -20,7 +20,6 @@ export const bookingRequestSchema = z.object({
   placeId: z.string().trim().max(256).optional(),
   mapLat: z.string().trim().max(32).optional(),
   mapLng: z.string().trim().max(32).optional(),
-  referralCode: z.string().trim().max(40).optional(),
   preferredSlots: z
     .array(
       z.object({

@@ -12,6 +12,7 @@ export function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invite = searchParams.get("invite");
+  const ref = searchParams.get("ref");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [studioName, setStudioName] = useState("");
@@ -45,6 +46,7 @@ export function SignupForm() {
           email,
           password,
           invite: invite || undefined,
+          referralCode: ref || undefined,
         }),
       });
       const json = await response.json();

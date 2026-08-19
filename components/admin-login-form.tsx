@@ -24,6 +24,7 @@ export function AdminLoginForm() {
         const message = json.error ?? "Login failed.";
         setError(message);
         toastError(message);
+        setLoading(false);
         return;
       }
       toastSuccess("Signed in.");

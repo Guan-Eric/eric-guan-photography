@@ -28,5 +28,21 @@ export default defineConfig({
       NEXT_PUBLIC_SITE_URL: baseURL,
     },
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium-smoke",
+      grep: /@smoke/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "chromium-critical",
+      grep: /@critical/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "chromium-regression",
+      grep: /@regression/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
 });

@@ -7,7 +7,6 @@ import { galleryPublicUrl, getGalleryByOrderId } from "@/lib/galleries";
 import { getListingPageByOrder } from "@/lib/listing-pages";
 import { listOrdersByAgentEmail } from "@/lib/orders";
 import { publicStudioUrl } from "@/lib/platform";
-import { getOrCreateReferralCode } from "@/lib/referrals";
 import { getRequestTenant } from "@/lib/tenants";
 import { getTenantRow } from "@/lib/tenant-store";
 
@@ -33,7 +32,6 @@ export default async function AgentPortalPage() {
     domainStatus: row?.domainStatus,
   });
   const orders = await listOrdersByAgentEmail(tenant.id, session.email);
-  const referral = await getOrCreateReferralCode(tenant.id, session.email);
 
   const cards = await Promise.all(
     orders.map(async (order) => {
@@ -63,13 +61,6 @@ export default async function AgentPortalPage() {
           <PortalSignOut />
         </div>
 
-        <p className="field-hint">
-          Share your referral link and earn credit on the next shoot:{" "}
-          <code>
-            {siteUrl.replace(/\/$/, "")}/book?ref={referral.code}
-          </code>
-        </p>
-
         {cards.length === 0 ? (
           <p>No listings yet. Book a shoot to see it here.</p>
         ) : (
@@ -94,8 +85,8 @@ export default async function AgentPortalPage() {
                     </a>
                   ) : null}
                   {listingId ? (
-                    <Link className="text-link" href={`/portal/listings/${listingId}`}>
-                      {hasCopy ? "Edit listing" : "Add listing copy"}
+                    <Link className="btn btn-solid" href={`/portal/listings/${listingId}`}>
+                      Edit listing
                     </Link>
                   ) : null}
                   <Link className="btn btn-outline" href={`/book?package=${order.packageId}`}>

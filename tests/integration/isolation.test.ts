@@ -50,12 +50,7 @@ describe("tenant isolation (sqlite)", () => {
     expect(quota.ok).toBe(true);
   });
 
-  it("keeps listing domains, referrals, and reviews tenant-scoped", async () => {
-    const { getOrCreateReferralCode, getReferralByCode } = await import("@/lib/referrals");
-    const ericCode = await getOrCreateReferralCode("eric-guan", "agent@example.com");
-    const leaked = await getReferralByCode("demo-studio", ericCode.code);
-    expect(leaked).toBeNull();
-
+  it("keeps listing domains and reviews tenant-scoped", async () => {
     const { listTestimonials } = await import("@/lib/reviews");
     const demoReviews = await listTestimonials("demo-studio", false);
     const ericReviews = await listTestimonials("eric-guan", false);

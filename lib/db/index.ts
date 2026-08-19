@@ -336,18 +336,17 @@ function ensureSchema(db: import("better-sqlite3").Database) {
 
     CREATE TABLE IF NOT EXISTS referral_codes (
       id TEXT PRIMARY KEY NOT NULL,
-      tenant_id TEXT NOT NULL,
-      agent_email TEXT NOT NULL,
+      user_id TEXT NOT NULL,
       code TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS referral_credits (
       id TEXT PRIMARY KEY NOT NULL,
-      tenant_id TEXT NOT NULL,
-      agent_email TEXT NOT NULL,
-      amount_cents INTEGER NOT NULL,
-      currency TEXT NOT NULL DEFAULT 'CAD',
+      referral_code_id TEXT NOT NULL,
+      referrer_user_id TEXT NOT NULL,
+      new_tenant_id TEXT NOT NULL,
+      bonus_days INTEGER NOT NULL,
       source_order_id TEXT,
       applied_order_id TEXT,
       created_at TEXT NOT NULL
@@ -383,8 +382,9 @@ function ensureSchema(db: import("better-sqlite3").Database) {
     CREATE UNIQUE INDEX IF NOT EXISTS membership_invites_token_idx ON membership_invites(token);
     CREATE INDEX IF NOT EXISTS billing_events_tenant_idx ON billing_events(tenant_id);
     CREATE UNIQUE INDEX IF NOT EXISTS agent_login_tokens_token_idx ON agent_login_tokens(token);
-    CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_tenant_code_idx ON referral_codes(tenant_id, code);
-    CREATE INDEX IF NOT EXISTS referral_credits_agent_idx ON referral_credits(tenant_id, agent_email);
+    CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_user_idx ON referral_codes(user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_code_idx ON referral_codes(code);
+    CREATE INDEX IF NOT EXISTS referral_credits_referrer_idx ON referral_credits(referrer_user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS review_requests_token_idx ON review_requests(token);
     CREATE INDEX IF NOT EXISTS testimonials_tenant_idx ON testimonials(tenant_id, approved_at);
   `);

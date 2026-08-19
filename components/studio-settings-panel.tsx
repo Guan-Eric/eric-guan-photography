@@ -56,6 +56,7 @@ type BillingState = {
     monthlyUsd: number;
   };
   projectedMonthlyUsd: number;
+  referralCode: string | null;
 };
 
 const PLAN_CHOICES = (
@@ -91,6 +92,7 @@ export function StudioSettingsPanel() {
     "connect" | "domain" | "domainCheck" | "checkout" | "portal" | "invite" | null
   >(null);
   const [loaded, setLoaded] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanChoice | null>(null);
 
   async function load() {
     const [connectRes, billingRes, invitesRes] = await Promise.all([
@@ -351,6 +353,9 @@ export function StudioSettingsPanel() {
       complete: "Connected",
       restricted: "Needs attention",
     }[state?.connectStatus ?? ""] ?? "…";
+  const activePlan = (billing?.plan as PlanChoice | undefined) ?? null;
+  const previewPlan = selectedPlan ?? activePlan;
+  const previewDef = previewPlan ? PLAN_DEFS[previewPlan] : null;
 
   return (
     <div className="studio-settings">
@@ -429,15 +434,38 @@ export function StudioSettingsPanel() {
             <button
               key={id}
               type="button"
-              className={billing?.plan === id ? "is-current" : undefined}
+              className={previewPlan === id ? "is-current" : undefined}
               disabled={busy !== null}
-              onClick={() => checkout(id)}
+              onClick={() => setSelectedPlan(id)}
             >
               <strong>{label}</strong>
               <span>{price}</span>
             </button>
           ))}
         </div>
+        {previewDef ? (
+          <div className="field-hint" style={{ marginTop: "0.75rem" }}>
+            <strong>{previewDef.label} includes:</strong>{" "}
+            {previewDef.listingQuota} listings/year, {previewDef.seats}{" "}
+            {previewDef.seats === 1 ? "seat" : "seats"},{" "}
+            {(previewDef.storageBytes / 1e9).toFixed(0)} GB storage
+            {previewDef.monthlyUsd > 0 ? `, ${usd(previewDef.monthlyUsd)}/month` : ", $0/month"}.
+          </div>
+        ) : null}
+        {previewPlan ? (
+          <button
+            type="button"
+            className={`btn btn-solid${busy === "checkout" ? " is-busy" : ""}`}
+            disabled={busy !== null || !billing || previewPlan === activePlan}
+            onClick={() => checkout(previewPlan)}
+          >
+            {previewPlan === activePlan
+              ? "Current plan"
+              : busy === "checkout"
+                ? "Opening checkout…"
+                : `Switch to ${PLAN_DEFS[previewPlan].label}`}
+          </button>
+        ) : null}
         <p className="field-hint">
           Pay as you go has no monthly fee: every listing you complete is billed
           at {usd(billing?.metering.unitUsd ?? 5)}. Flat plans include a listing
@@ -582,6 +610,49 @@ export function StudioSettingsPanel() {
           </ul>
         ) : (
           <p className="field-hint">No invites yet.</p>
+        )}
+      </section>
+
+      <section className="studio-section">
+        <h2>Refer a photographer</h2>
+        <p className="field-hint">
+          Share your link with another photographer. When they sign up, you both
+          get an extra 30 days free on your trial.
+        </p>
+        {billing?.referralCode ? (
+          <div className="field">
+            <span>Your referral link</span>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <code
+                style={{
+                  flex: 1,
+                  padding: "0.5rem",
+                  background: "var(--bg-raised, #f5f5f5)",
+                  borderRadius: "0.375rem",
+                  fontSize: "0.85rem",
+                  wordBreak: "break-all",
+                }}
+              >
+                {`/signup?ref=${billing.referralCode}`}
+              </code>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  const link = `${window.location.origin}/signup?ref=${billing.referralCode}`;
+                  navigator.clipboard.writeText(link);
+                  toastSuccess("Referral link copied.");
+                }}
+              >
+                Copy
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="field-hint">
+            Referral link is not ready yet on this server. Run the referral migration
+            and reload Settings.
+          </p>
         )}
       </section>
 

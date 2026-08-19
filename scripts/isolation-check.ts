@@ -67,15 +67,6 @@ async function main() {
   }
   console.log("ok: billing quota is tenant-scoped");
 
-  const { getOrCreateReferralCode, getReferralByCode } = await import("../lib/referrals");
-  const code = await getOrCreateReferralCode("eric-guan", "iso-agent@example.com");
-  const leakedCode = await getReferralByCode("demo-studio", code.code);
-  if (leakedCode) {
-    console.error("FAIL: demo tenant resolved eric referral code");
-    process.exit(1);
-  }
-  console.log("ok: referral codes are tenant-scoped");
-
   const { getListingDomainByHostname } = await import("../lib/domain-billing");
   const leakedDomain = await getListingDomainByHostname("missing.example");
   if (leakedDomain) {

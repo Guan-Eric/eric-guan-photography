@@ -3,6 +3,7 @@ import {
   assertSlotAvailable,
   DRIVE_BUFFER_MINUTES,
 } from "@/lib/availability";
+
 import { deleteOrderCalendarEvent, syncOrderToCalendar } from "@/lib/calendar";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { Appointment, Order, OrderStatus } from "@/lib/db/schema";
@@ -156,14 +157,6 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
 
   await qRun(db.insert(schema.orders).values(orderRow));
   await incrementListingUsage(tenant.id);
-  const { applyReferralOnBooking } = await import("@/lib/referrals");
-  await applyReferralOnBooking({
-    tenantId: tenant.id,
-    orderId: id,
-    agentEmail: orderRow.agentEmail,
-    referralCode: input.referralCode,
-    currency: quote.currency,
-  });
 
   const created = (await getOrder(id, tenant.id))!;
   void syncOrderToCalendar(created).catch((error) => {

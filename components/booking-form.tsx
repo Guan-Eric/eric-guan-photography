@@ -221,22 +221,12 @@ export function BookingForm({
   const [placeId, setPlaceId] = useState("");
   const [mapLat, setMapLat] = useState("");
   const [mapLng, setMapLng] = useState("");
-  const [referralCode, setReferralCode] = useState("");
   const [agentName, setAgentName] = useState("");
   const [agentEmail, setAgentEmail] = useState("");
   const [agentPhone, setAgentPhone] = useState("");
   const [brokerage, setBrokerage] = useState("");
   const [notes, setNotes] = useState("");
   const [access, setAccess] = useState(emptyAccess);
-
-  useEffect(() => {
-    try {
-      const code = new URLSearchParams(window.location.search).get("ref");
-      if (code) setReferralCode(code.trim());
-    } catch {
-      // ignore
-    }
-  }, []);
 
   function clearFieldError(key: FieldKey) {
     setFieldErrors((current) => {
@@ -386,7 +376,6 @@ export function BookingForm({
           placeId: placeId || undefined,
           mapLat: mapLat || undefined,
           mapLng: mapLng || undefined,
-          referralCode: referralCode || undefined,
           preferredSlots: selectedSlots,
           agentName,
           agentEmail,

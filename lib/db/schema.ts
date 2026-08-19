@@ -433,20 +433,17 @@ export const agentLoginTokens = sqliteTable("agent_login_tokens", {
 
 export const referralCodes = sqliteTable("referral_codes", {
   id: text("id").primaryKey(),
-  tenantId: text("tenant_id").notNull(),
-  agentEmail: text("agent_email").notNull(),
+  userId: text("user_id").notNull(),
   code: text("code").notNull(),
   createdAt: text("created_at").notNull(),
 });
 
 export const referralCredits = sqliteTable("referral_credits", {
   id: text("id").primaryKey(),
-  tenantId: text("tenant_id").notNull(),
-  agentEmail: text("agent_email").notNull(),
-  amountCents: integer("amount_cents").notNull(),
-  currency: text("currency").notNull().default("CAD"),
-  sourceOrderId: text("source_order_id"),
-  appliedOrderId: text("applied_order_id"),
+  referralCodeId: text("referral_code_id").notNull(),
+  referrerUserId: text("referrer_user_id").notNull(),
+  newTenantId: text("new_tenant_id").notNull(),
+  bonusDays: integer("bonus_days").notNull(),
   createdAt: text("created_at").notNull(),
 });
 
@@ -482,5 +479,6 @@ export type MembershipInvite = typeof membershipInvites.$inferSelect;
 export type AgentLoginToken = typeof agentLoginTokens.$inferSelect;
 export type ReferralCode = typeof referralCodes.$inferSelect;
 export type ReferralCredit = typeof referralCredits.$inferSelect;
+
 export type ReviewRequest = typeof reviewRequests.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;

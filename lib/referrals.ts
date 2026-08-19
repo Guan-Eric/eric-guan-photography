@@ -1,125 +1,118 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
-import type { ReferralCode, ReferralCredit } from "@/lib/db/schema";
+import type { Membership } from "@/lib/db/schema";
 
 const codeId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 10);
-const creditNano = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
-const REFERRAL_CREDIT_CENTS = 2500;
+const BONUS_DAYS = 30;
 
 function nowIso() {
   return new Date().toISOString();
 }
 
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase();
+function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * 24 * 60 * 60_000);
 }
 
-function normalizeCode(code: string) {
-  return code.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-export async function getOrCreateReferralCode(tenantId: string, agentEmail: string) {
-  const email = normalizeEmail(agentEmail);
+export async function getOrCreatePhotographerReferralCode(userId: string) {
   const db = getDb();
-  const existing =
-    (await qGet<ReferralCode>(
-      db
-        .select()
-        .from(schema.referralCodes)
-        .where(
-          and(
-            eq(schema.referralCodes.tenantId, tenantId),
-            eq(schema.referralCodes.agentEmail, email),
-          ),
-        ),
-    )) ?? null;
+  const existing = await qGet<{ id: string; userId: string; code: string }>(
+    db
+      .select()
+      .from(schema.referralCodes)
+      .where(eq(schema.referralCodes.userId, userId)),
+  );
   if (existing) return existing;
 
-  const createdAt = nowIso();
   const row = {
     id: `ref_${codeId()}`,
-    tenantId,
-    agentEmail: email,
+    userId,
     code: codeId(),
-    createdAt,
+    createdAt: nowIso(),
   };
   await qRun(db.insert(schema.referralCodes).values(row));
   return row;
 }
 
-export async function getReferralByCode(tenantId: string, code: string) {
+export async function getReferralByCode(code: string) {
   const db = getDb();
+  const normalized = code.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
   return (
-    (await qGet<ReferralCode>(
+    (await qGet<{ id: string; userId: string; code: string }>(
       db
         .select()
         .from(schema.referralCodes)
-        .where(
-          and(
-            eq(schema.referralCodes.tenantId, tenantId),
-            eq(schema.referralCodes.code, normalizeCode(code)),
-          ),
-        ),
+        .where(eq(schema.referralCodes.code, normalized)),
     )) ?? null
   );
 }
 
-export async function listOpenReferralCredits(tenantId: string, agentEmail: string) {
+/**
+ * Called after a new photographer signs up with a referral code.
+ * Extends trial by 30 days for both the new tenant and the referrer's tenant.
+ */
+export async function applyReferralOnSignup(
+  referralCode: string,
+  newTenantId: string,
+) {
+  const referral = await getReferralByCode(referralCode);
+  if (!referral) return { applied: false as const };
+
   const db = getDb();
-  const rows = await qAll<ReferralCredit>(
-    db
-      .select()
-      .from(schema.referralCredits)
-      .where(
-        and(
-          eq(schema.referralCredits.tenantId, tenantId),
-          eq(schema.referralCredits.agentEmail, normalizeEmail(agentEmail)),
-        ),
-      ),
+
+  // Extend the new tenant's trial
+  const newTenantRow = await qGet<{ id: string; trialEndsAt: string | null }>(
+    db.select().from(schema.tenants).where(eq(schema.tenants.id, newTenantId)),
   );
-  return rows.filter((row) => !row.appliedOrderId);
-}
-
-export async function applyReferralOnBooking(options: {
-  tenantId: string;
-  orderId: string;
-  agentEmail: string;
-  referralCode?: string;
-  currency: string;
-}) {
-  const email = normalizeEmail(options.agentEmail);
-  await getOrCreateReferralCode(options.tenantId, email);
-
-  if (options.referralCode) {
-    const code = await getReferralByCode(options.tenantId, options.referralCode);
-    if (code && code.agentEmail !== email) {
-      const db = getDb();
-      await qRun(
-        db.insert(schema.referralCredits).values({
-          id: `rcr_${creditNano()}`,
-          tenantId: options.tenantId,
-          agentEmail: code.agentEmail,
-          amountCents: REFERRAL_CREDIT_CENTS,
-          currency: options.currency,
-          sourceOrderId: options.orderId,
-          appliedOrderId: null,
-          createdAt: nowIso(),
-        }),
-      );
-    }
+  if (newTenantRow) {
+    const currentEnd = newTenantRow.trialEndsAt
+      ? new Date(newTenantRow.trialEndsAt)
+      : new Date();
+    const newEnd = addDays(currentEnd, BONUS_DAYS);
+    await qRun(
+      db
+        .update(schema.tenants)
+        .set({ trialEndsAt: newEnd.toISOString() })
+        .where(eq(schema.tenants.id, newTenantId)),
+    );
   }
 
-  const open = await listOpenReferralCredits(options.tenantId, email);
-  const first = open[0];
-  if (!first) return { credited: false as const, amountCents: 0 };
-
-  const db = getDb();
-  await qRun(
+  // Apply to all studios this referrer belongs to (single user can have multiple studios).
+  const memberships = await qAll<Membership>(
     db
-      .update(schema.referralCredits)
-      .set({ appliedOrderId: options.orderId })
-      .where(eq(schema.referralCredits.id, first.id)),
+      .select()
+      .from(schema.memberships)
+      .where(eq(schema.memberships.userId, referral.userId)),
   );
-  return { credited: true as const, amountCents: first.amountCents };
+  const tenantIds = [...new Set(memberships.map((row) => row.tenantId))];
+  for (const tenantId of tenantIds) {
+    const referrerTenant = await qGet<{ id: string; trialEndsAt: string | null }>(
+      db.select().from(schema.tenants).where(eq(schema.tenants.id, tenantId)),
+    );
+    if (!referrerTenant) continue;
+    const currentEnd = referrerTenant.trialEndsAt
+      ? new Date(referrerTenant.trialEndsAt)
+      : new Date();
+    const newEnd = addDays(currentEnd, BONUS_DAYS);
+    await qRun(
+      db
+        .update(schema.tenants)
+        .set({ trialEndsAt: newEnd.toISOString() })
+        .where(eq(schema.tenants.id, tenantId)),
+    );
+  }
+
+  // Record the credit for audit
+  await qRun(
+    db.insert(schema.referralCredits).values({
+      id: `rcr_${codeId()}`,
+      referralCodeId: referral.id,
+      referrerUserId: referral.userId,
+      newTenantId,
+      bonusDays: BONUS_DAYS,
+      createdAt: nowIso(),
+    }),
+  );
+
+  return { applied: true as const, bonusDays: BONUS_DAYS };
 }

@@ -275,7 +275,7 @@ export function PublicGallery({
       <footer className="delivery-footer">
         <p>
           {branded ? `Delivered by ${photographerName}. ` : null}
-          <a href="/portal">Your listings</a>
+          <a href="/portal" className="btn btn-solid" style={{ display: "inline-block", padding: "0.4rem 1rem", fontSize: "0.85rem" }}>Your listings</a>
           {branded ? " · Questions? Reply to your booking email." : null}
         </p>
       </footer>

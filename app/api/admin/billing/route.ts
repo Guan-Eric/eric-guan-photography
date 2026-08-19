@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
 import { billingSummary } from "@/lib/billing";
 import { countBillableDomains } from "@/lib/domain-billing";
+import { getOrCreatePhotographerReferralCode } from "@/lib/referrals";
 import { getTenantRow } from "@/lib/tenant-store";
 
 export const runtime = "nodejs";
@@ -20,5 +21,17 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: "Studio not found." }, { status: 404 });
   }
   const activeDomains = await countBillableDomains(row.id);
-  return NextResponse.json({ ok: true, ...billingSummary(row, { activeDomains }) });
+  let referralCode: string | null = null;
+  try {
+    const referral = await getOrCreatePhotographerReferralCode(session.user.id);
+    referralCode = referral.code;
+  } catch (error) {
+    // Avoid breaking Settings if referral tables are mid-migration.
+    console.warn("[billing] referral lookup failed:", error);
+  }
+  return NextResponse.json({
+    ok: true,
+    ...billingSummary(row, { activeDomains }),
+    referralCode,
+  });
 }

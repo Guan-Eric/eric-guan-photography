@@ -1302,6 +1302,43 @@ button {
   gap: 1.25rem;
 }
 
+.booking-form-main {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+@media (max-width: 959px) {
+  .booking-form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .booking-form-main {
+    display: contents;
+  }
+
+  .booking-page-intro {
+    order: 1;
+  }
+
+  .form-legend {
+    order: 2;
+  }
+
+  .booking-quote {
+    order: 3;
+  }
+
+  .booking-panel {
+    order: 4;
+  }
+
+  .booking-form-actions {
+    order: 5;
+  }
+}
+
 .booking-form-actions {
   display: grid;
   gap: 0.65rem;
@@ -1409,7 +1446,8 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
   margin: 0;
   padding-top: 0.75rem;
   border-top: 1px solid var(--line);
@@ -1418,12 +1456,15 @@ button {
 
 .booking-quote-price {
   margin: 0;
+  margin-left: auto;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+  font-size: clamp(1.35rem, 2.2vw, 1.85rem);
   letter-spacing: -0.04em;
-  line-height: 1.05;
+  line-height: 1.1;
   color: var(--ink);
+  text-align: right;
+  text-wrap: balance;
 }
 
 .booking-quote-submit {
@@ -1572,13 +1613,10 @@ span.status-select--locked {
   .booking-form {
     grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
     align-items: start;
+    column-gap: 2rem;
   }
 
-  .booking-page-intro,
-  .booking-form > .form-legend,
-  .booking-form > .booking-panel,
-  .booking-form > .booking-form-actions,
-  .booking-form > .coach-root {
+  .booking-form-main {
     grid-column: 1;
   }
 
@@ -3112,6 +3150,38 @@ span.status-select--locked {
   gap: 1.25rem;
 }
 
+.delivery-main {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+@media (max-width: 959px) {
+  .delivery-shell {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .delivery-main {
+    display: contents;
+  }
+
+  .delivery-intro {
+    order: 1;
+  }
+
+  .delivery-pay-card {
+    order: 2;
+  }
+
+  .delivery-grid,
+  .delivery-shell > .booking-card,
+  .delivery-shell .media-embeds,
+  .delivery-footer {
+    order: 3;
+  }
+}
+
 .delivery-intro h1 {
   margin: 0 0 0.35rem;
   font-family: var(--font-display);
@@ -3124,6 +3194,40 @@ span.status-select--locked {
 .delivery-intro .lede {
   margin: 0;
   max-width: 52ch;
+}
+
+.delivery-portal-callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem 1.25rem;
+  margin-top: 1.15rem;
+  padding: 0.9rem 1rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+}
+
+.delivery-portal-callout-copy {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.delivery-portal-callout-copy p {
+  margin: 0;
+}
+
+.delivery-portal-callout-copy p + p {
+  margin-top: 0.35rem;
+  max-width: 46ch;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.delivery-portal-callout-link {
+  flex-shrink: 0;
 }
 
 .delivery-download-row .btn {
@@ -3153,7 +3257,7 @@ span.status-select--locked {
     column-gap: 2rem;
   }
 
-  .delivery-shell > *:not(.delivery-pay-card) {
+  .delivery-main {
     grid-column: 1;
   }
 

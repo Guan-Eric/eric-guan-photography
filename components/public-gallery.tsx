@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CoachTour, type CoachStep } from "@/components/coach-tour";
@@ -149,11 +150,72 @@ export function PublicGallery({
 
   return (
     <main className={`delivery-shell ${branded ? "" : "delivery-shell--unbranded"}`} id="main">
-      <header className="delivery-intro">
-        {branded ? <p className="eyebrow delivery-brand">{studioName}</p> : null}
-        <h1>{title}</h1>
-        <p className="lede">{propertyAddress}</p>
-      </header>
+      <div className="delivery-main">
+        <header className="delivery-intro">
+          {branded ? <p className="eyebrow delivery-brand">{studioName}</p> : null}
+          <h1>{title}</h1>
+          <p className="lede">{propertyAddress}</p>
+          <div className="delivery-portal-callout">
+            <div className="delivery-portal-callout-copy">
+              <p className="eyebrow">Agent portal</p>
+              <p>
+                {branded
+                  ? `See every shoot you’ve booked with ${studioName} — this listing and past orders.`
+                  : "See every shoot you’ve booked with this photographer — this listing and past orders."}{" "}
+                Sign in with your email; no password.
+              </p>
+            </div>
+            <Link className="btn btn-outline delivery-portal-callout-link" href="/portal">
+              Your listings
+            </Link>
+          </div>
+        </header>
+
+        {media.length === 0 ? (
+          <div className="booking-card">
+            <p>Photos are being prepared. Check back shortly.</p>
+          </div>
+        ) : (
+          <div className="delivery-grid" data-tour="gallery-grid">
+            {media.map((asset) => (
+              <figure key={asset.id} className="delivery-item">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/g/${token}/media/${asset.id}?v=${unlocked ? "web" : "proof"}`}
+                  alt={asset.roomLabel || "Listing photo"}
+                  width={asset.width}
+                  height={asset.height}
+                  loading="lazy"
+                />
+                <figcaption>
+                  {asset.roomLabel ? <span>{asset.roomLabel}</span> : <span />}
+                  {unlocked ? (
+                    <span className="delivery-item-links">
+                      <a href={`/api/g/${token}/media/${asset.id}?v=mls`}>MLS</a>
+                      <a href={`/api/g/${token}/media/${asset.id}?v=full`}>Full</a>
+                    </span>
+                  ) : (
+                    <span>Proof</span>
+                  )}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
+
+        <MediaEmbeds items={embeds} />
+
+        <footer className="delivery-footer">
+          <p>
+            {branded
+              ? `Delivered by ${photographerName}. Questions? Reply to your booking email.`
+              : "Questions? Reply to your booking email."}
+          </p>
+        </footer>
+        {!unlocked ? (
+          <CoachTour tourId="agent_gallery_v1" steps={AGENT_GALLERY_TOUR} />
+        ) : null}
+      </div>
 
       <aside className="booking-quote delivery-pay-card" data-tour="gallery-pay">
         {unlocked ? (
@@ -237,51 +299,6 @@ export function PublicGallery({
         ) : null}
         {error ? <p className="form-error">{error}</p> : null}
       </aside>
-
-      {media.length === 0 ? (
-        <div className="booking-card">
-          <p>Photos are being prepared. Check back shortly.</p>
-        </div>
-      ) : (
-        <div className="delivery-grid" data-tour="gallery-grid">
-          {media.map((asset) => (
-            <figure key={asset.id} className="delivery-item">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/api/g/${token}/media/${asset.id}?v=${unlocked ? "web" : "proof"}`}
-                alt={asset.roomLabel || "Listing photo"}
-                width={asset.width}
-                height={asset.height}
-                loading="lazy"
-              />
-              <figcaption>
-                {asset.roomLabel ? <span>{asset.roomLabel}</span> : <span />}
-                {unlocked ? (
-                  <span className="delivery-item-links">
-                    <a href={`/api/g/${token}/media/${asset.id}?v=mls`}>MLS</a>
-                    <a href={`/api/g/${token}/media/${asset.id}?v=full`}>Full</a>
-                  </span>
-                ) : (
-                  <span>Proof</span>
-                )}
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      )}
-
-      <MediaEmbeds items={embeds} />
-
-      <footer className="delivery-footer">
-        <p>
-          {branded ? `Delivered by ${photographerName}. ` : null}
-          <a href="/portal" className="btn btn-solid" style={{ display: "inline-block", padding: "0.4rem 1rem", fontSize: "0.85rem" }}>Your listings</a>
-          {branded ? " · Questions? Reply to your booking email." : null}
-        </p>
-      </footer>
-      {!unlocked ? (
-        <CoachTour tourId="agent_gallery_v1" steps={AGENT_GALLERY_TOUR} />
-      ) : null}
     </main>
   );
 }

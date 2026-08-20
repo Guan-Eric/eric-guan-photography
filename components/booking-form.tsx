@@ -423,22 +423,14 @@ export function BookingForm({
 
   return (
     <form className="booking-form" onSubmit={onSubmit} noValidate>
-      {children}
-      <p className="field-hint form-legend">
-        Fields marked <abbr className="required-marker" title="Required">*</abbr> are
-        required.
-      </p>
+      <div className="booking-form-main">
+        {children}
+        <p className="field-hint form-legend">
+          Fields marked <abbr className="required-marker" title="Required">*</abbr> are
+          required.
+        </p>
 
-      <QuoteSummary
-        quote={quote}
-        loadingQuote={loadingQuote}
-        quoteError={quoteError}
-        email={email}
-        submitting={submitting}
-        includes={selectedPackage?.includes ?? []}
-      />
-
-      <div className="booking-panel">
+        <div className="booking-panel">
       <section className="booking-step" data-tour="book-package">
         <h2>1. Package &amp; size</h2>
         <div className="form-grid">
@@ -847,6 +839,16 @@ export function BookingForm({
           </p>
         ) : null}
       </div>
+      </div>
+
+      <QuoteSummary
+        quote={quote}
+        loadingQuote={loadingQuote}
+        quoteError={quoteError}
+        email={email}
+        submitting={submitting}
+        includes={selectedPackage?.includes ?? []}
+      />
       <CoachTour tourId="agent_book_v1" steps={AGENT_BOOK_TOUR} />
     </form>
   );

@@ -49,7 +49,7 @@ Core loop (vs Aryeo-style extras): solo photographer workflow only — not Zillo
 | Email | **Resend** | Reminders, auth mail, notifications |
 | Calendar | **Google Calendar API** (optional, per studio OAuth) | Push Studiofront holds; optionally block other events |
 | Auth | Custom (cookies + password hashes in DB) | Platform users & studio memberships — **not** Neon Auth |
-| Cron | HTTP `/api/cron/reminders` + GitHub Actions | Day-before shoot emails |
+| Cron | Cloudflare Cron Trigger + [`workers/entry.ts`](../workers/entry.ts) | Day-before shoot + review emails (HTTP fallback for manual runs) |
 | Package manager | npm | `package.json` |
 
 ---
@@ -133,7 +133,7 @@ Copy [`.env.example`](.env.example) → `.env.local`. For Wrangler preview, also
 6. npm run deploy
 7. Attach custom domains (+ Cloudflare for SaaS for tenant vanity hosts)
 8. Point Stripe webhook → https://studiofront.ca/api/stripe/webhook
-9. Schedule cron (GitHub Actions → /api/cron/reminders)
+9. Cron runs automatically via Cloudflare (`triggers.crons` in wrangler.jsonc)
 ```
 
 Custom domain ops: enable SaaS on the zone, run `scripts/postgres-migrate-custom-domain.sql`, `node scripts/setup-custom-domain-saas.mjs`, set `CLOUDFLARE_ZONE_ID` / `CF_SAAS_API_TOKEN` Worker secrets. See [`DEPLOY.md`](../DEPLOY.md) §8.
@@ -165,7 +165,7 @@ Env smoke test: `npm run setup:check`.
 | R2 binding | `MEDIA_BUCKET` |
 | Neon DB | project **StudioFront** (Postgres 18, AWS US East 2) |
 | Planned apex | `studiofront.ca` (change everywhere if different) |
-| Cron workflow | [`.github/workflows/reminders.yml`](.github/workflows/reminders.yml) |
+| Cron (manual fallback) | [`.github/workflows/reminders.yml`](../.github/workflows/reminders.yml) |
 
 ---
 
@@ -174,7 +174,6 @@ Env smoke test: `npm run setup:check`.
 - Neon Auth / Supabase Auth (custom sessions instead)
 - Firebase / Firestore
 - Vercel hosting (prod target is Cloudflare Workers)
-- Native Worker `scheduled` handler for reminders (use HTTP cron instead)
 
 ---
 

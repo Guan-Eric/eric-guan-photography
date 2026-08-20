@@ -801,6 +801,25 @@ export function passwordResetEmail(options: {
   });
 }
 
+export function billingPaymentFailedEmail(options: {
+  to: string;
+  settingsUrl: string;
+  studioName?: string;
+}) {
+  const brand = platformName();
+  const studio = options.studioName?.trim() || "your studio";
+  return composeEmail(options.to, `Action needed: ${studio} billing`, {
+    preview: `We couldn't process your latest ${brand} subscription payment.`,
+    greeting: "Hi there,",
+    intro: [
+      `We couldn't process the latest subscription payment for ${studio}.`,
+      "Update your card in billing settings to avoid interruption to new bookings and studio features.",
+    ],
+    cta: { label: "Open billing settings", url: options.settingsUrl },
+    signoffName: brand,
+  });
+}
+
 export function studioInviteEmail(options: {
   to: string;
   role: string;

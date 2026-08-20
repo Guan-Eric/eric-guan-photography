@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
+import { requireStudioOwner } from "@/lib/admin-guards";
 import { normalizeStudioCurrency } from "@/lib/currency";
 import {
   isValidHhmm,
@@ -192,6 +193,10 @@ export async function PATCH(request: Request) {
   const auth = await requireTenantMembership(session.activeTenantId);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
+  }
+  const owner = await requireStudioOwner(session.activeTenantId);
+  if (!owner.ok) {
+    return NextResponse.json({ ok: false, error: owner.error }, { status: 403 });
   }
 
   const row = await getTenantRow(session.activeTenantId);

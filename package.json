@@ -21,6 +21,8 @@
     "setup:check": "node scripts/setup-check.mjs",
     "setup:stripe:production": "node scripts/setup-stripe-production.mjs",
     "setup:stripe:production:sync": "node scripts/setup-stripe-production.mjs --sync-wrangler",
+    "setup:stripe:branding": "node scripts/setup-stripe-branding.mjs",
+    "brand:mark": "node scripts/generate-studiofront-mark.mjs",
     "stripe:activation-check": "node scripts/stripe-activation-check.mjs",
     "stripe:sync-secrets": "node scripts/sync-wrangler-secrets.mjs --from .env.stripe.live",
     "preview": "node scripts/cf-build.mjs && opennextjs-cloudflare preview",

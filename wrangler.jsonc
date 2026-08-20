@@ -1,9 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "studiofront",
-  "main": ".open-next/worker.js",
+  "main": "workers/entry.ts",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env", "global_fetch_strictly_public"],
+  "triggers": {
+    "crons": ["0 14 * * *"]
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

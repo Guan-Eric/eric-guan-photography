@@ -8,6 +8,7 @@ import {
   revokeInvite,
 } from "@/lib/invites";
 import type { MembershipRole } from "@/lib/db/schema";
+import { requestPublicOrigin } from "@/lib/platform";
 
 export const runtime = "nodejs";
 
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Email is required." }, { status: 400 });
   }
 
-  const origin = new URL(request.url).origin;
+  const origin = requestPublicOrigin(request);
   const result = await createInvite({
     tenantId: session.activeTenantId,
     email,

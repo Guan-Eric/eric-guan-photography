@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireActiveStudio } from "@/lib/admin-guards";
 import { requireTenantMembership } from "@/lib/auth";
 import {
   galleryPublicUrl,
@@ -36,6 +37,10 @@ export async function POST(
   const auth = await requireTenantMembership(order.tenantId);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
+  }
+  const active = await requireActiveStudio(order.tenantId);
+  if (!active.ok) {
+    return NextResponse.json({ ok: false, error: active.error }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({}));

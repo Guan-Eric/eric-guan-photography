@@ -6,13 +6,14 @@ import { customAlphabet } from "nanoid";
 import { getDb, qGet, qRun, schema } from "@/lib/db";
 import type { AgentLoginToken } from "@/lib/db/schema";
 import { cookieDomain, hostnameFromHost } from "@/lib/platform";
+import { authSessionSecret } from "@/lib/secrets";
 
 const COOKIE = "sf_agent";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const tokenId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 28);
 
 function secret() {
-  return process.env.AUTH_SESSION_SECRET ?? "dev-auth-secret-change-me";
+  return authSessionSecret();
 }
 
 function sign(value: string) {
@@ -128,13 +129,12 @@ export async function consumeAgentLoginToken(token: string) {
     )) ?? null;
   if (!row) return null;
   if (new Date(row.expiresAt).getTime() < Date.now()) return null;
-  if (!row.consumedAt) {
-    await qRun(
-      db
-        .update(schema.agentLoginTokens)
-        .set({ consumedAt: new Date().toISOString() })
-        .where(and(eq(schema.agentLoginTokens.id, row.id))),
-    );
-  }
+  if (row.consumedAt) return null;
+  await qRun(
+    db
+      .update(schema.agentLoginTokens)
+      .set({ consumedAt: new Date().toISOString() })
+      .where(and(eq(schema.agentLoginTokens.id, row.id))),
+  );
   return { tenantId: row.tenantId, email: row.email };
 }

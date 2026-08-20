@@ -9,6 +9,7 @@ import type { Membership, MembershipRole, User } from "@/lib/db/schema";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { passwordIssues } from "@/lib/password-rules";
 import { cookieDomain, hostnameFromHost, isLocalRequestHost } from "@/lib/platform";
+import { authSessionSecret } from "@/lib/secrets";
 
 const SESSION_COOKIE = "eg_photographer_session";
 const ACTIVE_TENANT_COOKIE = "eg_active_tenant";
@@ -16,11 +17,7 @@ const MAX_AGE_SECONDS = 60 * 60 * 24 * 14;
 const id = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 14);
 
 function secret() {
-  return (
-    process.env.AUTH_SESSION_SECRET ??
-    process.env.ADMIN_SESSION_SECRET ??
-    "dev-auth-secret-change-me"
-  );
+  return authSessionSecret();
 }
 
 function sign(value: string) {

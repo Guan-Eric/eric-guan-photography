@@ -39,6 +39,7 @@
     "node_modules",
     "export-slides-pdf.mjs",
     ".next/dev",
+    "workers",
     "tests",
     "playwright.config.ts",
     "vitest.config.ts"

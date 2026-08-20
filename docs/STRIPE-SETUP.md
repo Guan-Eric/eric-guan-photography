@@ -37,6 +37,7 @@ Before live charges work, complete in the [Stripe Dashboard](https://dashboard.s
 | Customer Portal | Settings → Billing → Customer portal | Enable; allow payment method updates / cancel |
 | Connect Express | Connect → Settings | Enable **Express** accounts for photographer payouts |
 | Connect platform profile | Connect → Get started | Complete platform profile before live transfers |
+| Branding | Settings → Branding | Icon, lockup, forest green — see [Branding](#branding) |
 
 Check status anytime:
 
@@ -100,6 +101,41 @@ Events (minimum):
 - `invoice.paid` (optional but useful)
 
 Copy Signing secret → `STRIPE_WEBHOOK_SECRET` (Wrangler secret).
+
+## Branding
+
+`#525f7f` / `#0074d4` are Stripe’s defaults. Replace them so Checkout, the customer portal, invoices, and receipts match Studiofront.
+
+Stripe does not allow API updates to **your own** account brand — fill this in the Dashboard. Run:
+
+```bash
+npm run setup:stripe:branding
+```
+
+That writes transparent PNGs to `scripts/stripe-brand/` from `public/studiofront-icon.png` and `public/studiofront-lockup.png` (Finder opens on macOS). Regenerate the mark with `npm run brand:mark` first if those files are stale.
+
+Then in [Settings → Branding](https://dashboard.stripe.com/settings/branding):
+
+| Field | Value |
+|---|---|
+| Icon | `scripts/stripe-brand/icon.png` (square shutter mark, transparent) |
+| Logo | `scripts/stripe-brand/logo.png` (mark + Studiofront word, transparent) |
+| Prefer logo over icon | **On** |
+| Brand colour | `#2f5d50` (site `--accent`) |
+| Accent colour | `#3f7a69` (site `--accent-soft`) |
+
+**Checkout & Payment Links** tab → stay on **Stripe-hosted** (the app uses hosted Checkout, not embedded). Click **Customise**:
+
+| Checkout style | Value |
+|---|---|
+| Background | `#e8ebe6` |
+| Button | `#2f5d50` |
+| Corners | Rectangular (site radius is 2px) |
+| Font | Inter or Source Sans Pro (closest Stripe fonts to Figtree) |
+
+**Add your domain:** `checkout.studiofront.ca`. Stripe will give a CNAME target — add it in Cloudflare DNS for `studiofront.ca` (DNS-only, not proxied). Do not point that hostname at the Worker.
+
+**Branding for connected accounts:** Connect settings → apply platform brand to Stripe products for connected accounts. Gallery checkout is a destination charge *without* `on_behalf_of`, so it already uses this platform brand.
 
 ## Customer Portal
 

@@ -55,6 +55,11 @@ Scopes: `calendar.events`, `calendar.calendarlist.readonly`, `userinfo.email`.
 
 Local preview: copy [`.dev.vars.example`](../.dev.vars.example) → `.dev.vars`.
 
+**Production flags (must stay unset or off in Wrangler):**
+
+- `ALLOW_GALLERY_STUB_UNLOCK` — never set in production (gallery payments require Stripe).
+- `CUSTOM_DOMAIN_ENABLED` — set to `1` in `wrangler.jsonc` vars only when Cloudflare SaaS (`CLOUDFLARE_ZONE_ID`, `CF_SAAS_API_TOKEN`) is configured. See [`docs/MIGRATIONS.md`](MIGRATIONS.md) for database migration order.
+
 Verify local env before deploy:
 
 ```bash

@@ -22,7 +22,7 @@ describe("agent portal magic link", () => {
     resetCookieStore();
   });
 
-  it("sets a session for emails with dots and still works after a second consume", async () => {
+  it("consumes a token once and rejects reuse", async () => {
     const tenant = await getTenant("eric-guan");
     const email = "jane.doe@realty.example.com";
     const token = await createAgentLoginToken(tenant.id, email);
@@ -30,7 +30,13 @@ describe("agent portal magic link", () => {
     const first = await consumeAgentLoginToken(token);
     const second = await consumeAgentLoginToken(token);
     expect(first).toEqual({ tenantId: tenant.id, email });
-    expect(second).toEqual({ tenantId: tenant.id, email });
+    expect(second).toBeNull();
+  });
+
+  it("sets a session for emails with dots via callback", async () => {
+    const tenant = await getTenant("eric-guan");
+    const email = "jane.doe@realty.example.com";
+    const token = await createAgentLoginToken(tenant.id, email);
 
     const { POST } = await import("@/app/api/portal/callback/route");
     const response = await POST(

@@ -212,31 +212,18 @@ https://studiofront.ca/api/stripe/webhook
 
 ### 10. Cron (reminders)
 
-OpenNext’s Worker has no `scheduled` handler yet — hit the HTTP route daily (GitHub Actions, cron-job.org, etc.):
+Production uses a **Cloudflare Cron Trigger** on the Worker (`wrangler.jsonc` → `triggers.crons`, daily 14:00 UTC). The `scheduled` handler in [`workers/entry.ts`](workers/entry.ts) runs the same logic as the HTTP route via [`lib/cron/reminders.ts`](lib/cron/reminders.ts).
+
+Manual / fallback (optional):
 
 ```bash
 curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
   "https://studiofront.ca/api/cron/reminders"
 ```
 
-Example GitHub Actions (daily 14:00 UTC):
+GitHub Actions manual workflow: [`.github/workflows/reminders.yml`](.github/workflows/reminders.yml) (`workflow_dispatch` only).
 
-```yaml
-# .github/workflows/reminders.yml
-on:
-  schedule:
-    - cron: "0 14 * * *"
-  workflow_dispatch:
-jobs:
-  remind:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          curl -fsS -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://studiofront.ca/api/cron/reminders"
-```
-
-Store `CRON_SECRET` in GitHub Actions secrets (same value as the Worker secret).
+Store `CRON_SECRET` in Wrangler secrets for manual HTTP triggers. The scheduled handler does not require it — only Cloudflare invokes `scheduled`.
 
 ### 11. Smoke
 
@@ -256,6 +243,13 @@ Store `CRON_SECRET` in GitHub Actions secrets (same value as the Worker secret).
 | Media | `data/media` | R2 `studiofront-media` |
 | Host | `localhost` / `*.localhost` | `studiofront.ca` / `*.studiofront.ca` |
 | Runtime | `next dev` | OpenNext Worker |
+
+## Observability
+
+- **Health:** `GET /api/health` — DB ping for uptime monitors (also covered in E2E smoke).
+- **Logs:** `npx wrangler tail` — live Worker logs; errors use structured `[captureException]` from `lib/observability.ts`.
+- **Cloudflare dashboard:** enable Workers Observability on the `studiofront` Worker for metrics and log search.
+- **Cron:** Cloudflare Cron Trigger (daily 14:00 UTC) via [`workers/entry.ts`](workers/entry.ts); manual HTTP fallback at `/api/cron/reminders` with `CRON_SECRET`.
 
 ## Useful commands
 

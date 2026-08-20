@@ -359,7 +359,7 @@ Skipped on Starter.
 
 Only **confirmed** shoots (appointment exists) are eligible.
 
-Typical scheduler: GitHub Actions daily (see [`DEPLOY.md`](../DEPLOY.md)).
+Production scheduler: **Cloudflare Cron Trigger** (daily 14:00 UTC via [`workers/entry.ts`](../workers/entry.ts)). Manual HTTP fallback: same endpoint with `CRON_SECRET` (see [`DEPLOY.md`](../DEPLOY.md)).
 
 ---
 

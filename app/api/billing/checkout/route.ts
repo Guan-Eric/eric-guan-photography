@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getPhotographerSession } from "@/lib/auth";
+import { requireStudioOwner } from "@/lib/admin-guards";
 import { createSubscriptionCheckout } from "@/lib/billing";
 import { isPurchasablePlan } from "@/lib/db/schema";
+import { requestPublicOrigin } from "@/lib/platform";
 
 export const runtime = "nodejs";
 
@@ -9,6 +11,10 @@ export async function POST(request: Request) {
   const session = await getPhotographerSession();
   if (!session?.activeTenantId) {
     return NextResponse.json({ ok: false, error: "Sign in first." }, { status: 401 });
+  }
+  const owner = await requireStudioOwner(session.activeTenantId);
+  if (!owner.ok) {
+    return NextResponse.json({ ok: false, error: owner.error }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({}));
@@ -20,7 +26,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const origin = new URL(request.url).origin;
+  const origin = requestPublicOrigin(request);
   const result = await createSubscriptionCheckout({
     tenantId: session.activeTenantId,
     plan,

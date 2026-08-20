@@ -116,17 +116,35 @@ export function StudioAppShell({
   slug,
   email,
   siteUrl,
+  activeTenantId,
+  studios,
   children,
 }: {
   studioName: string;
   slug: string;
   email: string;
   siteUrl: string;
+  activeTenantId: string;
+  studios: Array<{ tenantId: string; studioName: string; role: string }>;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
+
+  async function switchStudio(tenantId: string) {
+    if (tenantId === activeTenantId) return;
+    const response = await fetch("/api/auth/switch-tenant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tenantId }),
+    });
+    if (response.ok) {
+      window.location.assign("/admin");
+      return;
+    }
+    router.refresh();
+  }
 
   async function logout() {
     setSigningOut(true);
@@ -168,6 +186,23 @@ export function StudioAppShell({
             ))}
           </nav>
           <div className="studio-rail-foot">
+            {studios.length > 1 ? (
+              <label className="field studio-rail-switch">
+                <span>Switch studio</span>
+                <select
+                  value={activeTenantId}
+                  onChange={(event) => void switchStudio(event.target.value)}
+                  aria-label="Switch studio"
+                >
+                  {studios.map((studio) => (
+                    <option key={studio.tenantId} value={studio.tenantId}>
+                      {studio.studioName}
+                      {studio.role !== "owner" ? ` (${studio.role})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <a className="btn btn-outline studio-rail-view" href={siteUrl} target="_blank" rel="noreferrer">
               View site
             </a>

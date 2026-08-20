@@ -6,11 +6,20 @@ import {
 } from "@/lib/auth";
 import { acceptInvite, getInviteByToken, inviteAcceptanceError } from "@/lib/invites";
 import { passwordIssues } from "@/lib/password-rules";
+import { rateLimitAuth } from "@/lib/request-rate-limit";
 import { createTenantFromOnboarding } from "@/lib/tenant-store";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const limited = rateLimitAuth(request, "signup");
+  if (!limited.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many attempts. Try again later." },
+      { status: 429 },
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email : "";
   const password = typeof body?.password === "string" ? body.password : "";

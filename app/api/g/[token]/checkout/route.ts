@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { entitlements } from "@/lib/billing";
+import { galleryStubUnlockAllowed } from "@/lib/gallery-stub";
 import { getGalleryByToken, galleryHasPaidAccess } from "@/lib/galleries";
+import { requestPublicOrigin } from "@/lib/platform";
 import {
   createGalleryCheckoutSession,
   localStubUnlock,
@@ -37,7 +39,7 @@ export async function POST(
   }
 
   const body = await request.json().catch(() => ({}));
-  const origin = new URL(request.url).origin;
+  const origin = requestPublicOrigin(request);
   const successUrl = `${origin}/g/${token}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${origin}/g/${token}?cancelled=1`;
 
@@ -53,7 +55,19 @@ export async function POST(
     }
   }
 
-  if (!stripeEnabled() || body?.stub === true) {
+  const wantsStub = body?.stub === true;
+  if (!stripeEnabled() || wantsStub) {
+    if (!galleryStubUnlockAllowed()) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: stripeEnabled()
+            ? "Payment is required to unlock this gallery."
+            : "Payments are not configured.",
+        },
+        { status: stripeEnabled() ? 403 : 503 },
+      );
+    }
     const result = await localStubUnlock(gallery);
     return NextResponse.json({
       ok: true,

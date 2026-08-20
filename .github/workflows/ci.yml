@@ -50,6 +50,32 @@ jobs:
       - name: Run unit/integration tests
         run: npm test
 
+      - name: Production env structure check
+        run: npm run setup:check
+        env:
+          AUTH_SESSION_SECRET: ci-auth-secret-placeholder
+          ADMIN_SESSION_SECRET: ci-admin-secret-placeholder
+          PLATFORM_NAME: Studiofront
+          PLATFORM_ROOT_DOMAIN: studiofront.ca
+          STRIPE_SECRET_KEY: sk_test_ci_placeholder
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci_placeholder
+          STRIPE_PRICE_STARTER: price_ci_starter
+          STRIPE_PRICE_GROWTH: price_ci_growth
+          STRIPE_PRICE_STUDIO: price_ci_studio
+          STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+          STRIPE_PRICE_PAYG_BASE: price_ci_payg_base
+          STRIPE_PRICE_PAYG_LISTING: price_ci_payg_listing
+          STRIPE_PRICE_OVERAGE_LISTING: price_ci_overage
+          STRIPE_PRICE_DOMAIN_ADDON: price_ci_domain
+          CRON_SECRET: ci-cron-secret
+          RESEND_API_KEY: re_ci_placeholder
+          CLOUDFLARE_R2_ACCOUNT_ID: ci
+          CLOUDFLARE_R2_ACCESS_KEY_ID: ci
+          CLOUDFLARE_R2_SECRET_ACCESS_KEY: ci
+          CLOUDFLARE_R2_BUCKET: ci
+          DATABASE_URL: postgresql://ci:ci@localhost/ci
+          PLATFORM_EMAIL_FROM: "Studiofront <hello@example.com>"
+
   e2e:
     name: E2E
     runs-on: ubuntu-latest

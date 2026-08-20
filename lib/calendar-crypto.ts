@@ -7,12 +7,10 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
+import { authSessionSecret } from "@/lib/secrets";
+
 function secret() {
-  return (
-    process.env.AUTH_SESSION_SECRET ??
-    process.env.ADMIN_SESSION_SECRET ??
-    "dev-auth-secret-change-me"
-  );
+  return authSessionSecret();
 }
 
 function keyBytes() {

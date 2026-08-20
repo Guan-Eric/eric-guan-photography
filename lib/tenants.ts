@@ -80,14 +80,6 @@ export async function getRequestTenant(): Promise<Tenant | null> {
     return null;
   }
 
-  const fromHeader = headerStore.get(TENANT_HEADER);
-  if (fromHeader) {
-    try {
-      return await getTenant(fromHeader);
-    } catch {
-      // fall through
-    }
-  }
   const slugHint = headerStore.get(TENANT_SLUG_HEADER);
   if (slugHint) {
     const bySlug = await getTenantRowBySlug(slugHint);

@@ -73,6 +73,19 @@ if (due.length || pastDue.length) {
   console.log("REQUIREMENTS_DUE=none");
 }
 
+const branding = account.settings?.branding ?? {};
+const branded =
+  Boolean(branding.icon) &&
+  Boolean(branding.logo) &&
+  String(branding.primary_color ?? "").toLowerCase() === "#2f5d50";
+console.log(`BRANDING_ICON=${branding.icon ?? "missing"}`);
+console.log(`BRANDING_LOGO=${branding.logo ?? "missing"}`);
+console.log(`BRANDING_PRIMARY=${branding.primary_color ?? "default"}`);
+console.log(`BRANDING_SECONDARY=${branding.secondary_color ?? "default"}`);
+if (!branded) {
+  console.log("WARN  Set Studiofront branding: npm run setup:stripe:branding");
+}
+
 const portal = await stripe("/billing_portal/configurations?limit=1");
 const portalActive = (portal.data ?? []).some((c) => c.active);
 console.log(`CUSTOMER_PORTAL=${portalActive ? "enabled" : "not_configured"}`);

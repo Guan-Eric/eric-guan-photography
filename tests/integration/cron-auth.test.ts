@@ -34,4 +34,12 @@ describe("cron reminders auth", () => {
     expect(json.ok).toBe(true);
     expect(typeof json.sent).toBe("number");
   });
+
+  it("runDailyReminders returns structured result", async () => {
+    const { runDailyReminders } = await import("@/lib/cron/reminders");
+    const result = await runDailyReminders();
+    expect(result.ok).toBe(true);
+    expect(typeof result.sent).toBe("number");
+    expect(typeof result.reviews).toBe("number");
+  });
 });

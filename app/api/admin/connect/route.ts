@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireTenantMembership, getPhotographerSession } from "@/lib/auth";
+import { requireStudioOwner } from "@/lib/admin-guards";
 import { entitlements } from "@/lib/billing";
 import {
   deleteCustomHostname,
@@ -17,6 +18,7 @@ import {
   CUSTOM_DOMAINS_DISABLED_NOTE,
 } from "@/lib/custom-domain";
 import { createConnectOnboardingLink, refreshConnectStatus } from "@/lib/stripe-connect";
+import { requestPublicOrigin } from "@/lib/platform";
 import {
   parseTenantConfig,
   setTenantDomain,
@@ -188,9 +190,13 @@ export async function POST(request: Request) {
   if (!auth.ok) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
   }
+  const owner = await requireStudioOwner(session.activeTenantId);
+  if (!owner.ok) {
+    return NextResponse.json({ ok: false, error: owner.error }, { status: 403 });
+  }
 
   const body = await request.json().catch(() => ({}));
-  const origin = new URL(request.url).origin;
+  const origin = requestPublicOrigin(request);
 
   if (body?.action === "domain") {
     if (!customDomainsEnabled()) {

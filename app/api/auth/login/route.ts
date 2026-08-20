@@ -2,10 +2,19 @@ import { NextResponse } from "next/server";
 import { attachPhotographerSession, authenticateUser } from "@/lib/auth";
 import { getDb, qGet, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { rateLimitAuth } from "@/lib/request-rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const limited = rateLimitAuth(request, "login");
+  if (!limited.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many attempts. Try again later." },
+      { status: 429 },
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email : "";
   const password = typeof body?.password === "string" ? body.password : "";

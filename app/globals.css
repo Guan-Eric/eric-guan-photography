@@ -1920,6 +1920,21 @@ span.status-select--locked {
   grid-template-columns: 16.75rem minmax(0, 1fr);
 }
 
+.admin-loading {
+  min-height: 40vh;
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+}
+
+.studio-rail-switch {
+  margin-bottom: 0.75rem;
+}
+
+.studio-rail-switch select {
+  width: 100%;
+}
+
 .studio-rail {
   position: sticky;
   top: 0;

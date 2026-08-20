@@ -1,9 +1,7 @@
-# Enable after Studiofront is live and CRON_SECRET is in repo Actions secrets.
-name: Studiofront day-before reminders
+# Manual fallback only — production uses Cloudflare Cron Trigger (see wrangler.jsonc).
+name: Studiofront day-before reminders (manual)
 
 on:
-  schedule:
-    - cron: "0 14 * * *"
   workflow_dispatch:
 
 jobs:

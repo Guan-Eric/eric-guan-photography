@@ -42,6 +42,8 @@ export function middleware(request: NextRequest) {
   }
 
   const requestHeaders = new Headers(request.headers);
+  // Never trust client-supplied tenant id — resolve from host/slug only.
+  requestHeaders.delete("x-tenant-id");
   if (host) {
     requestHeaders.set("x-tenant-host", host);
   }
@@ -64,11 +66,6 @@ export function middleware(request: NextRequest) {
     const slugHint = hostname.slice(0, -(root.length + 1)).split(".")[0] ?? "";
     if (slugHint) {
       requestHeaders.set("x-tenant-slug", slugHint);
-    }
-    if (slugHint === "ericguan") {
-      requestHeaders.set("x-tenant-id", "eric-guan");
-    } else if (slugHint === "demo") {
-      requestHeaders.set("x-tenant-id", "demo-studio");
     }
   }
 

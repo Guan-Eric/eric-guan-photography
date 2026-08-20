@@ -27,6 +27,16 @@ export default async function StudioAppLayout({
     domain: tenant.domain,
     siteUrl: tenant.siteUrl,
   });
+  const studios = await Promise.all(
+    session.memberships.map(async (membership) => {
+      const row = await getTenant(membership.tenantId);
+      return {
+        tenantId: membership.tenantId,
+        studioName: row.studioName,
+        role: membership.role,
+      };
+    }),
+  );
 
   return (
     <StudioAppShell
@@ -34,6 +44,8 @@ export default async function StudioAppLayout({
       slug={tenant.slug}
       email={session.user.email}
       siteUrl={siteUrl}
+      activeTenantId={session.activeTenantId}
+      studios={studios}
     >
       {children}
     </StudioAppShell>

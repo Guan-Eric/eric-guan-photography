@@ -16,11 +16,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Sign in first." }, { status: 401 });
   }
 
-  if (session.memberships.length > 0 && !request.headers.get("x-allow-additional-tenant")) {
-    // Allow creating another studio intentionally via body.force
+  const body = await request.json().catch(() => null);
+
+  if (session.memberships.length > 0 && body?.force !== true) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "You already have a studio. Open Settings or sign in to your existing studio.",
+      },
+      { status: 409 },
+    );
   }
 
-  const body = await request.json().catch(() => null);
   const studioName = typeof body?.studioName === "string" ? body.studioName.trim() : "";
   const photographerName =
     typeof body?.photographerName === "string"

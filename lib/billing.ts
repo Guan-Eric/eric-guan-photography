@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import type Stripe from "stripe";
-import { getDb, qAll, qRun, schema } from "@/lib/db";
+import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { PlanId, SubscriptionStatus, TenantRow } from "@/lib/db/schema";
 import {
   DOMAIN_ADDON_USD,
@@ -299,6 +299,12 @@ export async function createSubscriptionCheckout(options: {
   if (!row) return { ok: false as const, error: "Studio not found." };
 
   if (!stripeEnabled()) {
+    if (process.env.NODE_ENV === "production") {
+      return {
+        ok: false as const,
+        error: "Billing is not configured. Contact support.",
+      };
+    }
     await applyPlanToTenant(options.tenantId, options.plan, { status: "active" });
     await recordBillingEvent({
       tenantId: options.tenantId,
@@ -366,6 +372,12 @@ export async function createBillingPortalSession(tenantId: string, returnUrl: st
   }
   const stripe = getStripe();
   if (!stripe) {
+    if (process.env.NODE_ENV === "production") {
+      return {
+        ok: false as const,
+        error: "Billing is not configured. Contact support.",
+      };
+    }
     return { ok: false as const, stubbed: true as const, error: "Stripe not configured." };
   }
   const session = await stripe.billingPortal.sessions.create({
@@ -402,6 +414,53 @@ export async function applyStripeSubscription(sub: Stripe.Subscription) {
     payload: { plan, status },
   });
   return { ok: true as const, tenantId, plan };
+}
+
+export async function getTenantRowByStripeCustomer(customerId: string) {
+  const db = getDb();
+  return (
+    (await qGet<TenantRow>(
+      db
+        .select()
+        .from(schema.tenants)
+        .where(eq(schema.tenants.stripeCustomerId, customerId)),
+    )) ?? null
+  );
+}
+
+export async function markSubscriptionPastDue(customerId: string) {
+  const row = await getTenantRowByStripeCustomer(customerId);
+  if (!row) return { ok: false as const, error: "Customer not found." };
+  const db = getDb();
+  await qRun(
+    db
+      .update(schema.tenants)
+      .set({ subscriptionStatus: "past_due", updatedAt: nowIso() })
+      .where(eq(schema.tenants.id, row.id)),
+  );
+  await recordBillingEvent({
+    tenantId: row.id,
+    type: "invoice.payment_failed",
+    payload: { customerId },
+  });
+  return { ok: true as const, tenantId: row.id, row };
+}
+
+export async function ownerEmailForTenant(tenantId: string) {
+  const db = getDb();
+  const owner = await qGet<{ email: string }>(
+    db
+      .select({ email: schema.users.email })
+      .from(schema.memberships)
+      .innerJoin(schema.users, eq(schema.memberships.userId, schema.users.id))
+      .where(
+        and(
+          eq(schema.memberships.tenantId, tenantId),
+          eq(schema.memberships.role, "owner"),
+        ),
+      ),
+  );
+  return owner?.email ?? null;
 }
 
 export function billingSummary(row: TenantRow, options?: { activeDomains?: number }) {

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { applyStripeSubscription } from "@/lib/billing";
+import {
+  applyStripeSubscription,
+  markSubscriptionPastDue,
+  ownerEmailForTenant,
+} from "@/lib/billing";
+import { billingPaymentFailedEmail, sendEmail } from "@/lib/email";
 import { markPaymentPaidBySession } from "@/lib/galleries";
 import { getStripe } from "@/lib/stripe";
 
@@ -68,6 +73,39 @@ export async function POST(request: Request) {
     event.type === "customer.subscription.deleted"
   ) {
     await applyStripeSubscription(event.data.object);
+  }
+
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object;
+    const customerId =
+      typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+    if (customerId) {
+      const marked = await markSubscriptionPastDue(customerId);
+      if (marked.ok) {
+        const row = marked.row;
+        let studioName: string | undefined;
+        try {
+          studioName = (JSON.parse(row.configJson) as { studioName?: string }).studioName;
+        } catch {
+          studioName = undefined;
+        }
+        const settingsUrl = `${process.env.PLATFORM_PUBLIC_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "https://studiofront.ca"}/admin/settings`;
+        const to =
+          invoice.customer_email ??
+          (await ownerEmailForTenant(row.id));
+        if (to) {
+          await sendEmail(
+            billingPaymentFailedEmail({
+              to,
+              settingsUrl,
+              studioName,
+            }),
+          ).catch((error) => {
+            console.error("[stripe webhook] payment failed email:", error);
+          });
+        }
+      }
+    }
   }
 
   return NextResponse.json({ received: true });

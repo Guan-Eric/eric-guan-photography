@@ -88,7 +88,7 @@ Full custom domain can wait. Do these now:
 - [ ] Confirm gallery page shows studio name, not generic platform branding
 - [ ] Add link to your pricing or packages page in gallery footer if available
 
-Advanced: point `photos.yourdomain.com` CNAME when DNS is ready — not required for first delivery.
+Advanced: point \`photos.yourdomain.com\` CNAME when DNS is ready — not required for first delivery.
 
 **Done when:** a friend says "this looks like your studio site."
 

@@ -10,7 +10,7 @@ export const post: BlogPost = {
   cta: "trial",
   body: `Dropbox is excellent general-purpose file storage. It is a weak **delivery product** for real estate photography studios that deliver dozens of listings per month.
 
-If you are still sending `folder links` and chasing agents to "request access," this post walks through why that habit costs you time, and how to replace it without confusing your best clients.
+If you are still sending \`folder links\` and chasing agents to "request access," this post walks through why that habit costs you time, and how to replace it without confusing your best clients.
 
 **Disclosure:** we build [StudioFront](/signup), which replaces DIY Dropbox workflows with token galleries, white-label branding, and optional pay-to-unlock. We will stay practical, not promotional.
 
@@ -114,7 +114,7 @@ Your agents care about **this listing**, not your 2022 archive structure.
 
 ## Security and brokerage IT concerns
 
-Brokerages sometimes flag random Dropbox links. A branded URL on your studio domain (`photos.yourstudio.com` or similar) passes more IT checks than `dropbox.com/s/...`.
+Brokerages sometimes flag random Dropbox links. A branded URL on your studio domain (\`photos.yourstudio.com\` or similar) passes more IT checks than \`dropbox.com/s/...\`.
 
 Token links should be unguessable, revocable, and scoped to one listing. That is harder to enforce with shared folder permissions.
 

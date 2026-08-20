@@ -36,7 +36,7 @@ The hidden cost is your inbox: "Link expired," "Can't access," "Is this the full
 
 ### 2. Version confusion
 
-`Proofs`, `Finals`, `Finals_v2`, and `MLS` folders multiply. Agents download the wrong set and blame your editing.
+\`Proofs\`, \`Finals\`, \`Finals_v2\`, and \`MLS\` folders multiply. Agents download the wrong set and blame your editing.
 
 ### 3. Payment decoupling
 
@@ -62,7 +62,7 @@ Keep Drive for internal use. New jobs get gallery links only.
 
 ### Step 2 — Standardize your delivery email
 
-Use the same subject line every time: `Photos ready: [Address] — [Studio Name]`
+Use the same subject line every time: \`Photos ready: [Address] — [Studio Name]\`
 
 Body:
 

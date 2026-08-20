@@ -31,8 +31,8 @@ If agents still Google a vendor name after working with you, you are co-branding
 
 Brokerage marketing departments notice:
 
-- **URL bar** — `photos.yourstudio.com` vs `app.vendor.com/job/8842`
-- **Email from** — `hello@yourstudio.com` vs `noreply@vendor.io`
+- **URL bar** — \`photos.yourstudio.com\` vs \`app.vendor.com/job/8842\`
+- **Email from** — \`hello@yourstudio.com\` vs \`noreply@vendor.io\`
 - **Invoice/receipt branding** — matches your price sheet
 - **Consistency** — booking page matches gallery matches business card
 
@@ -86,7 +86,7 @@ Do not delay launch for perfect DNS. Ship on default URL, add CNAME when ready �
 ### Domain and email
 
 - [ ] CNAME record for gallery/booking subdomain
-- [ ] SPF/DKIM for sending (`hello@yourdomain.com`)
+- [ ] SPF/DKIM for sending (\`hello@yourdomain.com\`)
 - [ ] SSL active (padlock on mobile)
 
 ### Content
@@ -157,7 +157,7 @@ No — solos benefit most because brand is the whole company.
 On appropriate plans, public surfaces are yours; confirm details on [pricing](/pricing).
 
 **Can I white-label email if I use Gmail?**  
-Use a professional `hello@domain` with proper DNS; free Gmail "send as" works with SPF setup.
+Use a professional \`hello@domain\` with proper DNS; free Gmail "send as" works with SPF setup.
 
 ---
 

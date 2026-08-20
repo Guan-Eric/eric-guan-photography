@@ -217,6 +217,8 @@ It is never too early. Content compounds via Google and LLM citation. LTD cash s
 
 ### Content system for StudioFront
 
+**Full editorial plan:** [`docs/CONTENT-PLAN.md`](./CONTENT-PLAN.md) — pillars, Phase 1–2 titles, 8-week calendar, briefs, distribution, and measurement.
+
 **Pillar pages (ship first)**
 
 - Aryeo alternative
@@ -422,7 +424,7 @@ This is sequencing, not a promise of calendar duration — move as fast as produ
 - [ ] Sales one-pager vs Aryeo
 - [ ] 60-second product Loom
 - [ ] Onboarding checklist (Connect, domain, first gallery)
-- [ ] Competitor/alternative SEO pages
+- [ ] Competitor/alternative SEO pages (`docs/CONTENT-PLAN.md`)
 - [ ] Review request email templates
 - [ ] Weekly scoreboard (trial, paid, listings, churn, runway)
 - [ ] Public pricing only for ongoing plans after Step 8
@@ -431,6 +433,7 @@ This is sequencing, not a promise of calendar duration — move as fast as produ
 
 ## Related docs
 
+- `docs/CONTENT-PLAN.md` — blog/SEO editorial plan (Step 6 detail)
 - `PLATFORM-PLAN.md` — product vision, architecture, pricing thesis, engineering gates
 - `DEPLOY.md` — production deploy path
 - `docs/TECH-STACK.md` — stack and host model
@@ -445,3 +448,4 @@ This is sequencing, not a promise of calendar duration — move as fast as produ
 | Date | Change |
 |---|---|
 | 2026-08-20 | Initial playbook adapted from Mike’s 10-step framework to StudioFront |
+| 2026-08-20 | Linked Step 6 to `docs/CONTENT-PLAN.md` |

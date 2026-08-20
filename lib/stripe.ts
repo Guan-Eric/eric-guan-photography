@@ -10,6 +10,20 @@ export function stripeEnabled() {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }
 
+export function stripeErrorMessage(error: unknown) {
+  if (error && typeof error === "object" && "message" in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return String(error ?? "");
+}
+
+/** Test-mode IDs used with live keys (or the reverse), plus missing objects. */
+export function isStripeModeMismatchError(error: unknown) {
+  return /testmode key|livemode key|can only be used with|a similar object exists in (?:test|live) mode|No such customer|No such account/i.test(
+    stripeErrorMessage(error),
+  );
+}
+
 export function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;

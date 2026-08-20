@@ -28,9 +28,9 @@ describe("studio currency", () => {
     expect(studioCurrencyLabel("usd").toLowerCase()).toContain("us");
   });
 
-  it("lists a broad set from Intl", () => {
+  it("lists a stable studio currency set", () => {
     const list = listStudioCurrencies();
-    expect(list.length).toBeGreaterThan(50);
+    expect(list.length).toBeGreaterThan(20);
     expect(list.some((item) => item.code === "CAD")).toBe(true);
     expect(list.some((item) => item.code === "JPY")).toBe(true);
     expect(isStudioCurrency("EUR")).toBe(true);

@@ -9,7 +9,7 @@ import {
   entitlements,
 } from "@/lib/plan-defs";
 import { platformName, platformPublicUrl } from "@/lib/platform";
-import { getStripe, stripeEnabled } from "@/lib/stripe";
+import { getStripe, isStripeModeMismatchError, stripeEnabled } from "@/lib/stripe";
 import { getTenantRow } from "@/lib/tenant-store";
 
 export type { PlanDef } from "@/lib/plan-defs";
@@ -267,25 +267,65 @@ export async function recordBillingEvent(options: {
   );
 }
 
-async function ensureCustomer(row: TenantRow, email: string) {
-  const stripe = getStripe();
-  if (!stripe) return { ok: false as const, stubbed: true as const };
-  if (row.stripeCustomerId) {
-    return { ok: true as const, customerId: row.stripeCustomerId };
-  }
-  const customer = await stripe.customers.create({
-    email,
-    metadata: { tenantId: row.id },
-    name: row.slug,
-  });
+async function clearBillingCustomer(tenantId: string) {
   const db = getDb();
   await qRun(
     db
       .update(schema.tenants)
-      .set({ stripeCustomerId: customer.id, updatedAt: nowIso() })
-      .where(eq(schema.tenants.id, row.id)),
+      .set({
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        updatedAt: nowIso(),
+      })
+      .where(eq(schema.tenants.id, tenantId)),
   );
-  return { ok: true as const, customerId: customer.id };
+}
+
+async function ensureCustomer(row: TenantRow, email: string) {
+  const stripe = getStripe();
+  if (!stripe) return { ok: false as const, stubbed: true as const };
+
+  if (row.stripeCustomerId) {
+    try {
+      const existing = await stripe.customers.retrieve(row.stripeCustomerId);
+      if (!("deleted" in existing && existing.deleted)) {
+        return { ok: true as const, customerId: existing.id };
+      }
+    } catch (error) {
+      if (!isStripeModeMismatchError(error)) {
+        return {
+          ok: false as const,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Could not load the Stripe customer.",
+        };
+      }
+    }
+    await clearBillingCustomer(row.id);
+  }
+
+  try {
+    const customer = await stripe.customers.create({
+      email,
+      metadata: { tenantId: row.id },
+      name: row.slug,
+    });
+    const db = getDb();
+    await qRun(
+      db
+        .update(schema.tenants)
+        .set({ stripeCustomerId: customer.id, updatedAt: nowIso() })
+        .where(eq(schema.tenants.id, row.id)),
+    );
+    return { ok: true as const, customerId: customer.id };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error ? error.message : "Could not create Stripe customer.",
+    };
+  }
 }
 
 export async function createSubscriptionCheckout(options: {
@@ -325,7 +365,13 @@ export async function createSubscriptionCheckout(options: {
   const stripe = getStripe()!;
   const customer = await ensureCustomer(row, options.email);
   if (!customer.ok || !("customerId" in customer)) {
-    return { ok: false as const, error: "Could not create Stripe customer." };
+    return {
+      ok: false as const,
+      error:
+        "error" in customer && typeof customer.error === "string"
+          ? customer.error
+          : "Could not create Stripe customer.",
+    };
   }
 
   const stillTrialing =
@@ -338,31 +384,41 @@ export async function createSubscriptionCheckout(options: {
   ];
   if (meteredPriceId) lineItems.push({ price: meteredPriceId });
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customer.customerId,
-    success_url: options.successUrl,
-    cancel_url: options.cancelUrl,
-    line_items: lineItems,
-    metadata: {
-      kind: "subscription",
-      tenantId: options.tenantId,
-      plan: options.plan,
-    },
-    subscription_data: {
-      metadata: { kind: "subscription", tenantId: options.tenantId, plan: options.plan },
-      ...(stillTrialing
-        ? { trial_end: Math.floor(new Date(row.trialEndsAt!).getTime() / 1000) }
-        : {}),
-    },
-  });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customer.customerId,
+      success_url: options.successUrl,
+      cancel_url: options.cancelUrl,
+      line_items: lineItems,
+      metadata: {
+        kind: "subscription",
+        tenantId: options.tenantId,
+        plan: options.plan,
+      },
+      subscription_data: {
+        metadata: { kind: "subscription", tenantId: options.tenantId, plan: options.plan },
+        ...(stillTrialing
+          ? { trial_end: Math.floor(new Date(row.trialEndsAt!).getTime() / 1000) }
+          : {}),
+      },
+    });
 
-  return {
-    ok: true as const,
-    stubbed: false as const,
-    url: session.url,
-    sessionId: session.id,
-  };
+    return {
+      ok: true as const,
+      stubbed: false as const,
+      url: session.url,
+      sessionId: session.id,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not start Stripe Checkout.",
+    };
+  }
 }
 
 export async function createBillingPortalSession(tenantId: string, returnUrl: string) {
@@ -380,11 +436,26 @@ export async function createBillingPortalSession(tenantId: string, returnUrl: st
     }
     return { ok: false as const, stubbed: true as const, error: "Stripe not configured." };
   }
-  const session = await stripe.billingPortal.sessions.create({
-    customer: row.stripeCustomerId,
-    return_url: returnUrl,
-  });
-  return { ok: true as const, url: session.url };
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: row.stripeCustomerId,
+      return_url: returnUrl,
+    });
+    return { ok: true as const, url: session.url };
+  } catch (error) {
+    if (isStripeModeMismatchError(error)) {
+      await clearBillingCustomer(tenantId);
+      return {
+        ok: false as const,
+        error: "Billing was set up in a different Stripe mode. Choose a plan again.",
+      };
+    }
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error ? error.message : "Could not open the billing portal.",
+    };
+  }
 }
 
 export async function applyStripeSubscription(sub: Stripe.Subscription) {

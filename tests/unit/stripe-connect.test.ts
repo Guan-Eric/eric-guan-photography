@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isUnusableConnectAccountError } from "@/lib/stripe-connect";
+import { isStripeModeMismatchError } from "@/lib/stripe";
 
 describe("isUnusableConnectAccountError", () => {
   it("detects a test Connect account used with live keys", () => {
@@ -22,5 +23,16 @@ describe("isUnusableConnectAccountError", () => {
       isUnusableConnectAccountError(new Error("Your card was declined.")),
     ).toBe(false);
     expect(isUnusableConnectAccountError(null)).toBe(false);
+  });
+});
+
+describe("isStripeModeMismatchError", () => {
+  it("detects a test customer used with live keys", () => {
+    expect(
+      isStripeModeMismatchError({
+        message:
+          "No such customer: 'cus_V53YHzwjSR6rXE'; a similar object exists in test mode, but a live mode key was used to make this request.",
+      }),
+    ).toBe(true);
   });
 });

@@ -8,9 +8,9 @@ import {
 } from "@/lib/timezones";
 
 describe("studio timezones", () => {
-  it("lists the full IANA set", () => {
+  it("lists a stable studio timezone set", () => {
     const zones = listTimeZones();
-    expect(zones.length).toBeGreaterThan(100);
+    expect(zones.length).toBeGreaterThan(20);
     expect(zones).toContain("America/Toronto");
     expect(zones).toContain("Asia/Tokyo");
     expect(zones).toContain("Europe/London");

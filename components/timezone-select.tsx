@@ -16,8 +16,11 @@ export function TimezoneSelect({
   name?: string;
   required?: boolean;
 }) {
-  const zones = useMemo(() => listTimeZones(), []);
   const current = normalizeTimeZone(value);
+  const zones = useMemo(() => {
+    const listed = listTimeZones();
+    return listed.includes(current) ? listed : [current, ...listed];
+  }, [current]);
 
   return (
     <select

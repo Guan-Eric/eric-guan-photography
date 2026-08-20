@@ -1,4 +1,4 @@
-import { getStripe } from "@/lib/stripe";
+import { getStripe, isStripeModeMismatchError } from "@/lib/stripe";
 import { getTenantRow, updateTenantConnect } from "@/lib/tenant-store";
 
 export const CONNECT_MODE_MISMATCH_NOTE =
@@ -9,13 +9,7 @@ export function connectEnabled() {
 }
 
 export function isUnusableConnectAccountError(error: unknown) {
-  const message =
-    error && typeof error === "object" && "message" in error
-      ? String((error as { message: unknown }).message)
-      : String(error ?? "");
-  return /testmode key|livemode key|can only be used with|No such account/i.test(
-    message,
-  );
+  return isStripeModeMismatchError(error);
 }
 
 async function clearConnectAccount(tenantId: string) {

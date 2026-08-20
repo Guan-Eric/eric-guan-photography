@@ -283,10 +283,10 @@ export function StudioSettingsPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan }),
       });
-      const json = await response.json();
-      if (!json.ok) {
-        setError(json.error ?? "Checkout failed.");
-        toastError(json.error ?? "Checkout failed.");
+      const json = await response.json().catch(() => null);
+      if (!json?.ok) {
+        setError(json?.error ?? "Checkout failed.");
+        toastError(json?.error ?? "Checkout failed.");
         return;
       }
       if (json.url) {
@@ -306,10 +306,10 @@ export function StudioSettingsPanel() {
     setError(null);
     try {
       const response = await fetch("/api/billing/portal", { method: "POST" });
-      const json = await response.json();
-      if (!json.ok) {
-        setError(json.error ?? "Billing portal unavailable.");
-        toastError(json.error ?? "Billing portal unavailable.");
+      const json = await response.json().catch(() => null);
+      if (!json?.ok) {
+        setError(json?.error ?? "Billing portal unavailable.");
+        toastError(json?.error ?? "Billing portal unavailable.");
         return;
       }
       if (json.url) window.location.href = json.url;

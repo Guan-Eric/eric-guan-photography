@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { listStudioCurrencies, normalizeStudioCurrency } from "@/lib/currency";
+import {
+  listStudioCurrencies,
+  normalizeStudioCurrency,
+  studioCurrencyLabel,
+} from "@/lib/currency";
 
 export function CurrencySelect({
   value,
@@ -16,8 +20,12 @@ export function CurrencySelect({
   name?: string;
   required?: boolean;
 }) {
-  const options = useMemo(() => listStudioCurrencies(), []);
   const current = normalizeStudioCurrency(value);
+  const options = useMemo(() => {
+    const listed = listStudioCurrencies();
+    if (listed.some((item) => item.code === current)) return listed;
+    return [{ code: current, label: studioCurrencyLabel(current) }, ...listed];
+  }, [current]);
 
   return (
     <select

@@ -112,7 +112,7 @@ Stripe does not allow API updates to **your own** account brand — fill this in
 npm run setup:stripe:branding
 ```
 
-That writes transparent PNGs to `scripts/stripe-brand/` from `public/studiofront-icon.png` and `public/studiofront-lockup.png` (Finder opens on macOS). Regenerate the mark with `npm run brand:mark` first if those files are stale.
+That writes transparent PNGs to `scripts/stripe-brand/` from `public/studiofront-icon.png` and `public/studiofront-lockup.png`. Regenerate with `npm run brand:mark` first if those files are stale.
 
 Then in [Settings → Branding](https://dashboard.stripe.com/settings/branding):
 

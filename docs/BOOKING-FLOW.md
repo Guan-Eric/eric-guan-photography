@@ -515,7 +515,7 @@ Editors can run the full order board. They cannot invite seats.
 - [ ] `RESEND_API_KEY` on Worker  
 - [ ] `PLATFORM_EMAIL_FROM` verified in Resend  
 - [ ] Stripe webhook → `/api/stripe/webhook` for live pay emails  
-- [ ] Cron hitting `/api/cron/reminders` with `CRON_SECRET`  
+- [ ] Cloudflare Cron Trigger active on **studiofront** (`0 14 * * *` UTC) — or manual `/api/cron/reminders` with `CRON_SECRET`  
 - [ ] Studio `tenant.email` correct (photographer inbox)  
 
 When testing without Resend, watch Worker / server logs for `[email:stub]` to confirm payloads.

@@ -1,5 +1,5 @@
 /**
- * Render Studiofront S-mark + lockup PNGs (Syne ExtraBold + geometric S).
+ * Render Studiofront S-mark + lockup PNGs (Syne + geometric S icon).
  * Usage: node scripts/generate-studiofront-mark.mjs
  */
 import fs from "node:fs";
@@ -9,38 +9,58 @@ import { chromium } from "playwright";
 import sharp from "sharp";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const fontSrc = "/tmp/Syne-wght.ttf";
-const fontDest = path.join(root, "scripts/stripe-brand/.fonts/Syne[wght].ttf");
+const fontDir = path.join(root, "scripts/stripe-brand/.fonts");
 const outPublic = path.join(root, "public");
 const outStripe = path.join(root, "scripts/stripe-brand");
 
-fs.mkdirSync(path.dirname(fontDest), { recursive: true });
+fs.mkdirSync(fontDir, { recursive: true });
 fs.mkdirSync(outStripe, { recursive: true });
-if (fs.existsSync(fontSrc)) fs.copyFileSync(fontSrc, fontDest);
-else if (!fs.existsSync(fontDest)) {
-  throw new Error("Syne font missing — download Syne[wght].ttf to /tmp or scripts/stripe-brand/.fonts/");
+
+for (const [src, name] of [
+  ["/tmp/Syne-ExtraBold.ttf", "Syne-ExtraBold.ttf"],
+  ["/tmp/Syne-Bold.ttf", "Syne-Bold.ttf"],
+  ["/tmp/Syne-wght.ttf", "Syne[wght].ttf"],
+]) {
+  const dest = path.join(fontDir, name);
+  if (fs.existsSync(src)) fs.copyFileSync(src, dest);
+}
+
+if (
+  !fs.existsSync(path.join(fontDir, "Syne-Bold.ttf")) &&
+  !fs.existsSync(path.join(fontDir, "Syne[wght].ttf"))
+) {
+  throw new Error("Missing Syne font — place Syne-Bold.ttf or Syne[wght].ttf in scripts/stripe-brand/.fonts/");
 }
 
 const GREEN = "#2f5d50";
+const syneFontFile = fs.existsSync(path.join(fontDir, "Syne[wght].ttf"))
+  ? "Syne[wght].ttf"
+  : "Syne-Bold.ttf";
+const syneFontFace =
+  syneFontFile === "Syne[wght].ttf"
+    ? `@font-face {
+  font-family: Syne;
+  src: url("Syne[wght].ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+}`
+    : `@font-face {
+  font-family: Syne;
+  src: url("Syne-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+}`;
 
-/** 6-blade shutter used for the two “o”s in the wordmark. */
-function apertureSvg(size) {
-  const cx = 50;
-  const cy = 50;
-  const rOuter = 36;
-  const rInner = 13;
-  const blades = 6;
-  const parts = [];
-  for (let i = 0; i < blades; i++) {
-    const a0 = (Math.PI * 2 * i) / blades - Math.PI / 2;
-    const a1 = a0 + (Math.PI * 2) / blades * 0.62;
-    const a2 = a0 + (Math.PI * 2) / blades;
-    const p = (r, a) => `${(cx + r * Math.cos(a)).toFixed(2)},${(cy + r * Math.sin(a)).toFixed(2)}`;
-    parts.push(
-      `<path d="M${p(rInner, a0)} L${p(rOuter, a0)} A${rOuter} ${rOuter} 0 0 1 ${p(rOuter, a1)} L${p(rInner, a2)} Z"/>`,
-    );
-  }
-  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true">${parts.join("")}</svg>`;
+function sMarkSvg(className = "") {
+  return `<svg class="${className}" viewBox="0 0 80 92" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path
+      d="M61.5 27.5 A 21 21 0 1 0 40 49 A 21 21 0 1 1 18.5 64.5"
+      stroke="${GREEN}"
+      stroke-width="21"
+      stroke-linecap="butt"
+      stroke-linejoin="round"
+    />
+  </svg>`;
 }
 
 const html = `<!doctype html>
@@ -48,12 +68,7 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <style>
-@font-face {
-  font-family: Syne;
-  src: url("Syne[wght].ttf") format("truetype");
-  font-weight: 100 900;
-  font-style: normal;
-}
+${syneFontFace}
 html, body {
   margin: 0;
   background: transparent;
@@ -70,12 +85,10 @@ html, body {
   height: 512px;
   display: grid;
   place-items: center;
-  font-family: Syne, sans-serif;
-  font-weight: 800;
-  font-size: 300px;
-  line-height: 1;
-  letter-spacing: -0.07em;
-  color: ${GREEN};
+}
+.icon svg {
+  height: 72%;
+  width: auto;
 }
 .lockup {
   display: flex;
@@ -96,32 +109,21 @@ html, body {
   line-height: 0.78;
 }
 .lockup .ch { display: block; }
-.lockup .ap {
-  display: inline-grid;
-  place-items: center;
-  width: 0.78em;
-  height: 1em;
-  margin: 0 0.01em;
-  fill: ${GREEN};
-  position: relative;
-  top: 0.06em;
-}
-.lockup .ap svg { width: 0.7em; height: 0.7em; }
 </style>
 </head>
 <body>
   <div class="stage">
-    <div class="icon" id="icon">S</div>
+    <div class="icon" id="icon">${sMarkSvg()}</div>
     <div class="lockup" id="lockup">
       <span class="s">S</span>
       <span class="ch">t</span>
       <span class="ch">u</span>
       <span class="ch">d</span>
       <span class="ch">i</span>
-      <span class="ap">${apertureSvg(72)}</span>
+      <span class="ch">o</span>
       <span class="ch">f</span>
       <span class="ch">r</span>
-      <span class="ap">${apertureSvg(72)}</span>
+      <span class="ch">o</span>
       <span class="ch">n</span>
       <span class="ch">t</span>
     </div>
@@ -129,8 +131,7 @@ html, body {
 </body>
 </html>`;
 
-const htmlDir = path.dirname(fontDest);
-const htmlPath = path.join(htmlDir, "mark.html");
+const htmlPath = path.join(fontDir, "mark.html");
 fs.writeFileSync(htmlPath, html);
 
 const browser = await chromium.launch();
@@ -139,7 +140,14 @@ const page = await browser.newPage({
   viewport: { width: 1400, height: 900 },
 });
 await page.goto(`file://${htmlPath}`);
-await page.evaluate(() => document.fonts.ready);
+await page.evaluate(async () => {
+  await Promise.all([document.fonts.load("700 128px Syne"), document.fonts.load("800 128px Syne")]);
+  await document.fonts.ready;
+});
+const loaded = await page.evaluate(() =>
+  [...document.fonts].map((f) => `${f.family} ${f.weight} ${f.status}`).join(" | "),
+);
+console.log(`FONTS=${loaded}`);
 
 async function shot(id, dest, pad) {
   const el = page.locator(`#${id}`);
@@ -166,7 +174,7 @@ await browser.close();
 async function squareIcon(src, dest, size) {
   const trimmed = await sharp(src).trim({ threshold: 10 }).toBuffer();
   const meta = await sharp(trimmed).metadata();
-  const pad = Math.round(Math.max(meta.width, meta.height) * 0.16);
+  const pad = Math.round(Math.max(meta.width, meta.height) * 0.22);
   await sharp(trimmed)
     .extend({
       top: pad,

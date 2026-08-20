@@ -5,44 +5,63 @@ export const DEFAULT_STUDIO_CURRENCY = "CAD";
 /** @deprecated Prefer string; kept for call-site compatibility. */
 export type StudioCurrencyCode = string;
 
-const FALLBACK_CURRENCIES = [
+/** Fixed dropdown set — Intl.supportedValuesOf differs between Node and browsers (hydration). */
+const STUDIO_CURRENCY_CODES = [
   "AED",
+  "ARS",
   "AUD",
   "BRL",
   "CAD",
   "CHF",
+  "CLP",
   "CNY",
+  "COP",
+  "CZK",
   "DKK",
+  "EGP",
   "EUR",
   "GBP",
   "HKD",
+  "HUF",
+  "IDR",
+  "ILS",
   "INR",
+  "ISK",
   "JPY",
   "KRW",
   "MXN",
+  "MYR",
   "NOK",
   "NZD",
+  "PHP",
   "PLN",
+  "RON",
+  "SAR",
   "SEK",
   "SGD",
+  "THB",
+  "TRY",
+  "TWD",
   "USD",
+  "UYU",
+  "VND",
   "ZAR",
 ] as const;
 
-let cachedCodes: Set<string> | null = null;
+let cachedValidCodes: Set<string> | null = null;
 
 function supportedCurrencyCodes(): Set<string> {
-  if (cachedCodes) return cachedCodes;
+  if (cachedValidCodes) return cachedValidCodes;
   try {
     if (typeof Intl !== "undefined" && "supportedValuesOf" in Intl) {
-      cachedCodes = new Set(Intl.supportedValuesOf("currency"));
-      return cachedCodes;
+      cachedValidCodes = new Set(Intl.supportedValuesOf("currency"));
+      return cachedValidCodes;
     }
   } catch {
     /* fall through */
   }
-  cachedCodes = new Set(FALLBACK_CURRENCIES);
-  return cachedCodes;
+  cachedValidCodes = new Set(STUDIO_CURRENCY_CODES);
+  return cachedValidCodes;
 }
 
 function currencyDisplayName(code: string): string {
@@ -55,17 +74,15 @@ function currencyDisplayName(code: string): string {
   }
 }
 
-/** Full ISO 4217 set from the runtime when available. */
+/** Stable option list for selects (same on server and client). */
 export function listStudioCurrencies(): Array<{ code: string; label: string }> {
-  return [...supportedCurrencyCodes()]
-    .map((code) => {
-      const name = currencyDisplayName(code);
-      return {
-        code,
-        label: name === code ? code : `${name} (${code})`,
-      };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label, "en"));
+  return STUDIO_CURRENCY_CODES.map((code) => {
+    const name = currencyDisplayName(code);
+    return {
+      code,
+      label: name === code ? code : `${name} (${code})`,
+    };
+  }).sort((a, b) => a.label.localeCompare(b.label, "en"));
 }
 
 /** @deprecated Use listStudioCurrencies() — kept for older imports. */

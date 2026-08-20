@@ -222,29 +222,13 @@ export async function signupReferredPhotographer(
 export async function openBookingPage(page: Page, slug: string) {
   const origin = studioOrigin(slug);
   const bookingUrl = `${origin}/book`;
-  let ready = false;
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.goto(bookingUrl);
-    await expect(page).toHaveURL(/\/book/, { timeout: 30_000 });
-    const sqft = page.locator('[data-field="squareFootage"] input');
-    const packageSelect = page.locator('[data-field="packageId"] select');
-    if (await sqft.isVisible().catch(() => false)) {
-      ready = true;
-      break;
-    }
-    if (await packageSelect.isVisible().catch(() => false)) {
-      await packageSelect.selectOption({ index: 0 }).catch(() => undefined);
-      await page.waitForTimeout(1000);
-      if (await sqft.isVisible().catch(() => false)) {
-        ready = true;
-        break;
-      }
-    }
-    await page.waitForTimeout(1500);
-  }
-
-  expect(ready, `Booking form did not load at ${bookingUrl}`).toBe(true);
+  await skipCoachTours(page);
+  await page.goto(bookingUrl, { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\/book/, { timeout: 30_000 });
+  await expect(
+    page.getByLabel(/square footage/i),
+    `Booking form did not load at ${bookingUrl}`,
+  ).toBeVisible({ timeout: 45_000 });
   await clearUiOverlays(page);
   return { origin, bookingUrl };
 }
@@ -262,7 +246,7 @@ export async function submitBookingForm(page: Page) {
 
 export async function createBooking(page: Page, slug: string, stamp: string) {
   const { origin } = await openBookingPage(page, slug);
-  await page.locator('[data-field="squareFootage"] input').fill("1500");
+  await page.getByLabel(/square footage/i).fill("1500");
 
   const addressField = page.getByRole("combobox", { name: /property address/i });
   if (await addressField.isVisible().catch(() => false)) {

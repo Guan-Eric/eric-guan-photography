@@ -34,14 +34,8 @@ const FALLBACK_TIMEZONES = [
   "UTC",
 ] as const;
 
+/** Stable option list for selects (same on server and client). */
 export function listTimeZones(): string[] {
-  try {
-    if (typeof Intl !== "undefined" && "supportedValuesOf" in Intl) {
-      return [...Intl.supportedValuesOf("timeZone")];
-    }
-  } catch {
-    /* fall through */
-  }
   return [...FALLBACK_TIMEZONES];
 }
 

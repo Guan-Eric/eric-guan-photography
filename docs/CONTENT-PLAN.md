@@ -146,7 +146,7 @@ Case studies, quarterly roundup refreshes, objection posts from support/sales ca
 | **Outline** | Who Aryeo is for → where studios feel pain (cost, agent login, brand) → evaluation criteria → how StudioFront maps → who should stay on Aryeo → FAQ |
 | **Proof to include** | Side-by-side table (login, white-label, pricing model, ownership); 2–3 screenshots |
 | **Internal links** | P2, P4, `/pricing` |
-| **Status** | [ ] Draft [ ] Screenshots [ ] Published [ ] Indexed |
+| **Status** | [x] Draft [ ] Screenshots [x] In repo `/blog/aryeo-alternative` [ ] Indexed |
 
 ### P2. Aryeo vs StudioFront
 
@@ -161,7 +161,7 @@ Case studies, quarterly roundup refreshes, objection posts from support/sales ca
 | **Outline** | TL;DR verdict → feature matrix → pricing math (example month with 8 vs 20 listings) → workflow walkthrough → migration note → FAQ |
 | **Proof to include** | Honest “Aryeo wins if…” / “StudioFront wins if…” sections |
 | **Internal links** | P1, P5, `/pricing` |
-| **Status** | [ ] Draft [ ] Screenshots [ ] Published [ ] Indexed |
+| **Status** | [x] Draft [ ] Screenshots [x] In repo `/blog/aryeo-vs-studiofront` [ ] Indexed |
 
 ### P3. Best real estate photography software
 
@@ -176,7 +176,7 @@ Case studies, quarterly roundup refreshes, objection posts from support/sales ca
 | **Outline** | Criteria (delivery, branding, agent UX, pricing, data ownership) → shortlist (Aryeo, Spiro, HDPhotoHub, StudioFront, DIY Drive) → scored table → pick-by-persona → FAQ |
 | **Proof to include** | Transparent scoring rubric; disclose that StudioFront is our product |
 | **Internal links** | P1, P2, Spiro/HDPhotoHub posts when live |
-| **Status** | [ ] Draft [ ] Screenshots [ ] Published [ ] Indexed |
+| **Status** | [x] Draft [ ] Screenshots [x] In repo `/blog/best-real-estate-photography-software` [ ] Indexed |
 
 ### P4. Deliver listing photos without agent logins
 
@@ -191,7 +191,7 @@ Case studies, quarterly roundup refreshes, objection posts from support/sales ca
 | **Outline** | Why agent portals fail in practice → link-based delivery model → pay-to-unlock pattern → security/trust tiers → template message agents actually open → how StudioFront implements it |
 | **Proof to include** | Gallery link UX screenshots; sample agent email copy |
 | **Internal links** | P1, P5, case studies later |
-| **Status** | [ ] Draft [ ] Screenshots [ ] Published [ ] Indexed |
+| **Status** | [x] Draft [ ] Screenshots [x] In repo `/blog/deliver-listing-photos-without-agent-login` [ ] Indexed |
 
 ### P5. Booking + pricing software for RE photographers
 
@@ -206,13 +206,15 @@ Case studies, quarterly roundup refreshes, objection posts from support/sales ca
 | **Outline** | Booking → quote → shoot → deliver → get paid loop → must-have vs nice-to-have → package/sq-ft pricing patterns → where tools break → StudioFront loop |
 | **Proof to include** | Package page + booking flow screenshots |
 | **Internal links** | P3, economics post E1, `/pricing` |
-| **Status** | [ ] Draft [ ] Screenshots [ ] Published [ ] Indexed |
+| **Status** | [x] Draft [ ] Screenshots [x] In repo `/blog/real-estate-photography-booking-pricing-software` [ ] Indexed |
 
 ---
 
 ## 6. Phase 2 — Next 16 posts (weeks 3–8)
 
 Ship **two per week**. Order is priority within the phase.
+
+**Repo status (2026-08-20):** Phase 1 (P1–P5) and Phase 2 competitor/migration/economics posts (C1–C5, M1–M5, E1–E5) are live in-app at `/blog` and `/blog/{slug}`. Case studies (T1–T2) still wait on external studio proof.
 
 ### Competitor & alternative cluster
 
@@ -382,6 +384,7 @@ You can call Step 6 operational when:
 
 ## Related docs
 
+- `content/blog/` — article source modules rendered at `/blog`
 - `docs/SAAS-SUCCESS-PLAYBOOK.md` — full 10-step GTM system (this is Step 6)  
 - `PLATFORM-PLAN.md` — product wedge, pricing ladder, non-goals  
 - `docs/SCREENS.md` — UI copy/screens to screenshot  
@@ -394,3 +397,4 @@ You can call Step 6 operational when:
 | Date | Change |
 |---|---|
 | 2026-08-20 | Initial content & blog plan (pillars, Phase 1–2 titles, 8-week calendar) |
+| 2026-08-20 | Wrote 20 articles + `/blog` routes; case studies still pending |

@@ -1135,8 +1135,171 @@ button {
   color: var(--ink);
 }
 
+.prose h3 {
+  margin: 1.75rem 0 0.6rem;
+  color: var(--ink);
+  font-size: 1.15rem;
+}
+
 .prose p {
   margin: 0 0 1rem;
+}
+
+.prose ul,
+.prose ol {
+  margin: 0 0 1.15rem;
+  padding-left: 1.25rem;
+}
+
+.prose li {
+  margin: 0.35rem 0;
+}
+
+.prose a {
+  color: var(--accent);
+  text-underline-offset: 0.15em;
+}
+
+.prose strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.prose code {
+  font-size: 0.92em;
+  padding: 0.1em 0.35em;
+  border-radius: 2px;
+  background: var(--bg-deep);
+  color: var(--ink);
+}
+
+.prose blockquote {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--paper) 70%, var(--bg-deep));
+}
+
+.prose blockquote p {
+  margin: 0;
+}
+
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 2rem 0;
+}
+
+.prose .table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin: 0 0 1.35rem;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--line);
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose th {
+  background: var(--bg-deep);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.blog-meta {
+  margin: 0.85rem 0 0;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+
+.blog-index {
+  max-width: 48rem;
+}
+
+.blog-post-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1.75rem;
+}
+
+.blog-post-card {
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.blog-post-card h2 {
+  margin: 0.35rem 0 0.55rem;
+  font-size: clamp(1.25rem, 2.4vw, 1.55rem);
+  letter-spacing: -0.02em;
+}
+
+.blog-post-card h2 a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.blog-post-card h2 a:hover {
+  color: var(--accent);
+}
+
+.blog-post-card p {
+  margin: 0 0 0.75rem;
+  color: var(--ink-soft);
+}
+
+.text-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-underline-offset: 0.15em;
+}
+
+.blog-prose {
+  max-width: 68ch;
+}
+
+.blog-cta {
+  margin: 2.5rem 0;
+  padding: 1.35rem 1.4rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.blog-cta p {
+  margin: 0 0 1rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.blog-related {
+  margin: 2.5rem 0 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.blog-related h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+}
+
+.blog-related ul {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.blog-related li {
+  margin: 0.4rem 0;
 }
 
 .pill-list {

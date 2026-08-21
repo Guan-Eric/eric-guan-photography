@@ -214,7 +214,7 @@ Case studies, quarterly roundup refreshes, objection posts from support/sales ca
 
 Ship **two per week**. Order is priority within the phase.
 
-**Repo status (2026-08-20):** Phase 1 (P1–P5) and Phase 2 competitor/migration/economics posts (C1–C5, M1–M5, E1–E5) are live in-app at `/blog` and `/blog/{slug}`. Case studies (T1–T2) still wait on external studio proof.
+**Repo status (2026-08-21):** Phase 1 (P1–P5), Phase 2 (C1–C5, M1–M5, E1–E5), and Phase 3 objection/ops (O1–O6) are live in-app at `/blog` and `/blog/{slug}`. Case studies (T1–T2) still wait on external studio proof.
 
 ### Competitor & alternative cluster
 
@@ -255,6 +255,23 @@ Ship **two per week**. Order is priority within the phase.
 
 ---
 
+## 6b. Phase 3 — Objection & ops posts (next ship)
+
+Ship after Phase 2. Same cadence: **1–2/week**. Case studies (T1–T2) stay blocked until you have external studio metrics.
+
+**Repo status:** O1–O6 drafted in-app; T1–T2 still pending proof.
+
+| ID | Title | Slug | Primary keyword | CTA |
+|---|---|---|---|---|
+| O1 | Watermarked Proof Galleries for Real Estate Photos | `watermarked-proof-galleries-real-estate` | watermarked proof gallery real estate | Trial |
+| O2 | How to Price Real Estate Photography Packages | `how-to-price-real-estate-photography-packages` | how to price real estate photography | Pricing |
+| O3 | Multi-Photographer Studio Software Without Chaos | `multi-photographer-studio-software` | multi photographer studio software | Trial |
+| O4 | Real Estate Photography Client Portal Alternatives | `real-estate-photography-client-portal-alternatives` | real estate photography client portal | Trial |
+| O5 | Custom Domain for Your Photography Studio Site | `custom-domain-photography-studio-website` | custom domain photography website | Trial |
+| O6 | Get Paid Faster as a Real Estate Photographer | `get-paid-faster-real-estate-photographer` | get paid faster real estate photographer | Trial |
+
+---
+
 ## 7. Suggested 8-week calendar
 
 | Week | Publish | Notes |
@@ -269,6 +286,14 @@ Ship **two per week**. Order is priority within the phase.
 | 8 | E5, M4 | Unlock education + onboarding |
 
 After week 8: alternate **1 commercial** + **1 trust/ops** post weekly; refresh P3 monthly until rankings stabilize.
+
+### Weeks 9–11 (Phase 3 objection/ops)
+
+| Week | Publish | Notes |
+|---|---|---|
+| 9 | O1, O4 | Proofs + portal alternatives |
+| 10 | O2, O6 | Package pricing + cash collection |
+| 11 | O3, O5 | Team seats + custom domain |
 
 ---
 
@@ -398,3 +423,4 @@ You can call Step 6 operational when:
 |---|---|
 | 2026-08-20 | Initial content & blog plan (pillars, Phase 1–2 titles, 8-week calendar) |
 | 2026-08-20 | Wrote 20 articles + `/blog` routes; case studies still pending |
+| 2026-08-21 | Phase 3 O1–O6 objection/ops posts live; T1–T2 still pending external proof |

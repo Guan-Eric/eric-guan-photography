@@ -61,6 +61,28 @@ export function SignupForm({ inviteEmail }: { inviteEmail?: string | null }) {
         if (!invite && json.hasStudio) {
           const plan = searchParams.get("plan");
           const allowed = plan ? PLAN_PARAMS.includes(plan) : false;
+          if (plan === "lifetime" && allowed) {
+            try {
+              const checkout = await fetch("/api/billing/checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ plan: "lifetime" }),
+              });
+              const checkoutJson = await checkout.json().catch(() => null);
+              if (checkoutJson?.url) {
+                toastSuccess("Opening Lifetime checkout…");
+                window.location.href = checkoutJson.url;
+                return;
+              }
+              if (checkoutJson?.ok && checkoutJson.stubbed) {
+                toastSuccess("Lifetime access unlocked.");
+                window.location.assign("/admin/settings?billing=lifetime");
+                return;
+              }
+            } catch {
+              // Fall through to welcome with plan CTA.
+            }
+          }
           window.location.assign(
             allowed ? `/admin?welcome=1&plan=${plan}` : "/admin?welcome=1",
           );

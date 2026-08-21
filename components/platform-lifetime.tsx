@@ -38,7 +38,7 @@ const FAQ = [
   },
   {
     q: "How do I buy?",
-    a: "Create a studio (or sign in), then complete the one-time Stripe checkout. The deal is limited to the first seats shown on this page.",
+    a: "Create a studio from this page (or sign in), complete Stripe checkout for $199, or open Settings → Subscription and click Buy Lifetime if you already have an account on a trial.",
   },
 ] as const;
 
@@ -72,9 +72,15 @@ export function PlatformLifetime({ offer }: { offer: Offer }) {
               >
                 {ctaLabel}
               </Link>
-              <Link className="btn btn-outline" href="/pricing">
-                Compare monthly plans
-              </Link>
+              {offer.open ? (
+                <Link className="btn btn-outline" href="/admin/settings">
+                  Already have a studio? Buy in Settings
+                </Link>
+              ) : (
+                <Link className="btn btn-outline" href="/pricing">
+                  Compare monthly plans
+                </Link>
+              )}
             </div>
             <p className="muted" style={{ marginTop: "1rem" }}>
               {offer.open

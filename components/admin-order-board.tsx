@@ -112,6 +112,8 @@ export function AdminOrderBoard({
   siteUrl,
   welcome = false,
   plan = null,
+  lifetimeOfferOpen = false,
+  lifetimePriceUsd = 199,
 }: {
   initialOrders: Order[];
   initialGalleries: GallerySummary[];
@@ -119,6 +121,8 @@ export function AdminOrderBoard({
   siteUrl: string;
   welcome?: boolean;
   plan?: string | null;
+  lifetimeOfferOpen?: boolean;
+  lifetimePriceUsd?: number;
 }) {
   const router = useRouter();
   const [orders, setOrders] = useState(initialOrders);
@@ -572,6 +576,8 @@ export function AdminOrderBoard({
         bookingUrl={bookingUrl}
         welcome={welcome}
         plan={plan}
+        lifetimeOfferOpen={lifetimeOfferOpen}
+        lifetimePriceUsd={lifetimePriceUsd}
       />
 
       {error ? <p className="form-error">{error}</p> : null}

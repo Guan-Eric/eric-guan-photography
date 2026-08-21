@@ -31,32 +31,41 @@ export function AdminGettingStarted({
   bookingUrl,
   welcome = false,
   plan = null,
+  lifetimeOfferOpen = false,
+  lifetimePriceUsd = 199,
 }: {
   bookingUrl: string;
   welcome?: boolean;
   plan?: string | null;
+  lifetimeOfferOpen?: boolean;
+  lifetimePriceUsd?: number;
 }) {
   const [hidden, setHidden] = useState(false);
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
-  const showPlanCheckout =
+  const checkoutPlan =
     plan === "payg" ||
     plan === "starter" ||
     plan === "growth" ||
     plan === "studio" ||
-    plan === "lifetime";
+    plan === "lifetime"
+      ? plan
+      : lifetimeOfferOpen
+        ? "lifetime"
+        : null;
+  const showPlanCheckout = Boolean(checkoutPlan);
 
   if (hidden || !welcome) return null;
 
   async function startCheckout() {
-    if (!showPlanCheckout || !plan) return;
+    if (!checkoutPlan) return;
     setBillingBusy(true);
     setBillingError(null);
     try {
       const response = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan: checkoutPlan }),
       });
       const json = await response.json();
       if (!json.ok) {
@@ -72,15 +81,19 @@ export function AdminGettingStarted({
       }
       if (json.stubbed) {
         toastSuccess(
-          plan === "lifetime"
+          checkoutPlan === "lifetime"
             ? "Lifetime access unlocked (local billing stub)."
             : "Plan activated (local billing stub).",
         );
-        window.location.assign("/admin/settings?billing=success");
+        window.location.assign(
+          checkoutPlan === "lifetime"
+            ? "/admin/settings?billing=lifetime"
+            : "/admin/settings?billing=success",
+        );
         return;
       }
       const fallback =
-        "Billing is not configured yet — you can start your trial from Settings.";
+        "Billing is not configured yet — you can buy Lifetime from Settings.";
       setBillingError(fallback);
       toastError(fallback);
     } catch {
@@ -97,7 +110,11 @@ export function AdminGettingStarted({
         <div>
           <p className="eyebrow">Welcome</p>
           <h2>Get your studio ready</h2>
-          <p>Four quick steps before you send agents to book.</p>
+          <p>
+            {checkoutPlan === "lifetime"
+              ? "Lock in Lifetime Starter, then finish these setup steps."
+              : "Four quick steps before you send agents to book."}
+          </p>
         </div>
         <button type="button" className="text-link" onClick={() => setHidden(true)}>
           Dismiss
@@ -114,22 +131,32 @@ export function AdminGettingStarted({
         ))}
       </ol>
       <div className="admin-getting-started-actions">
-        <a className="btn btn-solid" href={bookingUrl} target="_blank" rel="noreferrer">
-          Preview booking page
-        </a>
         {showPlanCheckout ? (
           <button
             type="button"
-            className={`btn btn-outline${billingBusy ? " is-busy" : ""}`}
+            className={`btn btn-solid${billingBusy ? " is-busy" : ""}`}
             disabled={billingBusy}
             onClick={() => void startCheckout()}
           >
             {billingBusy
               ? "Opening…"
-              : plan === "lifetime"
-                ? "Continue with Lifetime checkout"
-                : `Continue with ${plan} plan`}
+              : checkoutPlan === "lifetime"
+                ? `Buy Lifetime — $${lifetimePriceUsd}`
+                : `Continue with ${checkoutPlan} plan`}
           </button>
+        ) : null}
+        <a
+          className={showPlanCheckout ? "btn btn-outline" : "btn btn-solid"}
+          href={bookingUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Preview booking page
+        </a>
+        {checkoutPlan === "lifetime" ? (
+          <Link className="btn btn-outline" href="/admin/settings">
+            Or buy from Settings
+          </Link>
         ) : null}
       </div>
       {billingError ? <p className="form-error">{billingError}</p> : null}

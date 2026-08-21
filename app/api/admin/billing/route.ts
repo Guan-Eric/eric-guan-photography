@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
-import { billingSummary } from "@/lib/billing";
+import { billingSummary, lifetimeOfferStatus } from "@/lib/billing";
 import { countBillableDomains } from "@/lib/domain-billing";
 import { getOrCreatePhotographerReferralCode } from "@/lib/referrals";
 import { getTenantRow } from "@/lib/tenant-store";
@@ -29,9 +29,17 @@ export async function GET() {
     // Avoid breaking Settings if referral tables are mid-migration.
     console.warn("[billing] referral lookup failed:", error);
   }
+  const lifetimeOffer = await lifetimeOfferStatus();
   return NextResponse.json({
     ok: true,
     ...billingSummary(row, { activeDomains }),
     referralCode,
+    lifetimeOffer: {
+      open: lifetimeOffer.open,
+      remaining: lifetimeOffer.remaining,
+      priceUsd: lifetimeOffer.priceUsd,
+      listingQuota: lifetimeOffer.listingQuota,
+      seats: lifetimeOffer.seats,
+    },
   });
 }

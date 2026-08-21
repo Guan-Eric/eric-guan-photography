@@ -2789,6 +2789,28 @@ span.status-select--locked {
   gap: 0.65rem;
 }
 
+.ltd-settings-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1.1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+
+.ltd-settings-offer h3 {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.ltd-settings-offer .muted {
+  margin: 0;
+  max-width: 36rem;
+}
+
 .usage-meter {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));

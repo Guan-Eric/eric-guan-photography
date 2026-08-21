@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AdminOrderBoard } from "@/components/admin-order-board";
 import { getPhotographerSession } from "@/lib/auth";
+import { lifetimeOfferStatus } from "@/lib/billing";
 import { listGallerySummaries } from "@/lib/galleries";
 import { listOrders } from "@/lib/orders";
 import { publicStudioUrl } from "@/lib/platform";
@@ -31,6 +32,7 @@ export default async function AdminPage({
   });
   const orders = await listOrders(tenant.id);
   const galleries = await listGallerySummaries(tenant.id);
+  const lifetimeOffer = await lifetimeOfferStatus();
 
   return (
     <AdminOrderBoard
@@ -40,6 +42,8 @@ export default async function AdminPage({
       siteUrl={siteUrl}
       welcome={query.welcome === "1" || orders.length === 0}
       plan={query.plan ?? null}
+      lifetimeOfferOpen={lifetimeOffer.open}
+      lifetimePriceUsd={lifetimeOffer.priceUsd}
     />
   );
 }

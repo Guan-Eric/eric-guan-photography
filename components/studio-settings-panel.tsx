@@ -61,6 +61,13 @@ type BillingState = {
   };
   projectedMonthlyUsd: number;
   referralCode: string | null;
+  lifetimeOffer?: {
+    open: boolean;
+    remaining: number;
+    priceUsd: number;
+    listingQuota: number;
+    seats: number;
+  } | null;
 };
 
 const PLAN_CHOICES = (
@@ -101,6 +108,7 @@ export function StudioSettingsPanel() {
     | "domain"
     | "domainCheck"
     | "checkout"
+    | "lifetime"
     | "portal"
     | "invite"
     | `remove-invite:${string}`
@@ -274,8 +282,8 @@ export function StudioSettingsPanel() {
     return () => window.clearInterval(timer);
   }, [state?.domain, state?.domainLive, state?.domainStatus]);
 
-  async function checkout(plan: PlanChoice) {
-    setBusy("checkout");
+  async function checkout(plan: PlanChoice | "lifetime") {
+    setBusy(plan === "lifetime" ? "lifetime" : "checkout");
     setError(null);
     setMessage(null);
     try {
@@ -294,8 +302,20 @@ export function StudioSettingsPanel() {
         window.location.href = json.url;
         return;
       }
-      setMessage(json.stubbed ? `Local plan set to ${plan}.` : "Checkout started.");
-      toastSuccess(json.stubbed ? `Local plan set to ${plan}.` : "Opening checkout…");
+      setMessage(
+        json.stubbed
+          ? plan === "lifetime"
+            ? "Lifetime access unlocked (local billing stub)."
+            : `Local plan set to ${plan}.`
+          : "Checkout started.",
+      );
+      toastSuccess(
+        json.stubbed
+          ? plan === "lifetime"
+            ? "Lifetime unlocked."
+            : `Local plan set to ${plan}.`
+          : "Opening checkout…",
+      );
       await load();
     } finally {
       setBusy(null);
@@ -482,6 +502,30 @@ export function StudioSettingsPanel() {
             Lifetime Starter has no listing overages. When you hit the annual
             cap, upgrade below or wait for the next calendar year.
           </p>
+        ) : null}
+
+        {billing && !billing.isLifetime && billing.lifetimeOffer?.open ? (
+          <div className="ltd-settings-offer">
+            <div>
+              <p className="eyebrow">Limited offer</p>
+              <h3>Lifetime Starter — {usd(billing.lifetimeOffer.priceUsd)} once</h3>
+              <p className="muted">
+                {billing.lifetimeOffer.listingQuota} listings/year ·{" "}
+                {billing.lifetimeOffer.seats} seat · subdomain · no monthly rent.{" "}
+                {billing.lifetimeOffer.remaining} seats left.
+              </p>
+            </div>
+            <button
+              type="button"
+              className={`btn btn-solid${busy === "lifetime" ? " is-busy" : ""}`}
+              disabled={busy !== null}
+              onClick={() => void checkout("lifetime")}
+            >
+              {busy === "lifetime"
+                ? "Opening checkout…"
+                : `Buy Lifetime — ${usd(billing.lifetimeOffer.priceUsd)}`}
+            </button>
+          </div>
         ) : null}
 
         {billing ? (

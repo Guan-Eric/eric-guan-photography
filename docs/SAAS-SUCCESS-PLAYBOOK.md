@@ -201,10 +201,12 @@ Before marketplace fees and broad exposure, sell directly where photographers al
 
 ### Private LTD sales kit (create once, reuse)
 
+**Full step-by-step copy + channels:** [`docs/LTD-PRIVATE-SALES.md`](./LTD-PRIVATE-SALES.md)
+
 - 60-second Loom: book → deliver → agent pays in gallery
-- One-pager PDF: wedge vs Aryeo (price, friction, ownership)
-- FAQ: caps, lifetime definition, migration, Connect onboarding
-- Checkout link + calendar for onboarding calls
+- One-pager facts: wedge vs Aryeo (price, friction, ownership)
+- FAQ: caps, lifetime definition, migration, Connect onboarding (on `/lifetime`)
+- Checkout link: `/signup?plan=lifetime`
 - Objection scripts: “I already pay Aryeo” / “agents won’t change” / “I need X feature”
 
 ### Revenue target

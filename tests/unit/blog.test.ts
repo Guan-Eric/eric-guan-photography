@@ -28,7 +28,8 @@ describe("blogPosts", () => {
   it("registers unique slugs for every planned article", () => {
     const slugs = blogPosts.map((post) => post.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
-    expect(slugs.length).toBe(20);
+    expect(slugs.length).toBe(26);
     expect(getBlogPost("aryeo-alternative")?.title).toMatch(/Aryeo Alternative/);
+    expect(getBlogPost("get-paid-faster-real-estate-photographer")).toBeTruthy();
   });
 });

@@ -103,6 +103,13 @@ const checks = [
       : "optional; without it /lifetime checkout cannot start",
   ),
   check(
+    "AppSumo Licensing (API_KEY + CLIENT_ID + CLIENT_SECRET)",
+    present("APPSUMO_API_KEY", "APPSUMO_CLIENT_ID", "APPSUMO_CLIENT_SECRET"),
+    present("APPSUMO_API_KEY", "APPSUMO_CLIENT_ID", "APPSUMO_CLIENT_SECRET")
+      ? undefined
+      : "optional until the AppSumo listing goes live; set APPSUMO_REDIRECT_URI to match the Partner Portal",
+  ),
+  check(
     "Address lookup (GOOGLE_PLACES_API_KEY)",
     present("GOOGLE_PLACES_API_KEY"),
     present("GOOGLE_PLACES_API_KEY")

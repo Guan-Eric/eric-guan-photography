@@ -106,6 +106,9 @@ npx wrangler secret put STRIPE_PRICE_PAYG_BASE
 npx wrangler secret put STRIPE_PRICE_PAYG_LISTING
 npx wrangler secret put STRIPE_PRICE_OVERAGE_LISTING
 npx wrangler secret put STRIPE_PRICE_DOMAIN_ADDON
+npx wrangler secret put APPSUMO_API_KEY
+npx wrangler secret put APPSUMO_CLIENT_ID
+npx wrangler secret put APPSUMO_CLIENT_SECRET
 npx wrangler secret put GOOGLE_PLACES_API_KEY
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put CRON_SECRET

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getLicenseByTenantId, maskLicenseKey } from "@/lib/appsumo";
 import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
 import { billingSummary, lifetimeOfferStatus } from "@/lib/billing";
 import { countBillableDomains } from "@/lib/domain-billing";
@@ -30,10 +31,19 @@ export async function GET() {
     console.warn("[billing] referral lookup failed:", error);
   }
   const lifetimeOffer = await lifetimeOfferStatus();
+  const appsumo = await getLicenseByTenantId(row.id);
   return NextResponse.json({
     ok: true,
     ...billingSummary(row, { activeDomains }),
     referralCode,
+    appsumoLicense: appsumo
+      ? {
+          maskedKey: maskLicenseKey(appsumo.licenseKey),
+          licenseKey: appsumo.licenseKey,
+          tier: appsumo.tier,
+          status: appsumo.status,
+        }
+      : null,
     lifetimeOffer: {
       open: lifetimeOffer.open,
       remaining: lifetimeOffer.remaining,

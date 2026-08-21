@@ -11,14 +11,27 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const params = await searchParams;
   const session = await getPhotographerSession();
-  if (!session) redirect("/signup");
-  if (session.memberships.length > 0) redirect("/admin");
+  if (!session) {
+    const next = params.next?.startsWith("/") ? params.next : null;
+    redirect(next ? `/signup?next=${encodeURIComponent(next)}` : "/signup");
+  }
+  // redirect() never returns; narrow for TypeScript.
+  const active = session!;
+  if (active.memberships.length > 0) {
+    const next = params.next?.startsWith("/") ? params.next : null;
+    redirect(next ?? "/admin");
+  }
 
   return (
     <AuthShell line="Your name on the site. Agents never create an account.">
-      <OnboardingForm defaultName={session.user.name} />
+      <OnboardingForm defaultName={active.user.name} />
     </AuthShell>
   );
 }

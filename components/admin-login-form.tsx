@@ -4,9 +4,16 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toastError, toastSuccess } from "@/lib/toast";
 
+function safeNext(raw: string | null) {
+  if (!raw) return null;
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("://")) return null;
+  return raw;
+}
+
 export function AdminLoginForm({ inviteEmail }: { inviteEmail?: string | null }) {
   const searchParams = useSearchParams();
   const invite = searchParams.get("invite");
+  const next = safeNext(searchParams.get("next"));
   const [email, setEmail] = useState(inviteEmail ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +42,12 @@ export function AdminLoginForm({ inviteEmail }: { inviteEmail?: string | null })
         window.location.assign(`/invite/${encodeURIComponent(invite)}`);
         return;
       }
+      if (next) {
+        window.location.assign(
+          json.hasStudio ? next : `/onboarding?next=${encodeURIComponent(next)}`,
+        );
+        return;
+      }
       window.location.assign(json.hasStudio ? "/admin" : "/onboarding");
     } catch {
       setError("Network error.");
@@ -45,7 +58,9 @@ export function AdminLoginForm({ inviteEmail }: { inviteEmail?: string | null })
 
   const signupHref = invite
     ? `/signup?invite=${encodeURIComponent(invite)}`
-    : "/signup";
+    : next
+      ? `/signup?next=${encodeURIComponent(next)}`
+      : "/signup";
 
   return (
     <form className="auth-form" onSubmit={onSubmit}>

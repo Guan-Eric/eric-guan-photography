@@ -473,6 +473,31 @@ export const testimonials = sqliteTable("testimonials", {
   createdAt: text("created_at").notNull(),
 });
 
+/** AppSumo Licensing API v2 — keys owned by AppSumo, linked to a studio on activate. */
+export const APPSUMO_LICENSE_STATUSES = [
+  "inactive",
+  "active",
+  "deactivated",
+] as const;
+export type AppsumoLicenseStatus = (typeof APPSUMO_LICENSE_STATUSES)[number];
+
+export const appsumoLicenses = sqliteTable("appsumo_licenses", {
+  id: text("id").primaryKey(),
+  licenseKey: text("license_key").notNull(),
+  prevLicenseKey: text("prev_license_key"),
+  tier: integer("tier").notNull().default(1),
+  status: text("status")
+    .$type<AppsumoLicenseStatus>()
+    .notNull()
+    .default("inactive"),
+  tenantId: text("tenant_id"),
+  userId: text("user_id"),
+  partnerPlanName: text("partner_plan_name"),
+  eventTimestamp: text("event_timestamp"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export type TenantRow = typeof tenants.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type BillingEvent = typeof billingEvents.$inferSelect;
@@ -486,3 +511,4 @@ export type ReferralCredit = typeof referralCredits.$inferSelect;
 
 export type ReviewRequest = typeof reviewRequests.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
+export type AppsumoLicense = typeof appsumoLicenses.$inferSelect;

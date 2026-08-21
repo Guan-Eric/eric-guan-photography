@@ -61,6 +61,12 @@ type BillingState = {
   };
   projectedMonthlyUsd: number;
   referralCode: string | null;
+  appsumoLicense?: {
+    maskedKey: string;
+    licenseKey: string;
+    tier: number;
+    status: string;
+  } | null;
   lifetimeOffer?: {
     open: boolean;
     remaining: number;
@@ -502,6 +508,31 @@ export function StudioSettingsPanel() {
             Lifetime Starter has no listing overages. When you hit the annual
             cap, upgrade below or wait for the next calendar year.
           </p>
+        ) : null}
+
+        {billing?.appsumoLicense ? (
+          <div className="ltd-settings-offer" style={{ marginTop: "1rem" }}>
+            <div>
+              <p className="eyebrow">AppSumo</p>
+              <h3>License {billing.appsumoLicense.maskedKey}</h3>
+              <p className="muted">
+                Tier {billing.appsumoLicense.tier} · {billing.appsumoLicense.status}
+                . Keep this key for support.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(billing.appsumoLicense!.licenseKey)
+                  .then(() => toastSuccess("License key copied."))
+                  .catch(() => toastError("Could not copy license key."));
+              }}
+            >
+              Copy key
+            </button>
+          </div>
         ) : null}
 
         {billing && !billing.isLifetime && billing.lifetimeOffer?.open ? (

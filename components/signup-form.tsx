@@ -8,11 +8,18 @@ import { toastError, toastSuccess } from "@/lib/toast";
 /** Kept local so the client bundle never pulls in the Drizzle schema. */
 const PLAN_PARAMS = ["payg", "starter", "growth", "studio", "lifetime"];
 
+function safeNext(raw: string | null) {
+  if (!raw) return null;
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("://")) return null;
+  return raw;
+}
+
 export function SignupForm({ inviteEmail }: { inviteEmail?: string | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invite = searchParams.get("invite");
   const ref = searchParams.get("ref");
+  const next = safeNext(searchParams.get("next"));
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [studioName, setStudioName] = useState("");
@@ -59,6 +66,10 @@ export function SignupForm({ inviteEmail }: { inviteEmail?: string | null }) {
       toastSuccess(invite ? "Joined the studio." : "Account created.");
       if (invite || json.hasStudio) {
         if (!invite && json.hasStudio) {
+          if (next) {
+            window.location.assign(next);
+            return;
+          }
           const plan = searchParams.get("plan");
           const allowed = plan ? PLAN_PARAMS.includes(plan) : false;
           if (plan === "lifetime" && allowed) {
@@ -88,10 +99,12 @@ export function SignupForm({ inviteEmail }: { inviteEmail?: string | null }) {
           );
           return;
         }
-        window.location.assign("/admin");
+        window.location.assign(next ?? "/admin");
         return;
       }
-      router.push("/onboarding");
+      router.push(
+        next ? `/onboarding?next=${encodeURIComponent(next)}` : "/onboarding",
+      );
       router.refresh();
     } catch {
       setError("Network error.");
@@ -103,7 +116,9 @@ export function SignupForm({ inviteEmail }: { inviteEmail?: string | null }) {
 
   const loginHref = invite
     ? `/login?invite=${encodeURIComponent(invite)}`
-    : "/login";
+    : next
+      ? `/login?next=${encodeURIComponent(next)}`
+      : "/login";
 
   return (
     <form className="auth-form" onSubmit={onSubmit}>

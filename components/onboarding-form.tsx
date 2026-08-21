@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { CurrencySelect } from "@/components/currency-select";
 import { TimezoneSelect } from "@/components/timezone-select";
@@ -8,8 +8,16 @@ import { DEFAULT_STUDIO_CURRENCY } from "@/lib/currency";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { DEFAULT_STUDIO_TIMEZONE } from "@/lib/timezones";
 
+function safeNext(raw: string | null) {
+  if (!raw) return null;
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("://")) return null;
+  return raw;
+}
+
 export function OnboardingForm({ defaultName }: { defaultName: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
   const [studioName, setStudioName] = useState("");
   const [photographerName, setPhotographerName] = useState(defaultName);
   const [slug, setSlug] = useState("");
@@ -42,7 +50,7 @@ export function OnboardingForm({ defaultName }: { defaultName: string }) {
         return;
       }
       toastSuccess("Studio created.");
-      router.push("/admin");
+      router.push(next ?? "/admin");
       router.refresh();
     } catch {
       setError("Network error.");

@@ -323,6 +323,20 @@ CREATE TABLE IF NOT EXISTS testimonials (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS appsumo_licenses (
+  id TEXT PRIMARY KEY NOT NULL,
+  license_key TEXT NOT NULL,
+  prev_license_key TEXT,
+  tier INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'inactive',
+  tenant_id TEXT,
+  user_id TEXT,
+  partner_plan_name TEXT,
+  event_timestamp TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_idx ON users(email);
 CREATE UNIQUE INDEX IF NOT EXISTS tenants_slug_idx ON tenants(slug);
 CREATE UNIQUE INDEX IF NOT EXISTS memberships_user_tenant_idx ON memberships(user_id, tenant_id);
@@ -349,3 +363,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_code_idx ON referral_codes(code
 CREATE INDEX IF NOT EXISTS referral_credits_referrer_idx ON referral_credits(referrer_user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS review_requests_token_idx ON review_requests(token);
 CREATE INDEX IF NOT EXISTS testimonials_tenant_idx ON testimonials(tenant_id, approved_at);
+CREATE UNIQUE INDEX IF NOT EXISTS appsumo_licenses_key_idx ON appsumo_licenses(license_key);
+CREATE INDEX IF NOT EXISTS appsumo_licenses_tenant_idx ON appsumo_licenses(tenant_id);

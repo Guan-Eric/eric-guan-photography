@@ -67,6 +67,7 @@ jobs:
           STRIPE_PRICE_PAYG_LISTING: price_ci_payg_listing
           STRIPE_PRICE_OVERAGE_LISTING: price_ci_overage
           STRIPE_PRICE_DOMAIN_ADDON: price_ci_domain
+          STRIPE_PRICE_LIFETIME: price_ci_lifetime
           CRON_SECRET: ci-cron-secret
           RESEND_API_KEY: re_ci_placeholder
           CLOUDFLARE_R2_ACCOUNT_ID: ci

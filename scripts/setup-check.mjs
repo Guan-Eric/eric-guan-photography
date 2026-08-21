@@ -161,7 +161,8 @@ for (const item of checks) {
   const isOptional =
     (item.label.startsWith("Custom domains") ||
       item.label.startsWith("Google Calendar") ||
-      item.label.startsWith("Address lookup")) &&
+      item.label.startsWith("Address lookup") ||
+      item.label.startsWith("Lifetime deal price")) &&
     !item.ok;
   if (!item.ok && !isOptional) failed += 1;
   const displayMark = isOptional ? "WARN" : mark;

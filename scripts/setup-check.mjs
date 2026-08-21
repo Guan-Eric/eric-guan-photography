@@ -164,13 +164,10 @@ const checks = [
 let failed = 0;
 for (const item of checks) {
   const mark = item.ok ? "PASS" : "FAIL";
-  // Custom domains are optional — warn only
+  // Detail starting with "optional" → WARN (does not fail CI). Includes AppSumo,
+  // Places, Calendar, Lifetime, PAYG, overage, domain add-on, custom domains, etc.
   const isOptional =
-    (item.label.startsWith("Custom domains") ||
-      item.label.startsWith("Google Calendar") ||
-      item.label.startsWith("Address lookup") ||
-      item.label.startsWith("Lifetime deal price")) &&
-    !item.ok;
+    !item.ok && Boolean(item.detail?.toLowerCase().startsWith("optional"));
   if (!item.ok && !isOptional) failed += 1;
   const displayMark = isOptional ? "WARN" : mark;
   const suffix = item.detail ? ` — ${item.detail}` : "";

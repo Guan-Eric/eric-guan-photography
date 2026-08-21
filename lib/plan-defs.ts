@@ -65,7 +65,34 @@ export const PLAN_DEFS: Record<PlanId, PlanDef> = {
     envMeteredPrice: "STRIPE_PRICE_OVERAGE_LISTING",
     meteredUsd: 3,
   },
+  /** One-time Lifetime Starter — hard-capped, no overage meter. */
+  lifetime: {
+    label: "Lifetime Starter",
+    monthlyUsd: 0,
+    listingQuota: 125,
+    seats: 1,
+    storageBytes: 21_474_836_480,
+    envPrice: "STRIPE_PRICE_LIFETIME",
+    envMeteredPrice: "",
+    meteredUsd: 0,
+  },
 };
+
+/** Public LTD offer price (USD). Must match the Stripe one-time price. */
+export const LIFETIME_USD = 199;
+
+/** Max Lifetime seats sold (scarcity). Override with LTD_SEAT_CAP. */
+export function lifetimeSeatCap() {
+  const raw = Number(process.env.LTD_SEAT_CAP ?? 100);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 100;
+}
+
+/** Kill switch — set LTD_ENABLED=0 to close the offer. */
+export function lifetimeOfferEnabled() {
+  const raw = process.env.LTD_ENABLED?.trim().toLowerCase();
+  if (raw === "0" || raw === "false" || raw === "off") return false;
+  return true;
+}
 
 /** Per-month price for each active custom hostname on a studio. */
 export const DOMAIN_ADDON_USD = 5;

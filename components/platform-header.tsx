@@ -54,6 +54,9 @@ export function PlatformHeader({ solid = false }: { solid?: boolean }) {
         <Link href="/pricing" onClick={() => setMenuOpen(false)}>
           Pricing
         </Link>
+        <Link href="/lifetime" onClick={() => setMenuOpen(false)}>
+          Lifetime
+        </Link>
         <Link href="/blog" onClick={() => setMenuOpen(false)}>
           Blog
         </Link>

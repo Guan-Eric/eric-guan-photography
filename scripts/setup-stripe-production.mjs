@@ -204,6 +204,32 @@ async function ensureRecurringPrice(productId, unitAmount, nickname, key) {
   return price.id;
 }
 
+async function ensureOneTimePrice(productId, unitAmount, nickname, key) {
+  if (env[key]) {
+    try {
+      const p = await stripe("GET", `/prices/${env[key]}`);
+      if (p?.id && p.active) {
+        console.log(`PRICE_KEEP=${key}=${p.id}`);
+        return p.id;
+      }
+    } catch {
+      /* recreate */
+    }
+  }
+  const price = await stripe(
+    "POST",
+    "/prices",
+    form({
+      product: productId,
+      currency: "usd",
+      unit_amount: String(unitAmount),
+      nickname,
+    }),
+  );
+  console.log(`PRICE_NEW=${key}=${price.id}`);
+  return price.id;
+}
+
 async function ensureMeteredPrice(productId, unitAmount, nickname, meterId, key) {
   if (env[key]) {
     try {
@@ -311,6 +337,14 @@ Object.assign(ids, {
     "STRIPE_PRICE_DOMAIN_ADDON",
   ),
 });
+
+const lifetimeProduct = await ensureProduct("Lifetime Starter");
+ids.STRIPE_PRICE_LIFETIME = await ensureOneTimePrice(
+  lifetimeProduct.id,
+  19900,
+  "Lifetime Starter $199",
+  "STRIPE_PRICE_LIFETIME",
+);
 
 // --- Webhook ---
 let webhookSecret = env.STRIPE_WEBHOOK_SECRET?.trim() ?? "";

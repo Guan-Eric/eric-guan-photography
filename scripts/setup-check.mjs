@@ -96,6 +96,13 @@ const checks = [
       : "optional; without it custom domains are not billed per domain",
   ),
   check(
+    "Lifetime deal price (STRIPE_PRICE_LIFETIME)",
+    present("STRIPE_PRICE_LIFETIME"),
+    present("STRIPE_PRICE_LIFETIME")
+      ? undefined
+      : "optional; without it /lifetime checkout cannot start",
+  ),
+  check(
     "Address lookup (GOOGLE_PLACES_API_KEY)",
     present("GOOGLE_PLACES_API_KEY"),
     present("GOOGLE_PLACES_API_KEY")

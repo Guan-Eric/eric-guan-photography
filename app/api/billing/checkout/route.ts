@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getPhotographerSession } from "@/lib/auth";
 import { requireStudioOwner } from "@/lib/admin-guards";
-import { createSubscriptionCheckout } from "@/lib/billing";
-import { isPurchasablePlan } from "@/lib/db/schema";
+import { createLifetimeCheckout, createSubscriptionCheckout } from "@/lib/billing";
+import { isLifetimePlan, isPurchasablePlan } from "@/lib/db/schema";
 import { requestPublicOrigin } from "@/lib/platform";
 
 export const runtime = "nodejs";
@@ -19,14 +19,28 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const plan = typeof body?.plan === "string" ? body.plan : "";
+  const origin = requestPublicOrigin(request);
+
+  if (isLifetimePlan(plan)) {
+    const result = await createLifetimeCheckout({
+      tenantId: session.activeTenantId,
+      email: session.user.email,
+      successUrl: `${origin}/admin/settings?billing=lifetime`,
+      cancelUrl: `${origin}/lifetime?billing=cancelled`,
+    });
+    if (!result.ok) {
+      return NextResponse.json(result, { status: 400 });
+    }
+    return NextResponse.json(result);
+  }
+
   if (!isPurchasablePlan(plan)) {
     return NextResponse.json(
-      { ok: false, error: "Choose Pay as you go, Starter, Growth, or Studio." },
+      { ok: false, error: "Choose Pay as you go, Starter, Growth, Studio, or Lifetime." },
       { status: 400 },
     );
   }
 
-  const origin = requestPublicOrigin(request);
   const result = await createSubscriptionCheckout({
     tenantId: session.activeTenantId,
     plan,

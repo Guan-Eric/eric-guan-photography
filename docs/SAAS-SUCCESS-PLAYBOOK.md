@@ -132,17 +132,25 @@ LTDs create early capital and a cohort of users who are invested enough to compl
 | Support expectation | Same product path as subscribers; no custom one-off builds |
 | Legal | Clear “lifetime = while product operates” language; no unlimited SLA promises |
 
-### Suggested LTD SKU (v1 draft)
+### Suggested LTD SKU (v1)
 
+- **Price:** $199 one-time (`STRIPE_PRICE_LIFETIME`)
 - Lifetime Starter rights: booking + galleries + subdomain
-- Cap: e.g. 125 listings/year (or lower for LTD cohort)
-- 1 seat
-- No custom domain (upsell later to Growth subscription)
-- Grandfathered only within those caps; overages → PAYG or plan upgrade
+- Cap: **125 listings/year** (hard block — no overage meter)
+- **1 seat**, 20 GB storage
+- No custom domain / property pages (upsell to Growth/Studio)
+- Scarcity: first **100** seats (`LTD_SEAT_CAP`), kill switch `LTD_ENABLED=0`
+- Public page: `/lifetime` (alias `/ltd`)
+- Checkout: signup → welcome → one-time Stripe payment → `plan=lifetime`
 
 ### Exit criteria
 
-Public LTD offer page + checkout path ready, caps enforced in billing/quotas, and a written FAQ so sales DMs stay consistent.
+- [x] Public LTD offer page + FAQ (`/lifetime`)
+- [x] Checkout path ready (`POST /api/billing/checkout` with `plan=lifetime`)
+- [x] Caps enforced in billing/quotas (empty metered price → hard block)
+- [x] Written FAQ on the offer page for sales DMs
+- [ ] Provision live Stripe one-time price + sync Worker secret (`npm run setup:stripe:production`)
+- [ ] Deploy and smoke-test a test-mode purchase before private sales (Step 5)
 
 ---
 

@@ -48,7 +48,18 @@ export async function POST(request: Request) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
-    if (session.metadata?.kind === "listing_domain" && session.metadata.listingPageId && session.metadata.tenantId) {
+    if (session.metadata?.kind === "lifetime" && session.metadata.tenantId) {
+      const { applyLifetimePurchase } = await import("@/lib/billing");
+      const customerId =
+        typeof session.customer === "string"
+          ? session.customer
+          : session.customer?.id ?? null;
+      await applyLifetimePurchase({
+        tenantId: session.metadata.tenantId,
+        customerId,
+        sessionId: typeof session.id === "string" ? session.id : null,
+      });
+    } else if (session.metadata?.kind === "listing_domain" && session.metadata.listingPageId && session.metadata.tenantId) {
       const { markListingDomainPaid } = await import("@/lib/listing-domains");
       await markListingDomainPaid({
         listingPageId: session.metadata.listingPageId,

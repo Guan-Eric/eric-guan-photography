@@ -34,6 +34,7 @@ type BillingState = {
   plan: string;
   planLabel: string;
   monthlyUsd: number;
+  isLifetime?: boolean;
   subscriptionStatus: string;
   trialEndsAt: string | null;
   listingQuotaAnnual: number;
@@ -457,19 +458,31 @@ export function StudioSettingsPanel() {
           {billing ? (
             <>
               {billing.planLabel}
-              {billing.subscriptionStatus === "trialing" && trialLabel
-                ? ` · trial through ${trialLabel}`
-                : ` · ${billing.subscriptionStatus}`}
+              {billing.isLifetime
+                ? " · lifetime access (hard caps)"
+                : billing.subscriptionStatus === "trialing" && trialLabel
+                  ? ` · trial through ${trialLabel}`
+                  : ` · ${billing.subscriptionStatus}`}
               <br />
               {billing.plan === "payg"
                 ? `${billing.listingsUsedYear} listings this year · billed per listing`
                 : `${billing.listingsUsedYear} of ${billing.listingQuotaAnnual} listings this year`}{" "}
               · {billing.seatsQuota} {billing.seatsQuota === 1 ? "seat" : "seats"}
+              {billing.isLifetime
+                ? " · upgrade to Growth/Studio when you outgrow Lifetime"
+                : null}
             </>
           ) : (
             "Loading…"
           )}
         </p>
+
+        {billing?.isLifetime ? (
+          <p className="field-hint">
+            Lifetime Starter has no listing overages. When you hit the annual
+            cap, upgrade below or wait for the next calendar year.
+          </p>
+        ) : null}
 
         {billing ? (
           <dl className="usage-meter">

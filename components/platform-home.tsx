@@ -52,8 +52,8 @@ export function PlatformHome() {
               <Link className="btn btn-primary" href="/signup">
                 Start 14-day trial
               </Link>
-              <Link className="btn btn-ghost" href="/pricing">
-                See plans
+              <Link className="btn btn-ghost" href="/lifetime">
+                Lifetime deal
               </Link>
             </div>
           </div>

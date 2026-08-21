@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
  * Host routing (Edge Middleware — required by OpenNext Cloudflare).
  * Next.js 16 prefers `proxy.ts` (Node), but Workers still need Edge middleware.
  *
- * - localhost / apex → SaaS marketing (rewrite / and /pricing to /saas)
+ * - localhost / apex → SaaS marketing (rewrite /, /pricing, /lifetime to /saas)
  * - {slug}.localhost → photographer studio
  *
  * Keep this file free of app/lib imports so the edge bundle stays isolated.
@@ -28,13 +28,21 @@ export function middleware(request: NextRequest) {
     hostname === "::1" ||
     hostname === "[::1]";
 
+  function saasRewrite(path: string) {
+    if (path === "/") return "/saas";
+    if (path === "/pricing") return "/saas/pricing";
+    if (path === "/lifetime" || path === "/ltd") return "/saas/lifetime";
+    return null;
+  }
+
   if (isMultipart) {
     // Admin uploads auth via session cookie; skip header rewrite to preserve body.
     if (isApex) {
       const path = request.nextUrl.pathname;
-      if (path === "/" || path === "/pricing") {
+      const rewritten = saasRewrite(path);
+      if (rewritten) {
         const url = request.nextUrl.clone();
-        url.pathname = path === "/" ? "/saas" : "/saas/pricing";
+        url.pathname = rewritten;
         return NextResponse.rewrite(url);
       }
     }
@@ -54,9 +62,10 @@ export function middleware(request: NextRequest) {
   if (isApex) {
     requestHeaders.set("x-platform-host", "1");
     const path = request.nextUrl.pathname;
-    if (path === "/" || path === "/pricing") {
+    const rewritten = saasRewrite(path);
+    if (rewritten) {
       const url = request.nextUrl.clone();
-      url.pathname = path === "/" ? "/saas" : "/saas/pricing";
+      url.pathname = rewritten;
       return NextResponse.rewrite(url, requestInit);
     }
     return NextResponse.next(requestInit);

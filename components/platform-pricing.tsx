@@ -51,6 +51,11 @@ export function PlatformPricing() {
               {formatUsd(PLAN_DEFS.studio.monthlyUsd)}. 14-day trial, no agent
               accounts, cancel anytime.
             </p>
+            <p className="section-copy">
+              Prefer one payment? See the{" "}
+              <Link href="/lifetime">Lifetime Starter deal</Link> — limited seats,
+              hard caps, Starter-like rights.
+            </p>
             <a className="compare-jump" href="#compare">
               Compare plans and the PAYG math
             </a>

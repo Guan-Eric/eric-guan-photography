@@ -6,7 +6,7 @@ import { PASSWORD_RULES, passwordIsValid } from "@/lib/password-rules";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 /** Kept local so the client bundle never pulls in the Drizzle schema. */
-const PLAN_PARAMS = ["payg", "starter", "growth", "studio"];
+const PLAN_PARAMS = ["payg", "starter", "growth", "studio", "lifetime"];
 
 export function SignupForm({ inviteEmail }: { inviteEmail?: string | null }) {
   const router = useRouter();

@@ -42,6 +42,16 @@ function row(partial: Partial<TenantRow>): TenantRow {
 }
 
 describe("billing entitlements & access", () => {
+  it("lifetime is starter-like with hard caps", () => {
+    expect(PLAN_DEFS.lifetime.listingQuota).toBe(125);
+    expect(PLAN_DEFS.lifetime.seats).toBe(1);
+    expect(PLAN_DEFS.lifetime.envMeteredPrice).toBe("");
+    expect(PLAN_DEFS.lifetime.meteredUsd).toBe(0);
+    expect(entitlements("lifetime").customDomain).toBe(false);
+    expect(entitlements("lifetime").propertyPages).toBe(false);
+    expect(meteringEnabled("lifetime")).toBe(false);
+  });
+
   it("exposes plan quotas", () => {
     expect(PLAN_DEFS.starter.listingQuota).toBe(125);
     expect(PLAN_DEFS.growth.listingQuota).toBe(250);

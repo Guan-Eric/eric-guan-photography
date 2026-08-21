@@ -28,6 +28,9 @@ PLATFORM_EMAIL_FROM=Studiofront <hello@studiofront.ca>
 # STRIPE_METER_EVENT_LISTINGS=listing_completed
 # Per-domain add-on (quantity = active custom hostnames)
 # STRIPE_PRICE_DOMAIN_ADDON=
+# STRIPE_PRICE_LIFETIME=
+# LTD_SEAT_CAP=100
+# LTD_ENABLED=1
 # GOOGLE_PLACES_API_KEY=
 # Google Calendar (photographer OAuth — optional)
 # GOOGLE_CALENDAR_CLIENT_ID=

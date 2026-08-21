@@ -70,12 +70,17 @@ Billing → Meters → **Create meter** (or let the setup script create it):
 | Pay as you go (listing) | $5 per unit, metered | `STRIPE_PRICE_PAYG_LISTING=price_...` |
 | Listing overage | $3 per unit, metered | `STRIPE_PRICE_OVERAGE_LISTING=price_...` |
 | Custom domain add-on | $5 / month, quantity-based | `STRIPE_PRICE_DOMAIN_ADDON=price_...` |
+| Lifetime Starter | $199 one-time | `STRIPE_PRICE_LIFETIME=price_...` |
+
+Optional LTD scarcity: `LTD_SEAT_CAP=100`, `LTD_ENABLED=1` (set `0` to close the offer).
 
 The $0 base keeps a monthly invoice cycle so metered listings have somewhere to
 land. The overage price is attached to every flat tier and only accrues once a
 studio passes its included listings; without it, tiers hard-block at the cap.
 The domain add-on is a plain licensed price — the app keeps its quantity equal
-to the number of live custom hostnames.
+to the number of live custom hostnames. Lifetime is one-time Checkout
+(`mode: payment`, metadata `kind=lifetime`) and hard-caps at 125 listings/year
+with no overage meter.
 
 ## API keys
 

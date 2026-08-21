@@ -64,15 +64,19 @@ export const CONNECT_STATUSES = [
 ] as const;
 export type ConnectStatus = (typeof CONNECT_STATUSES)[number];
 
-export const PLANS = ["trial", "payg", "starter", "growth", "studio"] as const;
+export const PLANS = ["trial", "payg", "starter", "growth", "studio", "lifetime"] as const;
 export type PlanId = (typeof PLANS)[number];
 
-/** Plans a studio can buy. `trial` is granted, never purchased. */
+/** Plans a studio can buy monthly. `trial` is granted; `lifetime` is one-time. */
 export const PURCHASABLE_PLANS = ["payg", "starter", "growth", "studio"] as const;
 export type PurchasablePlanId = (typeof PURCHASABLE_PLANS)[number];
 
 export function isPurchasablePlan(value: string): value is PurchasablePlanId {
   return (PURCHASABLE_PLANS as readonly string[]).includes(value);
+}
+
+export function isLifetimePlan(value: string): value is "lifetime" {
+  return value === "lifetime";
 }
 
 export const SUBSCRIPTION_STATUSES = [

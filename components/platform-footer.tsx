@@ -9,6 +9,7 @@ export function PlatformFooter() {
       </p>
       <div className="footer-links">
         <Link href="/pricing">Pricing</Link>
+        <Link href="/lifetime">Lifetime</Link>
         <Link href="/blog">Blog</Link>
         <Link href="/signup">Start trial</Link>
         <Link href="/terms">Terms</Link>

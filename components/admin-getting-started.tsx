@@ -43,7 +43,8 @@ export function AdminGettingStarted({
     plan === "payg" ||
     plan === "starter" ||
     plan === "growth" ||
-    plan === "studio";
+    plan === "studio" ||
+    plan === "lifetime";
 
   if (hidden || !welcome) return null;
 
@@ -67,6 +68,15 @@ export function AdminGettingStarted({
       if (json.url) {
         toastSuccess("Opening checkout…");
         window.location.href = json.url;
+        return;
+      }
+      if (json.stubbed) {
+        toastSuccess(
+          plan === "lifetime"
+            ? "Lifetime access unlocked (local billing stub)."
+            : "Plan activated (local billing stub).",
+        );
+        window.location.assign("/admin/settings?billing=success");
         return;
       }
       const fallback =
@@ -114,7 +124,11 @@ export function AdminGettingStarted({
             disabled={billingBusy}
             onClick={() => void startCheckout()}
           >
-            {billingBusy ? "Opening…" : `Continue with ${plan} plan`}
+            {billingBusy
+              ? "Opening…"
+              : plan === "lifetime"
+                ? "Continue with Lifetime checkout"
+                : `Continue with ${plan} plan`}
           </button>
         ) : null}
       </div>

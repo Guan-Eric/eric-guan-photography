@@ -1,6 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-const PUBLIC_ROUTES = ["/", "/pricing", "/work", "/privacy", "/terms", "/login", "/signup"];
+const PUBLIC_ROUTES = [
+  "/",
+  "/pricing",
+  "/lifetime",
+  "/work",
+  "/privacy",
+  "/terms",
+  "/login",
+  "/signup",
+];
 
 test.describe("Public page scenarios", () => {
   for (const route of PUBLIC_ROUTES) {

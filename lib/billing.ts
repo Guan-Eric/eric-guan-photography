@@ -5,15 +5,25 @@ import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { PlanId, SubscriptionStatus, TenantRow } from "@/lib/db/schema";
 import {
   DOMAIN_ADDON_USD,
+  LIFETIME_USD,
   PLAN_DEFS,
   entitlements,
+  lifetimeOfferEnabled,
+  lifetimeSeatCap,
 } from "@/lib/plan-defs";
 import { platformName, platformPublicUrl } from "@/lib/platform";
 import { getStripe, isStripeModeMismatchError, stripeEnabled } from "@/lib/stripe";
 import { getTenantRow } from "@/lib/tenant-store";
 
 export type { PlanDef } from "@/lib/plan-defs";
-export { DOMAIN_ADDON_USD, PLAN_DEFS, entitlements };
+export {
+  DOMAIN_ADDON_USD,
+  LIFETIME_USD,
+  PLAN_DEFS,
+  entitlements,
+  lifetimeOfferEnabled,
+  lifetimeSeatCap,
+};
 
 const id = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 14);
 
@@ -213,7 +223,36 @@ export function planFromPriceId(priceId: string | undefined): PlanId | null {
   if (priceId === process.env.STRIPE_PRICE_STARTER) return "starter";
   if (priceId === process.env.STRIPE_PRICE_GROWTH) return "growth";
   if (priceId === process.env.STRIPE_PRICE_STUDIO) return "studio";
+  if (priceId === process.env.STRIPE_PRICE_LIFETIME) return "lifetime";
   return null;
+}
+
+export async function countLifetimeStudios() {
+  const db = getDb();
+  const rows = await qAll<{ id: string }>(
+    db
+      .select({ id: schema.tenants.id })
+      .from(schema.tenants)
+      .where(eq(schema.tenants.plan, "lifetime")),
+  );
+  return rows.length;
+}
+
+export async function lifetimeOfferStatus() {
+  const enabled = lifetimeOfferEnabled();
+  const cap = lifetimeSeatCap();
+  const sold = await countLifetimeStudios();
+  const remaining = Math.max(0, cap - sold);
+  return {
+    enabled,
+    open: enabled && remaining > 0,
+    cap,
+    sold,
+    remaining,
+    priceUsd: LIFETIME_USD,
+    listingQuota: PLAN_DEFS.lifetime.listingQuota,
+    seats: PLAN_DEFS.lifetime.seats,
+  };
 }
 
 export async function applyPlanToTenant(
@@ -330,7 +369,7 @@ async function ensureCustomer(row: TenantRow, email: string) {
 
 export async function createSubscriptionCheckout(options: {
   tenantId: string;
-  plan: Exclude<PlanId, "trial">;
+  plan: Exclude<PlanId, "trial" | "lifetime">;
   email: string;
   successUrl: string;
   cancelUrl: string;
@@ -421,6 +460,128 @@ export async function createSubscriptionCheckout(options: {
   }
 }
 
+export async function createLifetimeCheckout(options: {
+  tenantId: string;
+  email: string;
+  successUrl: string;
+  cancelUrl: string;
+}) {
+  const row = await getTenantRow(options.tenantId);
+  if (!row) return { ok: false as const, error: "Studio not found." };
+
+  if (row.plan === "lifetime" && row.subscriptionStatus === "active") {
+    return { ok: false as const, error: "This studio already has Lifetime access." };
+  }
+
+  const offer = await lifetimeOfferStatus();
+  if (!offer.open) {
+    return {
+      ok: false as const,
+      error: offer.enabled
+        ? "The Lifetime deal is sold out."
+        : "The Lifetime deal is closed.",
+    };
+  }
+
+  if (!stripeEnabled()) {
+    if (process.env.NODE_ENV === "production") {
+      return {
+        ok: false as const,
+        error: "Billing is not configured. Contact support.",
+      };
+    }
+    await applyPlanToTenant(options.tenantId, "lifetime", {
+      status: "active",
+      trialEndsAt: null,
+    });
+    await recordBillingEvent({
+      tenantId: options.tenantId,
+      type: "local_stub.lifetime",
+      payload: { plan: "lifetime", priceUsd: LIFETIME_USD },
+    });
+    return { ok: true as const, stubbed: true as const, plan: "lifetime" as const };
+  }
+
+  const priceId = priceIdForPlan("lifetime");
+  if (!priceId) {
+    return {
+      ok: false as const,
+      error: "Missing STRIPE_PRICE_LIFETIME in the environment.",
+    };
+  }
+
+  const stripe = getStripe()!;
+  const customer = await ensureCustomer(row, options.email);
+  if (!customer.ok || !("customerId" in customer)) {
+    return {
+      ok: false as const,
+      error:
+        "error" in customer && typeof customer.error === "string"
+          ? customer.error
+          : "Could not create Stripe customer.",
+    };
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      customer: customer.customerId,
+      success_url: options.successUrl,
+      cancel_url: options.cancelUrl,
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: {
+        kind: "lifetime",
+        tenantId: options.tenantId,
+        plan: "lifetime",
+      },
+      payment_intent_data: {
+        metadata: {
+          kind: "lifetime",
+          tenantId: options.tenantId,
+          plan: "lifetime",
+        },
+      },
+    });
+
+    return {
+      ok: true as const,
+      stubbed: false as const,
+      url: session.url,
+      sessionId: session.id,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not start Stripe Checkout.",
+    };
+  }
+}
+
+export async function applyLifetimePurchase(options: {
+  tenantId: string;
+  customerId?: string | null;
+  sessionId?: string | null;
+}) {
+  const row = await getTenantRow(options.tenantId);
+  if (!row) return { ok: false as const, error: "Studio not found." };
+
+  await applyPlanToTenant(options.tenantId, "lifetime", {
+    status: "active",
+    customerId: options.customerId ?? undefined,
+    trialEndsAt: null,
+  });
+  await recordBillingEvent({
+    tenantId: options.tenantId,
+    type: "lifetime.purchased",
+    stripeId: options.sessionId ?? null,
+    payload: { plan: "lifetime", priceUsd: LIFETIME_USD },
+  });
+  return { ok: true as const, tenantId: options.tenantId };
+}
+
 export async function createBillingPortalSession(tenantId: string, returnUrl: string) {
   const row = await getTenantRow(tenantId);
   if (!row?.stripeCustomerId) {
@@ -466,7 +627,7 @@ export async function applyStripeSubscription(sub: Stripe.Subscription) {
       .map((item) => planFromPriceId(item.price?.id))
       .find((match): match is PlanId => Boolean(match)) ??
     (sub.metadata?.plan as PlanId | undefined);
-  if (!plan || plan === "trial") {
+  if (!plan || plan === "trial" || plan === "lifetime") {
     return { ok: false as const, error: "Unknown plan price." };
   }
   const status = (sub.status as SubscriptionStatus) ?? "active";
@@ -547,6 +708,7 @@ export function billingSummary(row: TenantRow, options?: { activeDomains?: numbe
     plan,
     planLabel: def.label,
     monthlyUsd: def.monthlyUsd,
+    isLifetime: plan === "lifetime",
     subscriptionStatus: row.subscriptionStatus,
     trialEndsAt: row.trialEndsAt,
     listingQuotaAnnual: row.listingQuotaAnnual,

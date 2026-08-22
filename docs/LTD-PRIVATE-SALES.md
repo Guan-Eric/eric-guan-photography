@@ -200,37 +200,31 @@ Do **not** paste studiofront.ca, /lifetime, or pricing in comments.
 
 Genuine workflow thread only. No product, no Loom, no first-comment links.
 
-**Title (pick one; first is default):**
+**If Reddit’s filters remove it:** that’s the automod/spam filter, not always a human. Don’t repost the same text the same day. Comment on a few existing threads first (no product talk), wait 24–48h, then try the shorter version below. Message the mods once with “filters ate a workflow question, not selling — can you approve?” Don’t argue in public.
 
-- How are you delivering finals to agents right now — Google Drive, Aryeo, or something else?
-- We kept getting “can you resend the link?” — what gallery setup actually stuck for you?
+Filter bait to avoid: “not selling / not spam,” competitor names in the **title**, numbered “here’s my stack,” any URL, or posting from a brand-new / low-karma account.
 
-**Body:**
+**Title (use this — no brand names):**
+
+- How do you send finals to agents without the Drive-folder chaos?
+
+**Body (short):**
 
 ```
-How are you getting agents their finals right now: Google Drive / Dropbox, Aryeo, or something else?
+Agents keep asking me to resend the zip or which Google Drive folder is the right one.
 
-The two things that kept breaking for me:
-1) Agent accounts (“I’ll make one later”)
-2) File chasing (“can you resend the zip / which folder?”)
+How are you handing off MLS + full-res right now? Shared Drive, Dropbox, WeTransfer, something else?
 
-What I do now as a shooter:
-• Agent books on my site
-• One gallery link — watermarked proofs first
-• They pay, then I release MLS + full-res on that same link
-• No agent login
-
-Google Drive shared folders were chaos on my shoots. If you’re not on Aryeo, what actually stuck — Dropbox, WeTransfer, a gallery tool, something else?
-
-Not looking to hire or to sell anything — just trying not to reinvent a bad folder system.
+Trying to stop chasing files. Not hiring.
 ```
+
+**Do not use** the longer “what I do now / proofs / they pay / no agent login” version on this sub — it reads like software marketing and trips filters even with no product name.
 
 **Posting notes:**
 
-- Personal photographer account only. No brand account.
-- Do not mention StudioFront, Lifetime, price, Loom, or URLs in the post or comments.
-- If a mod removes it anyway, don’t argue in public; let it go.
-- Don’t post this the same day as a Facebook sales post so it doesn’t look coordinated.
+- Personal photographer account only. No brand account. Prefer an account that already has comments in the sub.
+- Do not mention StudioFront, Lifetime, price, Loom, Aryeo (in the title), or URLs.
+- Don’t post this the same day as a Facebook sales post.
 
 ---
 

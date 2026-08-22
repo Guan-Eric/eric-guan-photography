@@ -54,11 +54,6 @@ export async function generateMetadata(): Promise<Metadata> {
         description: seo.description,
         images: [seo.image],
       },
-      twitter: {
-        card: "summary_large_image",
-        title: seo.title,
-        description: seo.description,
-      },
       robots: { index: true, follow: true },
     };
   }

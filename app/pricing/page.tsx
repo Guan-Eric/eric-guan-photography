@@ -4,14 +4,51 @@ import { FaqJsonLd } from "@/components/json-ld";
 import { PlatformPricing } from "@/components/platform-pricing";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { platformName } from "@/lib/platform";
 import { getRequestTenant } from "@/lib/tenants";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Pricing",
-  alternates: { canonical: "/pricing" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getRequestTenant();
+  if (!tenant) {
+    const description =
+      "Pay per listing at $5, or flat plans from $49–$149/mo. 14-day trial, white-label booking and galleries, no agent accounts.";
+    return {
+      title: "Pricing",
+      description,
+      alternates: { canonical: "/pricing" },
+      openGraph: {
+        title: `Pricing — ${platformName()}`,
+        description,
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: `Pricing — ${platformName()}`,
+        description,
+      },
+    };
+  }
+
+  const description = `Real estate photography packages from ${
+    tenant.packages[0]?.price ?? "your market rate"
+  }. MLS-ready galleries delivered in ${tenant.turnaround}.`;
+
+  return {
+    title: "Pricing",
+    description,
+    alternates: { canonical: "/pricing" },
+    openGraph: {
+      title: `Pricing — ${tenant.studioName}`,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Pricing — ${tenant.studioName}`,
+      description,
+    },
+  };
+}
 
 export default async function PricingPage() {
   const tenant = await getRequestTenant();

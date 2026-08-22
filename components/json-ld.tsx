@@ -108,3 +108,37 @@ export function FaqJsonLd({
     />
   );
 }
+
+export function BlogPostingJsonLd({
+  post,
+  url,
+  siteName,
+}: {
+  post: {
+    title: string;
+    description: string;
+    date: string;
+    updated?: string;
+    tags: string[];
+  };
+  url: string;
+  siteName: string;
+}) {
+  return (
+    <JsonLd
+      data={{
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        headline: post.title,
+        description: post.description,
+        datePublished: post.date,
+        dateModified: post.updated ?? post.date,
+        mainEntityOfPage: { "@type": "WebPage", "@id": url },
+        url,
+        keywords: post.tags.join(", "),
+        author: { "@type": "Organization", name: siteName },
+        publisher: { "@type": "Organization", name: siteName },
+      }}
+    />
+  );
+}

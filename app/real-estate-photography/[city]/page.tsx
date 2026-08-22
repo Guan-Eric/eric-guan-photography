@@ -28,12 +28,25 @@ export async function generateMetadata({
   if (!area) return {};
 
   const title = `Real Estate Photography in ${area.city}`;
+  const description = `Real estate photography for agents in ${area.city}. MLS-ready galleries delivered in ${tenant.turnaround}, with packages from ${tenant.packages[0]?.price ?? ""}.`;
+  const path = `/real-estate-photography/${area.slug}`;
 
   return {
     title,
-    description: `Real estate photography for agents in ${area.city}. MLS-ready galleries delivered in ${tenant.turnaround}, with packages from ${tenant.packages[0]?.price ?? ""}.`,
-    alternates: { canonical: `/real-estate-photography/${area.slug}` },
-    openGraph: { title: `${title} — ${tenant.studioName}` },
+    description,
+    alternates: { canonical: path },
+    openGraph: {
+      title: `${title} — ${tenant.studioName}`,
+      description,
+      url: path,
+      type: "website",
+      siteName: tenant.studioName,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} — ${tenant.studioName}`,
+      description,
+    },
   };
 }
 

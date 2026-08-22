@@ -62,7 +62,7 @@ Use these numbers everywhere — don’t improvise:
 | **5** | 20 personalized DMs (Instagram / Facebook) to studios using Aryeo or Drive | 5 conversations |
 | **6** | LinkedIn post + 10 connection notes | Visibility |
 | **7** | Follow-ups on every open thread (template below) | Close 1–3 |
-| **8–10** | Reddit: answer 3–5 threads helpfully; soft link only if asked | Trust |
+| **8–10** | Reddit: answer 3–5 threads helpfully; **no product, links, or LTD** (r/realestatephotography Rule 8) | Trust |
 | **11** | Second FB post or story: “X seats left” scarcity | Urgency |
 | **12–13** | Another 20 DMs + close calls (15 min Zoom if needed) | Revenue |
 | **14** | Final “closing this week” message to warm list | Sweep |
@@ -170,33 +170,67 @@ If you want ownership + no agent login, details here: https://studiofront.ca/lif
 
 **Where:**
 
-- r/realestatephotography
-- r/realtors (only when someone asks for vendor/photo tools)
-- r/smallbusiness / r/SaaS (rare — only if relevant)
+- r/realestatephotography — **Rule 8: no selling, ads, software users, brand accounts, or soliciting services** in posts or comments
+- r/realtors / r/smallbusiness / r/SaaS — only if their rules allow vendor talk; still not the LTD channel
 
-**Rule:** Answer the question first. Soft mention only when they ask “what do you use?”
+**Rule:** This is **not** a sales channel. Do not name StudioFront, drop links, mention Lifetime/$199, or post from a brand account. Use your personal photographer account. If someone DMs you unprompted, you can talk product there — never in the thread.
 
-### Answer template (no hard sell)
+### Answer template (workflow only)
 
 ```
 Most of the pain I see is agent accounts + file chasing.
 
-What works for a lot of solo/small studios:
-1) Book on the photographer’s site
-2) Deliver a single gallery link (watermarked proofs)
-3) Unlock full/MLS after payment on that same link
+What’s worked for me as a shooter:
+1) Book on the photographer’s own site
+2) One gallery link with watermarked proofs
+3) Full/MLS files after they’ve paid — same link, no agent login
 
-I built that loop into StudioFront because Drive was chaos for me.
-Happy to share how we handle pay-to-unlock if useful — not trying to pitch if you’re already happy with [their tool].
+Google Drive was chaos for me (wrong folder, “resend the zip”). Curious what stuck for you if you’re not on Aryeo.
 ```
 
-### If they ask for a link
+### If they ask “what tool is that?”
 
 ```
-Product: https://studiofront.ca
-Founding Lifetime (limited, hard caps): https://studiofront.ca/lifetime
-Pricing if you prefer monthly: https://studiofront.ca/pricing
+I don’t want to break the sub’s no-promo rule — happy to chat in DMs if you want the name. In-thread: any one-link proof → pay → unlock setup beats shared Drive folders for me.
 ```
+
+Do **not** paste studiofront.ca, /lifetime, or pricing in comments.
+
+### Standalone post (r/realestatephotography)
+
+Genuine workflow thread only. No product, no Loom, no first-comment links.
+
+**Title (pick one; first is default):**
+
+- How are you delivering finals to agents right now — Google Drive, Aryeo, or something else?
+- We kept getting “can you resend the link?” — what gallery setup actually stuck for you?
+
+**Body:**
+
+```
+How are you getting agents their finals right now: Google Drive / Dropbox, Aryeo, or something else?
+
+The two things that kept breaking for me:
+1) Agent accounts (“I’ll make one later”)
+2) File chasing (“can you resend the zip / which folder?”)
+
+What I do now as a shooter:
+• Agent books on my site
+• One gallery link — watermarked proofs first
+• They pay, then I release MLS + full-res on that same link
+• No agent login
+
+Google Drive shared folders were chaos on my shoots. If you’re not on Aryeo, what actually stuck — Dropbox, WeTransfer, a gallery tool, something else?
+
+Not looking to hire or to sell anything — just trying not to reinvent a bad folder system.
+```
+
+**Posting notes:**
+
+- Personal photographer account only. No brand account.
+- Do not mention StudioFront, Lifetime, price, Loom, or URLs in the post or comments.
+- If a mod removes it anyway, don’t argue in public; let it go.
+- Don’t post this the same day as a Facebook sales post so it doesn’t look coordinated.
 
 ---
 

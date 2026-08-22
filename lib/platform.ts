@@ -220,7 +220,10 @@ export function publicStudioUrl(options: {
 export function platformSeo() {
   const name = platformName();
   return {
-    title: `${name} — White-label software for real estate photographers`,
-    description: `${name} gives photographers a branded site, booking, gated galleries, and property pages. $49 / $99 / $149 per month, or $5 per listing.`,
+    title: `${name} — Book the shoot. Deliver the gallery. Get paid.`,
+    description: `${name} gives real estate photographers a branded site, booking, and gated galleries — on your brand. Agents open a link. They never create an account.`,
+    image:
+      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&h=630&q=80",
+    imageAlt: "Bright modern home ready for listing photographs",
   };
 }

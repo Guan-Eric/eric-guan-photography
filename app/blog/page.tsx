@@ -10,6 +10,17 @@ export const metadata: Metadata = {
   description:
     "Guides for real estate photographers: Aryeo alternatives, delivery without agent login, pricing, and migration playbooks.",
   alternates: { canonical: "/blog" },
+  openGraph: {
+    title: "Blog",
+    description:
+      "Guides for real estate photographers: Aryeo alternatives, delivery without agent login, pricing, and migration playbooks.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Blog",
+    description:
+      "Guides for real estate photographers: Aryeo alternatives, delivery without agent login, pricing, and migration playbooks.",
+  },
 };
 
 export default async function BlogIndexPage() {

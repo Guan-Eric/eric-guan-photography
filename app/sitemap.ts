@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { blogPosts, postPath } from "@/lib/blog";
 import { platformPublicUrl } from "@/lib/platform";
+import { PLATFORM_SITEMAP_PATHS } from "@/lib/seo-crawl";
 import { getRequestTenant } from "@/lib/tenants";
 
 export const dynamic = "force-dynamic";
@@ -11,16 +12,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   if (!tenant) {
     const base = platformPublicUrl();
-    const marketing = [
-      "/",
-      "/pricing",
-      "/lifetime",
-      "/blog",
-      "/signup",
-      "/login",
-      "/terms",
-      "/privacy",
-    ].map((path) => ({
+    // Omit auth/signup — those routes are noindex and should not be advertised.
+    const marketing = PLATFORM_SITEMAP_PATHS.map((path) => ({
       url: new URL(path, base).toString(),
       lastModified,
       changeFrequency: "weekly" as const,

@@ -60,10 +60,23 @@ function escapeXml(value: string) {
     .replaceAll('"', "&quot;");
 }
 
+function useCfImages() {
+  if (process.env.MEDIA_PROCESS_WITH_SHARP === "1") return false;
+  // Local `next dev` wires a stub IMAGES binding that hangs on fetch.
+  if (process.env.NODE_ENV === "development") return false;
+  return true;
+}
+
 async function getImagesBinding(): Promise<ImagesBinding | null> {
+  if (!useCfImages()) return null;
   try {
     const { getCloudflareContext } = await import("@opennextjs/cloudflare");
-    const context = await getCloudflareContext({ async: true });
+    const context = await Promise.race([
+      getCloudflareContext({ async: true }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Cloudflare context timed out")), 2500);
+      }),
+    ]);
     const images = context?.env?.IMAGES as ImagesBinding | undefined;
     return images ?? null;
   } catch {
@@ -222,7 +235,7 @@ async function processUploadWithSharp(options: {
         fit: "inside",
         withoutEnlargement: true,
       })
-      .jpeg({ quality, mozjpeg: true })
+      .jpeg({ quality })
       .toBuffer({ resolveWithObject: true });
   }
 
@@ -257,7 +270,7 @@ async function processUploadWithSharp(options: {
 
     return sharp(data)
       .composite([{ input: Buffer.from(svg), gravity: "center" }])
-      .jpeg({ quality: 68, mozjpeg: true })
+      .jpeg({ quality: 68 })
       .toBuffer({ resolveWithObject: true });
   }
 
@@ -267,7 +280,7 @@ async function processUploadWithSharp(options: {
 
   const originalJpeg = await sharp(options.buffer, { failOn: "none" })
     .rotate()
-    .jpeg({ quality: 92, mozjpeg: true })
+    .jpeg({ quality: 92 })
     .toBuffer({ resolveWithObject: true });
 
   const web = await resizeLongEdge(options.buffer, WEB_LONG_EDGE, 82);
@@ -381,7 +394,7 @@ export async function processPortfolioImage(options: {
         fit: "inside",
         withoutEnlargement: true,
       })
-      .jpeg({ quality: 82, mozjpeg: true })
+      .jpeg({ quality: 82 })
       .toBuffer();
   } else {
     throw new Error(

@@ -87,6 +87,69 @@ export async function listMedia(galleryIdValue: string): Promise<MediaAsset[]> {
   );
 }
 
+export async function reorderGalleryMedia(
+  tenantId: string,
+  galleryId: string,
+  orderedIds: string[],
+) {
+  const existing = await listMedia(galleryId);
+  if (existing.length === 0) {
+    return { ok: false as const, error: "No photos to reorder." };
+  }
+  if (existing.some((asset) => asset.tenantId !== tenantId)) {
+    return { ok: false as const, error: "Not found." };
+  }
+  const currentIds = existing.map((asset) => asset.id);
+  const unique = new Set(orderedIds);
+  if (
+    orderedIds.length !== currentIds.length ||
+    unique.size !== orderedIds.length ||
+    orderedIds.some((id) => !currentIds.includes(id))
+  ) {
+    return { ok: false as const, error: "Photo list is out of date. Refresh and try again." };
+  }
+
+  const db = getDb();
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    await qRun(
+      db
+        .update(schema.mediaAssets)
+        .set({ sortOrder: index })
+        .where(
+          and(
+            eq(schema.mediaAssets.id, orderedIds[index]!),
+            eq(schema.mediaAssets.galleryId, galleryId),
+            eq(schema.mediaAssets.tenantId, tenantId),
+          ),
+        ),
+    );
+  }
+  return { ok: true as const };
+}
+
+export async function deleteMediaAsset(tenantId: string, assetId: string) {
+  const db = getDb();
+  const asset =
+    (await qGet<MediaAsset>(
+      db
+        .select()
+        .from(schema.mediaAssets)
+        .where(
+          and(eq(schema.mediaAssets.id, assetId), eq(schema.mediaAssets.tenantId, tenantId)),
+        ),
+    )) ?? null;
+  if (!asset) return null;
+
+  await qRun(
+    db
+      .delete(schema.mediaAssets)
+      .where(
+        and(eq(schema.mediaAssets.id, assetId), eq(schema.mediaAssets.tenantId, tenantId)),
+      ),
+  );
+  return asset;
+}
+
 export async function updateMediaCaptions(
   tenantId: string,
   galleryId: string,

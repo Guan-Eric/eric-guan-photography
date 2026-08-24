@@ -22,6 +22,80 @@ import { toastError, toastSuccess } from "@/lib/toast";
 const VIEW_KEY = "sf_board_view";
 type BoardView = "grid" | "list";
 
+type OrderPhoto = {
+  id: string;
+  originalName: string;
+  roomLabel: string | null;
+};
+
+type PendingShot = {
+  key: string;
+  file: File;
+  preview: string;
+};
+
+type UploadProgress = {
+  current: number;
+  total: number;
+  percent: number;
+  label: string;
+};
+
+function postPhotoUpload(
+  orderId: string,
+  file: File,
+  onProgress: (loaded: number, total: number, phase: "send" | "process") => void,
+  signal?: AbortSignal,
+): Promise<{
+  ok?: boolean;
+  error?: string;
+  galleryId?: string;
+  state?: GallerySummary["state"];
+  token?: string;
+  uploaded?: number;
+}> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/admin/orders/${orderId}/upload`);
+    xhr.timeout = 90_000;
+    const form = new FormData();
+    form.append("files", file);
+    const abort = () => {
+      xhr.abort();
+      reject(new Error("Upload cancelled."));
+    };
+    if (signal?.aborted) {
+      abort();
+      return;
+    }
+    signal?.addEventListener("abort", abort, { once: true });
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded, event.total, "send");
+    };
+    xhr.upload.onload = () => onProgress(1, 1, "process");
+    xhr.onerror = () => reject(new Error("Network error during upload."));
+    xhr.onabort = () => reject(new Error("Upload cancelled."));
+    xhr.ontimeout = () =>
+      reject(new Error("Upload timed out. Try a smaller JPEG."));
+    xhr.onload = () => {
+      let json: Awaited<ReturnType<typeof postPhotoUpload>> | null = null;
+      try {
+        json = JSON.parse(xhr.responseText) as Awaited<
+          ReturnType<typeof postPhotoUpload>
+        >;
+      } catch {
+        json = null;
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && json) {
+        resolve(json);
+        return;
+      }
+      reject(new Error(json?.error ?? `Upload failed (${xhr.status}).`));
+    };
+    xhr.send(form);
+  });
+}
+
 function formatMoney(cents: number, currency: string) {
   if (cents <= 0) return "Quote later";
   return new Intl.NumberFormat("en-CA", {
@@ -44,6 +118,19 @@ function formatSlot(iso: string) {
 
 function slotOrdinal(index: number) {
   return index === 0 ? "1st" : index === 1 ? "2nd" : "3rd";
+}
+
+function moveItem<T>(list: T[], from: number, to: number) {
+  if (to < 0 || to >= list.length || from === to) return list;
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item!);
+  return next;
+}
+
+function factLabel(value: string | null | undefined) {
+  if (!value) return "";
+  return value.replace(/[_-]/g, " ");
 }
 
 function OrderSlotPicker({
@@ -147,6 +234,15 @@ export function AdminOrderBoard({
     Record<string, { branded: string; unbranded: string; listing?: string }>
   >({});
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
+  const [pendingShots, setPendingShots] = useState<Record<string, PendingShot[]>>(
+    {},
+  );
+  const [orderPhotos, setOrderPhotos] = useState<Record<string, OrderPhoto[]>>(
+    {},
+  );
+  const [uploadProgress, setUploadProgress] = useState<
+    Record<string, UploadProgress | null>
+  >({});
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [slotDrafts, setSlotDrafts] = useState<Record<string, string>>({});
@@ -165,6 +261,8 @@ export function AdminOrderBoard({
   >({});
   const [view, setView] = useState<BoardView>("grid");
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const uploadAbortRef = useRef<AbortController | null>(null);
+  const dragPhotoRef = useRef<{ orderId: string; id: string } | null>(null);
 
   function fail(message: string) {
     setError(message);
@@ -236,15 +334,38 @@ export function AdminOrderBoard({
     setExpandedIds((current) => {
       const next = new Set(current);
       if (next.has(orderId)) next.delete(orderId);
-      else next.add(orderId);
+      else {
+        next.add(orderId);
+        void loadOrderPhotos(orderId);
+      }
       return next;
     });
+  }
+
+  async function loadOrderPhotos(orderId: string) {
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/photos`);
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        photos?: OrderPhoto[];
+      } | null;
+      if (!response.ok || !json?.ok) return;
+      setOrderPhotos((current) => ({
+        ...current,
+        [orderId]: json.photos ?? [],
+      }));
+    } catch {
+      /* keep last known grid */
+    }
   }
 
   function expandAllVisible() {
     setExpandedIds((current) => {
       const next = new Set(current);
-      for (const order of visibleOrders) next.add(order.id);
+      for (const order of visibleOrders) {
+        next.add(order.id);
+        void loadOrderPhotos(order.id);
+      }
       return next;
     });
   }
@@ -398,72 +519,237 @@ export function AdminOrderBoard({
   }
 
   async function uploadPhotos(orderId: string) {
-    const input = fileRefs.current[orderId];
-    if (!input?.files?.length) {
+    const queued = pendingShots[orderId] ?? [];
+    if (queued.length === 0) {
       fail("Choose one or more photos to upload.");
       return;
     }
 
     setBusy({ orderId, action: "upload" });
     setError(null);
-    const form = new FormData();
-    Array.from(input.files).forEach((file) => form.append("files", file));
+    const total = queued.length;
+    let uploadedCount = 0;
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
 
     try {
-      const response = await fetch(`/api/admin/orders/${orderId}/upload`, {
-        method: "POST",
-        body: form,
-      });
-      const json = (await response.json().catch(() => null)) as {
-        ok?: boolean;
-        error?: string;
-        galleryId?: string;
-        state?: GallerySummary["state"];
-        token?: string;
-        uploaded?: number;
-      } | null;
-      if (!response.ok || !json?.ok) {
-        fail(json?.error ?? `Upload failed (${response.status}).`);
-        return;
+      for (let index = 0; index < queued.length; index += 1) {
+        const shot = queued[index]!;
+        setUploadProgress((current) => ({
+          ...current,
+          [orderId]: {
+            current: index + 1,
+            total,
+            percent: Math.round((index / total) * 100),
+            label: `Uploading ${index + 1} of ${total}: ${shot.file.name}`,
+          },
+        }));
+
+        const json = await postPhotoUpload(
+          orderId,
+          shot.file,
+          (loaded, totalBytes, phase) => {
+          const fileFraction =
+            phase === "process" ? 1 : totalBytes > 0 ? loaded / totalBytes : 0;
+          const overall = ((index + fileFraction * 0.92) / total) * 100;
+          setUploadProgress((current) => ({
+            ...current,
+            [orderId]: {
+              current: index + 1,
+              total,
+              percent: Math.min(99, Math.round(overall)),
+              label:
+                phase === "process"
+                  ? `Processing ${shot.file.name}…`
+                  : `Uploading ${index + 1} of ${total}: ${shot.file.name}`,
+            },
+          }));
+        },
+          controller.signal,
+        );
+
+        if (!json.ok) {
+          throw new Error(json.error ?? "Upload failed.");
+        }
+        uploadedCount += json.uploaded ?? 1;
+
+        setGalleries((current) => {
+          const previous = galleryFor(orderId);
+          const without = current.filter((gallery) => gallery.orderId !== orderId);
+          return [
+            ...without,
+            {
+              id: json.galleryId!,
+              orderId,
+              state: json.state!,
+              publicToken: json.token!,
+              trustTier: previous?.trustTier ?? ("pay_first" as const),
+              brandMode: previous?.brandMode ?? ("branded" as const),
+              mediaCount: (previous?.mediaCount ?? 0) + (json.uploaded ?? 1),
+              coverAssetId: previous?.coverAssetId ?? null,
+              coverWidth: previous?.coverWidth ?? null,
+              coverHeight: previous?.coverHeight ?? null,
+              videoCount: previous?.videoCount ?? 0,
+              tourCount: previous?.tourCount ?? 0,
+              floorPlanCount: previous?.floorPlanCount ?? 0,
+            },
+          ];
+        });
+
+        URL.revokeObjectURL(shot.preview);
+        setPendingShots((current) => ({
+          ...current,
+          [orderId]: (current[orderId] ?? []).filter((item) => item.key !== shot.key),
+        }));
+        await loadOrderPhotos(orderId);
       }
 
-      setGalleries((current) => {
-        const previous = galleryFor(orderId);
-        const without = current.filter((gallery) => gallery.orderId !== orderId);
-        return [
-          ...without,
-          {
-            id: json.galleryId!,
-            orderId,
-            state: json.state!,
-            publicToken: json.token!,
-            trustTier: previous?.trustTier ?? ("pay_first" as const),
-            brandMode: previous?.brandMode ?? ("branded" as const),
-            mediaCount: (previous?.mediaCount ?? 0) + (json.uploaded ?? 0),
-            coverAssetId: previous?.coverAssetId ?? null,
-            coverWidth: previous?.coverWidth ?? null,
-            coverHeight: previous?.coverHeight ?? null,
-            videoCount: previous?.videoCount ?? 0,
-            tourCount: previous?.tourCount ?? 0,
-            floorPlanCount: previous?.floorPlanCount ?? 0,
-          },
-        ];
-      });
-      input.value = "";
+      const input = fileRefs.current[orderId];
+      if (input) input.value = "";
       setFileNames((current) => ({ ...current, [orderId]: "" }));
+      setUploadProgress((current) => ({ ...current, [orderId]: null }));
       ok(
-        `Uploaded ${json.uploaded ?? 0} photo${(json.uploaded ?? 0) === 1 ? "" : "s"}.`,
+        `Uploaded ${uploadedCount} photo${uploadedCount === 1 ? "" : "s"}.`,
       );
       router.refresh();
     } catch (error) {
       const message =
-        error instanceof Error && /abort|timeout/i.test(error.message)
-          ? "Upload timed out. Try fewer or smaller photos."
-          : "Network error during upload.";
+        error instanceof Error ? error.message : "Network error during upload.";
       fail(message);
     } finally {
+      uploadAbortRef.current = null;
       setBusy(null);
+      setUploadProgress((current) => ({ ...current, [orderId]: null }));
     }
+  }
+
+  function queuePhotos(orderId: string, list: FileList | null) {
+    const files = list ? Array.from(list) : [];
+    if (files.length === 0) return;
+    const added = files.map((file) => ({
+      key: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setPendingShots((current) => {
+      const next = [...(current[orderId] ?? []), ...added];
+      return { ...current, [orderId]: next };
+    });
+    setFileNames((names) => {
+      const count = (pendingShots[orderId]?.length ?? 0) + added.length;
+      return {
+        ...names,
+        [orderId]:
+          count === 1 ? added[0]!.file.name : `${count} files selected`,
+      };
+    });
+  }
+
+  function removeQueuedPhoto(orderId: string, key: string) {
+    setPendingShots((current) => {
+      const existing = current[orderId] ?? [];
+      const target = existing.find((item) => item.key === key);
+      if (target) URL.revokeObjectURL(target.preview);
+      const next = existing.filter((item) => item.key !== key);
+      setFileNames((names) => ({
+        ...names,
+        [orderId]:
+          next.length === 0
+            ? ""
+            : next.length === 1
+              ? next[0]!.file.name
+              : `${next.length} files selected`,
+      }));
+      return { ...current, [orderId]: next };
+    });
+  }
+
+  async function removeUploadedPhoto(orderId: string, assetId: string) {
+    if (!window.confirm("Remove this photo from the gallery?")) return;
+    try {
+      const response = await fetch(
+        `/api/admin/orders/${orderId}/photos/${assetId}`,
+        { method: "DELETE" },
+      );
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (!response.ok || !json?.ok) {
+        fail(json?.error ?? "Could not remove photo.");
+        return;
+      }
+      setOrderPhotos((current) => ({
+        ...current,
+        [orderId]: (current[orderId] ?? []).filter((photo) => photo.id !== assetId),
+      }));
+      setGalleries((current) =>
+        current.map((gallery) =>
+          gallery.orderId === orderId
+            ? {
+                ...gallery,
+                mediaCount: Math.max(0, gallery.mediaCount - 1),
+              }
+            : gallery,
+        ),
+      );
+      ok("Photo removed.");
+    } catch {
+      fail("Network error removing photo.");
+    }
+  }
+
+  async function savePhotoOrder(orderId: string, next: OrderPhoto[]) {
+    const previous = orderPhotos[orderId] ?? [];
+    setOrderPhotos((current) => ({ ...current, [orderId]: next }));
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/photos`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: next.map((photo) => photo.id) }),
+      });
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (!response.ok || !json?.ok) {
+        setOrderPhotos((current) => ({ ...current, [orderId]: previous }));
+        fail(json?.error ?? "Could not save photo order.");
+      }
+    } catch {
+      setOrderPhotos((current) => ({ ...current, [orderId]: previous }));
+      fail("Network error saving photo order.");
+    }
+  }
+
+  function moveUploadedPhoto(orderId: string, assetId: string, direction: -1 | 1) {
+    const list = orderPhotos[orderId] ?? [];
+    const from = list.findIndex((photo) => photo.id === assetId);
+    if (from < 0) return;
+    const next = moveItem(list, from, from + direction);
+    if (next === list) return;
+    void savePhotoOrder(orderId, next);
+  }
+
+  function dropUploadedPhoto(orderId: string, targetId: string) {
+    const dragged = dragPhotoRef.current;
+    if (!dragged || dragged.orderId !== orderId || dragged.id === targetId) return;
+    const list = orderPhotos[orderId] ?? [];
+    const from = list.findIndex((photo) => photo.id === dragged.id);
+    const to = list.findIndex((photo) => photo.id === targetId);
+    if (from < 0 || to < 0) return;
+    const next = moveItem(list, from, to);
+    dragPhotoRef.current = null;
+    void savePhotoOrder(orderId, next);
+  }
+
+  function moveQueuedPhoto(orderId: string, key: string, direction: -1 | 1) {
+    setPendingShots((current) => {
+      const list = current[orderId] ?? [];
+      const from = list.findIndex((shot) => shot.key === key);
+      if (from < 0) return current;
+      return { ...current, [orderId]: moveItem(list, from, from + direction) };
+    });
   }
 
   async function publish(orderId: string) {
@@ -837,39 +1123,40 @@ export function AdminOrderBoard({
                   ) : null}
 
                   <div className="admin-order-grid">
-                    <div>
+                    <section className="order-fact-card order-fact-card--times">
                       <p className="eyebrow">Preferred times</p>
                       {preferred.length === 0 ? (
-                        <div>{formatSlot(order.preferredStart)}</div>
-                      ) : order.status === "requested" ? (
-                        preferred.map((slot, index) => (
-                          <div
-                            key={slot.start}
-                            className={
-                              selectedStart === slot.start ? "is-booked-slot" : undefined
-                            }
-                          >
-                            {slotOrdinal(index)}: {slot.label}
-                            {selectedStart === slot.start ? " · selected" : ""}
-                          </div>
-                        ))
+                        <p className="order-fact-value">
+                          {formatSlot(order.preferredStart)}
+                        </p>
                       ) : (
-                        preferred.map((slot, index) => (
-                          <div
-                            key={slot.start}
-                            className={
-                              slot.start === order.preferredStart
-                                ? "is-booked-slot"
-                                : undefined
-                            }
-                          >
-                            {slotOrdinal(index)}: {slot.label}
-                            {slot.start === order.preferredStart ? " · booked" : ""}
-                          </div>
-                        ))
+                        <ol className="order-slot-chips">
+                          {preferred.map((slot, index) => {
+                            const booked =
+                              order.status === "requested"
+                                ? selectedStart === slot.start
+                                : slot.start === order.preferredStart;
+                            return (
+                              <li
+                                key={slot.start}
+                                className={booked ? "is-booked" : undefined}
+                              >
+                                <span className="order-slot-rank">
+                                  {slotOrdinal(index)}
+                                </span>
+                                <span className="order-slot-copy">{slot.label}</span>
+                                {booked ? (
+                                  <span className="order-slot-flag">
+                                    {order.status === "requested" ? "Selected" : "Booked"}
+                                  </span>
+                                ) : null}
+                              </li>
+                            );
+                          })}
+                        </ol>
                       )}
-                    </div>
-                    <div>
+                    </section>
+                    <section className="order-fact-card order-fact-card--property">
                       <p className="eyebrow">Property</p>
                       {(() => {
                         const draft = addressDraft(order);
@@ -934,66 +1221,65 @@ export function AdminOrderBoard({
                                   ? "Confirm address"
                                   : "Save address"}
                             </button>
-                            <div className="admin-order-meta">
-                              <div>
-                                <strong>Occupancy</strong> {order.occupancy}
-                              </div>
-                              <div>
-                                <strong>Access</strong> {order.accessType}
-                              </div>
-                              {order.accessNotes ? (
-                                <div>
-                                  <strong>Access notes</strong> {order.accessNotes}
-                                </div>
-                              ) : null}
-                              {order.meetingContact ? (
-                                <div>
-                                  <strong>Meeting contact</strong>{" "}
-                                  {order.meetingContact}
-                                </div>
-                              ) : null}
-                              {order.pets ? (
-                                <div>
-                                  <strong>Pets</strong> {order.pets}
-                                </div>
-                              ) : null}
-                              {order.parkingNotes ? (
-                                <div>
-                                  <strong>Parking</strong> {order.parkingNotes}
-                                </div>
-                              ) : null}
-                              {order.notes ? (
-                                <div>
-                                  <strong>Notes</strong> {order.notes}
-                                </div>
-                              ) : null}
+                            <div className="order-fact-pills">
+                              <span className="order-pill">
+                                {factLabel(order.occupancy) || "Occupancy —"}
+                              </span>
+                              <span className="order-pill">
+                                {factLabel(order.accessType) || "Access —"}
+                              </span>
                             </div>
+                            {order.accessNotes ? (
+                              <p className="order-fact-note">
+                                <strong>Access notes</strong> {order.accessNotes}
+                              </p>
+                            ) : null}
+                            {order.meetingContact ? (
+                              <p className="order-fact-note">
+                                <strong>Meeting</strong> {order.meetingContact}
+                              </p>
+                            ) : null}
+                            {order.pets ? (
+                              <p className="order-fact-note">
+                                <strong>Pets</strong> {order.pets}
+                              </p>
+                            ) : null}
+                            {order.parkingNotes ? (
+                              <p className="order-fact-note">
+                                <strong>Parking</strong> {order.parkingNotes}
+                              </p>
+                            ) : null}
+                            {order.notes ? (
+                              <p className="order-fact-note">
+                                <strong>Notes</strong> {order.notes}
+                              </p>
+                            ) : null}
                           </div>
                         );
                       })()}
-                    </div>
-                    <div>
+                    </section>
+                    <section className="order-fact-card order-fact-card--agent">
                       <p className="eyebrow">Agent</p>
-                      <div>{order.agentName}</div>
-                      <div className="muted">
+                      <p className="order-fact-value">{order.agentName}</p>
+                      <p className="order-fact-note">
                         <a href={`mailto:${order.agentEmail}`}>{order.agentEmail}</a>
-                      </div>
+                      </p>
                       {order.agentPhone ? (
-                        <div className="muted">
+                        <p className="order-fact-note">
                           <a href={`tel:${order.agentPhone}`}>{order.agentPhone}</a>
-                        </div>
+                        </p>
                       ) : null}
                       {order.brokerage ? (
-                        <div className="muted">{order.brokerage}</div>
+                        <p className="order-fact-note">{order.brokerage}</p>
                       ) : null}
-                    </div>
-                    <div>
+                    </section>
+                    <section className="order-fact-card order-fact-card--package">
                       <p className="eyebrow">Package</p>
-                      <div>{order.packageName}</div>
-                      <div className="muted">
+                      <p className="order-fact-value">{order.packageName}</p>
+                      <p className="order-fact-note">
                         {formatMoney(order.priceCents, order.currency)} ·{" "}
                         {order.squareFootage} sq ft · {order.durationMinutes} min
-                      </div>
+                      </p>
                       {order.priceCents <= 0 || order.status === "requested" ? (
                         <div className="admin-quote-price">
                           <label className="field">
@@ -1031,9 +1317,8 @@ export function AdminOrderBoard({
                           </button>
                         </div>
                       ) : null}
-                    </div>
+                    </section>
                   </div>
-
                   <div className="admin-delivery">
                     <div className="delivery-flow-head">
                       <div>
@@ -1051,53 +1336,231 @@ export function AdminOrderBoard({
                           <div className="delivery-step-title">Upload photos</div>
                           <p className="muted">
                             {gallery?.mediaCount
-                              ? `${gallery.mediaCount} photo${gallery.mediaCount === 1 ? "" : "s"} on this shoot. Preview before you email the agent.`
+                              ? `${gallery.mediaCount} photo${gallery.mediaCount === 1 ? "" : "s"} on this shoot. Drag to reorder the gallery, or add more files below.`
                               : "Add edited JPEGs from this shoot."}
                           </p>
-                          <div className="delivery-step-actions">
-                            <label className="delivery-file">
-                              <span className="btn btn-outline">
-                                {fileNames[order.id] || "Choose files"}
+                          <div className="delivery-photo-panel is-gallery">
+                            <div className="delivery-photo-panel-head">
+                              <strong>On this gallery</strong>
+                              <span>
+                                {orderPhotos[order.id]?.length ?? 0} uploaded
                               </span>
-                              <input
-                                ref={(node) => {
-                                  fileRefs.current[order.id] = node;
-                                }}
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp"
-                                multiple
-                                onChange={(event) => {
-                                  const count = event.target.files?.length ?? 0;
-                                  setFileNames((current) => ({
-                                    ...current,
-                                    [order.id]:
-                                      count === 0
-                                        ? ""
-                                        : count === 1
-                                          ? event.target.files![0]!.name
-                                          : `${count} files selected`,
-                                  }));
-                                }}
-                              />
-                            </label>
-                            <button
-                              type="button"
-                              className={`btn btn-solid${pending("upload") ? " is-busy" : ""}`}
-                              disabled={orderLocked}
-                              onClick={() => uploadPhotos(order.id)}
-                            >
-                              {pending("upload") ? "Uploading…" : "Upload"}
-                            </button>
-                            {gallery && gallery.mediaCount > 0 && branded ? (
-                              <a
-                                className="btn btn-outline"
-                                href={branded}
-                                target="_blank"
-                                rel="noreferrer"
+                            </div>
+                            {(orderPhotos[order.id] ?? []).length > 0 ? (
+                              <ul className="delivery-photo-grid">
+                                {(orderPhotos[order.id] ?? []).map((photo, index) => (
+                                  <li
+                                    key={photo.id}
+                                    className="delivery-photo-card"
+                                    draggable={!orderLocked && !pending("upload")}
+                                    onDragStart={() => {
+                                      dragPhotoRef.current = {
+                                        orderId: order.id,
+                                        id: photo.id,
+                                      };
+                                    }}
+                                    onDragOver={(event) => event.preventDefault()}
+                                    onDrop={(event) => {
+                                      event.preventDefault();
+                                      dropUploadedPhoto(order.id, photo.id);
+                                    }}
+                                  >
+                                    <span className="delivery-photo-index">
+                                      {index + 1}
+                                    </span>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={`/api/admin/orders/${order.id}/photos/${photo.id}`}
+                                      alt={photo.originalName}
+                                    />
+                                    <span className="delivery-photo-name">
+                                      {photo.originalName}
+                                    </span>
+                                    <div className="delivery-photo-tools">
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline"
+                                        disabled={
+                                          index === 0 ||
+                                          orderLocked ||
+                                          pending("upload")
+                                        }
+                                        onClick={() =>
+                                          moveUploadedPhoto(order.id, photo.id, -1)
+                                        }
+                                      >
+                                        ←
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline"
+                                        disabled={
+                                          index ===
+                                            (orderPhotos[order.id]?.length ?? 1) - 1 ||
+                                          orderLocked ||
+                                          pending("upload")
+                                        }
+                                        onClick={() =>
+                                          moveUploadedPhoto(order.id, photo.id, 1)
+                                        }
+                                      >
+                                        →
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline delivery-photo-remove"
+                                        disabled={orderLocked || pending("upload")}
+                                        onClick={() =>
+                                          void removeUploadedPhoto(order.id, photo.id)
+                                        }
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="delivery-photo-empty muted">
+                                Nothing in the gallery yet. Choose files below, then
+                                upload.
+                              </p>
+                            )}
+                          </div>
+                          <div className="delivery-photo-panel is-queue">
+                            <div className="delivery-photo-panel-head">
+                              <strong>Ready to upload</strong>
+                              <span>
+                                {pendingShots[order.id]?.length ?? 0} selected
+                              </span>
+                            </div>
+                            {(pendingShots[order.id] ?? []).length > 0 ? (
+                              <ul className="delivery-photo-grid">
+                                {(pendingShots[order.id] ?? []).map((shot, index) => (
+                                  <li
+                                    key={shot.key}
+                                    className="delivery-photo-card is-queued"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={shot.preview} alt={shot.file.name} />
+                                    <span className="delivery-photo-name">
+                                      {shot.file.name}
+                                    </span>
+                                    <div className="delivery-photo-tools">
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline"
+                                        disabled={index === 0 || pending("upload")}
+                                        onClick={() =>
+                                          moveQueuedPhoto(order.id, shot.key, -1)
+                                        }
+                                      >
+                                        ←
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline"
+                                        disabled={
+                                          index ===
+                                            (pendingShots[order.id]?.length ?? 1) - 1 ||
+                                          pending("upload")
+                                        }
+                                        onClick={() =>
+                                          moveQueuedPhoto(order.id, shot.key, 1)
+                                        }
+                                      >
+                                        →
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline delivery-photo-remove"
+                                        disabled={pending("upload")}
+                                        onClick={() =>
+                                          removeQueuedPhoto(order.id, shot.key)
+                                        }
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="delivery-photo-empty muted">
+                                Choose files, then press Upload. They stay here until
+                                they finish processing.
+                              </p>
+                            )}
+                            {uploadProgress[order.id] ? (
+                              <div
+                                className="delivery-upload-progress"
+                                role="progressbar"
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-valuenow={uploadProgress[order.id]!.percent}
+                                aria-label={uploadProgress[order.id]!.label}
                               >
-                                Preview gallery
-                              </a>
+                                <div className="delivery-upload-progress-bar">
+                                  <span
+                                    style={{
+                                      width: `${uploadProgress[order.id]!.percent}%`,
+                                    }}
+                                  />
+                                </div>
+                                <p className="muted">
+                                  {uploadProgress[order.id]!.label} (
+                                  {uploadProgress[order.id]!.percent}%)
+                                </p>
+                                {pending("upload") ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline"
+                                    onClick={() => uploadAbortRef.current?.abort()}
+                                  >
+                                    Cancel
+                                  </button>
+                                ) : null}
+                              </div>
                             ) : null}
+                            <div className="delivery-step-actions">
+                              <label className="delivery-file">
+                                <span className="btn btn-outline">Choose files</span>
+                                <input
+                                  ref={(node) => {
+                                    fileRefs.current[order.id] = node;
+                                  }}
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp"
+                                  multiple
+                                  onChange={(event) => {
+                                    queuePhotos(order.id, event.target.files);
+                                    event.target.value = "";
+                                  }}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                className={`btn btn-solid${pending("upload") ? " is-busy" : ""}`}
+                                disabled={
+                                  orderLocked ||
+                                  pending("upload") ||
+                                  !(pendingShots[order.id]?.length)
+                                }
+                                onClick={() => uploadPhotos(order.id)}
+                              >
+                                {pending("upload") ? "Uploading…" : "Upload"}
+                              </button>
+                              {gallery && gallery.mediaCount > 0 && branded ? (
+                                <a
+                                  className="btn btn-outline"
+                                  href={branded}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  Preview gallery
+                                </a>
+                              ) : null}
+                            </div>
                           </div>
                         </div>
                       </li>

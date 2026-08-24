@@ -8,6 +8,7 @@ import { addTenantStorageUsage } from "@/lib/tenant-store";
 import { getTenant } from "@/lib/tenants";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 type Params = { id: string };
 
@@ -29,6 +30,7 @@ export async function POST(
 ) {
   try {
     const { id: orderId } = await context.params;
+    console.info("[upload] start", orderId);
     const order = await getOrder(orderId);
     if (!order) {
       return NextResponse.json({ ok: false, error: "Order not found." }, { status: 404 });
@@ -49,6 +51,15 @@ export async function POST(
     if (blobs.length === 0) {
       return NextResponse.json(
         { ok: false, error: "Choose one or more photos." },
+        { status: 400 },
+      );
+    }
+    if (blobs.length > 1) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Upload one photo at a time so processing can finish.",
+        },
         { status: 400 },
       );
     }

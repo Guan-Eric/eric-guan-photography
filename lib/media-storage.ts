@@ -51,6 +51,7 @@ function getS3Client() {
     s3Client = new S3Client({
       region: "auto",
       endpoint: r2Endpoint(),
+      requestHandler: { requestTimeout: 20_000 },
       credentials: {
         accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID!,
         secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY!,
@@ -101,12 +102,21 @@ async function writeR2(relativePath: string, data: Buffer, contentType: string) 
   );
 }
 
+function writeR2InThisRuntime() {
+  if (!r2Configured()) return false;
+  if (forceRemote()) return true;
+  // `.env.local` has R2 keys for deploy, but local `next dev` should not wait
+  // on remote PutObject — that is what made Delivery uploads hang forever.
+  if (process.env.NODE_ENV === "development") return false;
+  return true;
+}
+
 export async function writeMediaFile(
   relativePath: string,
   data: Buffer,
   contentType = "image/jpeg",
 ) {
-  if (r2Configured()) {
+  if (writeR2InThisRuntime()) {
     await writeR2(relativePath, data, contentType);
     if (!forceRemote()) {
       await writeLocal(relativePath, data);

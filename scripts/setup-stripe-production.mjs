@@ -114,6 +114,31 @@ async function promptForLiveKeys() {
   }
 }
 
+async function promptForTestKeys() {
+  const rl = createInterface({ input, output });
+  try {
+    console.log(
+      "\nPaste test keys from https://dashboard.stripe.com/apikeys (Test mode ON).\n",
+    );
+    const sk = (await rl.question("STRIPE_SECRET_KEY (sk_test_...): ")).trim();
+    const pk = (await rl.question("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY (pk_test_...): ")).trim();
+    if (!sk.startsWith("sk_test_")) {
+      throw new Error("Expected sk_test_... secret key.");
+    }
+    if (!pk.startsWith("pk_test_")) {
+      throw new Error("Expected pk_test_... publishable key.");
+    }
+    setEnvKey(".env.local", "STRIPE_SECRET_KEY", sk);
+    setEnvKey(".env.local", "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", pk);
+    setEnvKey(".dev.vars", "STRIPE_SECRET_KEY", sk);
+    setEnvKey(".dev.vars", "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", pk);
+    env.STRIPE_SECRET_KEY = sk;
+    env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = pk;
+  } finally {
+    rl.close();
+  }
+}
+
 if (!env.STRIPE_SECRET_KEY?.trim() || (!allowTest && !env.STRIPE_SECRET_KEY.startsWith("sk_live"))) {
   if (!process.stdin.isTTY) {
     console.error(
@@ -124,13 +149,28 @@ if (!env.STRIPE_SECRET_KEY?.trim() || (!allowTest && !env.STRIPE_SECRET_KEY.star
   await promptForLiveKeys();
 }
 
-const secret = env.STRIPE_SECRET_KEY?.trim();
+let secret = env.STRIPE_SECRET_KEY?.trim();
 if (!secret) {
   console.error("NO_STRIPE_SECRET — add sk_live_... to .env.stripe.live (see .env.stripe.live.example)");
   process.exit(1);
 }
 
-const live = secret.startsWith("sk_live");
+let live = secret.startsWith("sk_live");
+if (allowTest && live) {
+  if (!process.stdin.isTTY) {
+    console.error(
+      "TEST_KEY_REQUIRED — --allow-test needs sk_test_... in .env.local. Do not provision test prices with a live key.",
+    );
+    process.exit(1);
+  }
+  await promptForTestKeys();
+  secret = env.STRIPE_SECRET_KEY?.trim();
+  live = Boolean(secret?.startsWith("sk_live"));
+}
+if (allowTest && live) {
+  console.error("TEST_KEY_REQUIRED — --allow-test needs sk_test_...");
+  process.exit(1);
+}
 if (!live && !allowTest) {
   console.error("LIVE_KEY_REQUIRED — use sk_live_... in .env.stripe.live or pass --allow-test for test mode");
   process.exit(1);

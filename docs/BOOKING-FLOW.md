@@ -316,6 +316,8 @@ Agent completes Checkout
 
 Subscription events on the same webhook update billing plans (separate from gallery).
 
+Local test mode: `stripe listen --forward-to localhost:3000/api/stripe/webhook` and put the CLI `whsec_...` in `.env.local`. See [`STRIPE-SETUP.md`](STRIPE-SETUP.md).
+
 ### 4.4 Downloads
 
 | Control / route | Gate |

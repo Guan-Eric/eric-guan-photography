@@ -41,6 +41,7 @@ type BillingState = {
   listingsUsedYear: number;
   seatsQuota: number;
   hasAccess: boolean;
+  stripeMode?: "test" | "live" | "off";
   entitlements: {
     customDomain: boolean;
     propertyPages: boolean;
@@ -480,6 +481,23 @@ export function StudioSettingsPanel() {
 
       <section className="studio-section">
         <h2>Subscription</h2>
+        {billing?.stripeMode === "test" ? (
+          <p className="field-hint" role="status">
+            Stripe: <strong>test mode</strong> — charges use test cards only.
+          </p>
+        ) : billing?.stripeMode === "live" ? (
+          <p className="field-hint" role="status">
+            Stripe: <strong>live mode</strong> — real charges. For local testing,
+            put <code>sk_test_…</code> / <code>pk_test_…</code> in{" "}
+            <code>.env.local</code>, run{" "}
+            <code>node scripts/setup-stripe-production.mjs --allow-test</code>, then
+            restart <code>npm run dev</code>.
+          </p>
+        ) : billing ? (
+          <p className="field-hint" role="status">
+            Stripe: not configured (checkout uses the local stub).
+          </p>
+        ) : null}
         <p className="muted">
           {billing ? (
             <>

@@ -21,7 +21,26 @@ npm run setup:check
 npm run deploy
 ```
 
-**Test mode (local dev):** use `sk_test_...` in `.env.local` and `node scripts/setup-stripe-parity.mjs` (alias for `setup-stripe-production.mjs --allow-test`).
+**Test mode (local `next dev`):** put `sk_test_...` and `pk_test_...` in `.env.local`, then:
+
+```bash
+node scripts/setup-stripe-production.mjs --allow-test
+# alias: node scripts/setup-stripe-parity.mjs
+```
+
+That writes test `STRIPE_PRICE_*` into `.env.local` and `.dev.vars` only. Do **not** pass `--sync-wrangler`. If `.env.local` still has `sk_live_...`, the script exits with `TEST_KEY_REQUIRED` — swap in Dashboard **Test mode** keys first (leave `.env.stripe.live` on live).
+
+To finish Checkout (subscription and gallery pay) against localhost:
+
+1. Restart `npm run dev` after changing `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
+2. Forward webhooks:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+3. Copy the CLI `whsec_...` into `.env.local` as `STRIPE_WEBHOOK_SECRET` and restart again.
+4. Pay with [test cards](https://docs.stripe.com/testing) (e.g. `4242 4242 4242 4242`). If the studio row still has a live `cus_...` / Connect account from a production copy, the first Checkout or Connect call clears it and creates test-mode objects.
 
 ---
 

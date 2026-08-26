@@ -490,6 +490,13 @@ export async function updateOrderPrice(
 
   const existing = await getOrder(orderId, tenantId);
   if (!existing) return { ok: false as const, error: "Order not found." };
+  if (existing.status === "paid") {
+    return {
+      ok: false as const,
+      error:
+        "Price is locked after the gallery is paid. Refund or send a new charge if it needs to change.",
+    };
+  }
 
   const rounded = Math.round(priceCents);
   const db = getDb();

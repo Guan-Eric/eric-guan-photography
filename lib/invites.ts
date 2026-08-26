@@ -5,7 +5,7 @@ import { assertCanInviteSeat } from "@/lib/billing";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { MembershipInvite, MembershipRole } from "@/lib/db/schema";
 import { sendEmail, studioInviteEmail } from "@/lib/email";
-import { getTenantRow } from "@/lib/tenant-store";
+import { getTenantRow, parseTenantConfig } from "@/lib/tenant-store";
 
 const tokenId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 24);
 const rowId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
@@ -191,6 +191,7 @@ export async function createInvite(options: {
         role: existing.role,
         acceptUrl: options.acceptUrl.replace("TOKEN", existing.token),
         studioName,
+        replyTo: tenant ? parseTenantConfig(tenant).email : undefined,
       }),
     );
     return { ok: true as const, invite: existing, resent: true as const };
@@ -226,6 +227,7 @@ export async function createInvite(options: {
       role: options.role,
       acceptUrl: options.acceptUrl.replace("TOKEN", invite.token),
       studioName,
+      replyTo: tenant ? parseTenantConfig(tenant).email : undefined,
     }),
   );
 

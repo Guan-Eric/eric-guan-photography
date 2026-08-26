@@ -4,6 +4,7 @@ import { getPhotographerSession, requireTenantMembership } from "@/lib/auth";
 import { billingSummary, lifetimeOfferStatus } from "@/lib/billing";
 import { countBillableDomains } from "@/lib/domain-billing";
 import { getOrCreatePhotographerReferralCode } from "@/lib/referrals";
+import { stripeMode } from "@/lib/stripe";
 import { getTenantRow } from "@/lib/tenant-store";
 
 export const runtime = "nodejs";
@@ -31,10 +32,16 @@ export async function GET() {
     console.warn("[billing] referral lookup failed:", error);
   }
   const lifetimeOffer = await lifetimeOfferStatus();
-  const appsumo = await getLicenseByTenantId(row.id);
+  let appsumo = null;
+  try {
+    appsumo = await getLicenseByTenantId(row.id);
+  } catch (error) {
+    console.warn("[billing] appsumo lookup failed:", error);
+  }
   return NextResponse.json({
     ok: true,
     ...billingSummary(row, { activeDomains }),
+    stripeMode: stripeMode(),
     referralCode,
     appsumoLicense: appsumo
       ? {

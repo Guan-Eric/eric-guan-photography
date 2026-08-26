@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   orderLifecycleEmails,
   orderPriceChangeEmail,
+  passwordResetEmail,
   photographerNotifyEmail,
   photographerOrderStatusEmail,
 } from "@/lib/email";
@@ -46,6 +47,10 @@ describe("order lifecycle emails", () => {
         "agent@example.com",
         "photo@example.com",
       ]);
+      const agent = mails.find((mail) => mail.to === "agent@example.com")!;
+      const photo = mails.find((mail) => mail.to === "photo@example.com")!;
+      expect(agent.replyTo).toBe("photo@example.com");
+      expect(photo.replyTo).toBe("agent@example.com");
     }
   });
 
@@ -116,6 +121,7 @@ describe("order lifecycle emails", () => {
       adminUrl: "https://test.studiofront.ca/admin",
     });
     expect(mail.to).toBe("photo@example.com");
+    expect(mail.replyTo).toBe("agent@example.com");
     expect(mail.text).toMatch(/416-555-0100/);
     expect(mail.text).toMatch(/North Realty/);
     expect(mail.text).toMatch(/Code 1234/);
@@ -123,5 +129,13 @@ describe("order lifecycle emails", () => {
     expect(mail.text).toMatch(/Street parking/);
     expect(mail.text).toMatch(/Call Alex on arrival/);
     expect(mail.text).toMatch(/Focus on kitchen/);
+  });
+
+  it("does not set studio Reply-To on password reset", () => {
+    const mail = passwordResetEmail({
+      to: "photo@example.com",
+      resetUrl: "https://test.studiofront.ca/reset?token=abc",
+    });
+    expect(mail.replyTo).toBeUndefined();
   });
 });

@@ -103,7 +103,7 @@ export async function PATCH(
       order.tenantId,
     );
     if (!priced.ok) {
-      return NextResponse.json(priced, { status: 404 });
+      return NextResponse.json(priced, { status: priced.error.includes("locked") ? 409 : 404 });
     }
     current = priced.order;
     if (priced.order.priceCents !== previousPriceCents) {

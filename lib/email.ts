@@ -11,6 +11,7 @@ export type OutboundEmail = {
   subject: string;
   text: string;
   html?: string;
+  replyTo?: string;
 };
 
 type DetailRow = { label: string; value: string };
@@ -179,12 +180,25 @@ function buildHtml(content: EmailContent) {
 </html>`;
 }
 
-function composeEmail(to: string, subject: string, content: EmailContent): OutboundEmail {
+function normalizeReplyTo(to: string, replyTo?: string) {
+  const value = replyTo?.trim();
+  if (!value) return undefined;
+  if (value.toLowerCase() === to.trim().toLowerCase()) return undefined;
+  return value;
+}
+
+function composeEmail(
+  to: string,
+  subject: string,
+  content: EmailContent,
+  replyTo?: string,
+): OutboundEmail {
   return {
     to,
     subject,
     text: buildText(content),
     html: buildHtml(content),
+    replyTo: normalizeReplyTo(to, replyTo),
   };
 }
 
@@ -200,6 +214,7 @@ export async function sendEmail(message: OutboundEmail) {
     console.info("[email:stub]", {
       from,
       to: message.to,
+      replyTo: message.replyTo,
       subject: message.subject,
       text: message.text,
     });
@@ -215,6 +230,7 @@ export async function sendEmail(message: OutboundEmail) {
     body: JSON.stringify({
       from,
       to: message.to,
+      ...(message.replyTo ? { reply_to: message.replyTo } : {}),
       subject: message.subject,
       text: message.text,
       html: message.html ?? `<pre>${escapeHtml(message.text)}</pre>`,
@@ -276,6 +292,7 @@ export function bookingConfirmationEmail(options: {
       signoffName: tenant.photographerName,
       signoffLine: tenant.email,
     },
+    tenant.email,
   );
 }
 
@@ -364,6 +381,7 @@ export function photographerNotifyEmail(options: {
       cta: { label: "Open admin board", url: options.adminUrl },
       signoffName: platformName(),
     },
+    options.agentEmail,
   );
 }
 
@@ -417,7 +435,7 @@ export function orderStatusEmail(options: {
       ],
       signoffName: tenant.photographerName,
       signoffLine: tenant.email,
-    });
+    }, tenant.email);
   }
 
   if (status === "shot") {
@@ -433,7 +451,7 @@ export function orderStatusEmail(options: {
       ],
       signoffName: tenant.photographerName,
       signoffLine: tenant.email,
-    });
+    }, tenant.email);
   }
 
   if (status === "editing") {
@@ -449,7 +467,7 @@ export function orderStatusEmail(options: {
       ],
       signoffName: tenant.photographerName,
       signoffLine: tenant.email,
-    });
+    }, tenant.email);
   }
 
   if (status === "delivered") {
@@ -476,7 +494,7 @@ export function orderStatusEmail(options: {
       secondaryLinks,
       signoffName: tenant.photographerName,
       signoffLine: tenant.email,
-    });
+    }, tenant.email);
   }
 
   if (status === "paid") {
@@ -495,7 +513,7 @@ export function orderStatusEmail(options: {
       ],
       signoffName: tenant.photographerName,
       signoffLine: tenant.email,
-    });
+    }, tenant.email);
   }
 
   if (status === "cancelled") {
@@ -507,7 +525,7 @@ export function orderStatusEmail(options: {
       ],
       signoffName: tenant.photographerName,
       signoffLine: tenant.email,
-    });
+    }, tenant.email);
   }
 
   return null;
@@ -558,6 +576,7 @@ export function photographerOrderStatusEmail(options: {
         cta: { label: "Open admin board", url: adminUrl },
         signoffName: platformName(),
       },
+      order.agentEmail,
     );
   }
 
@@ -569,7 +588,7 @@ export function photographerOrderStatusEmail(options: {
       details: baseDetails,
       cta: { label: "Open admin board", url: adminUrl },
       signoffName: platformName(),
-    });
+    }, order.agentEmail);
   }
 
   if (status === "editing") {
@@ -584,6 +603,7 @@ export function photographerOrderStatusEmail(options: {
         cta: { label: "Open admin board", url: adminUrl },
         signoffName: platformName(),
       },
+      order.agentEmail,
     );
   }
 
@@ -603,6 +623,7 @@ export function photographerOrderStatusEmail(options: {
           : { label: "Open admin board", url: adminUrl },
         signoffName: platformName(),
       },
+      order.agentEmail,
     );
   }
 
@@ -622,6 +643,7 @@ export function photographerOrderStatusEmail(options: {
           : { label: "Open admin board", url: adminUrl },
         signoffName: platformName(),
       },
+      order.agentEmail,
     );
   }
 
@@ -639,6 +661,7 @@ export function photographerOrderStatusEmail(options: {
         cta: { label: "Open admin board", url: adminUrl },
         signoffName: platformName(),
       },
+      order.agentEmail,
     );
   }
 
@@ -670,6 +693,7 @@ export function orderPriceChangeEmail(options: {
       signoffName: tenant.photographerName,
       signoffLine: tenant.email,
     },
+    tenant.email,
   );
 }
 
@@ -702,6 +726,7 @@ export function photographerPriceChangeEmail(options: {
       cta: { label: "Open admin board", url: adminUrl },
       signoffName: platformName(),
     },
+    order.agentEmail,
   );
 }
 
@@ -731,6 +756,7 @@ export function photographerDayBeforeReminderEmail(options: {
       cta: { label: "Open admin board", url: adminUrl },
       signoffName: platformName(),
     },
+    order.agentEmail,
   );
 }
 
@@ -778,6 +804,7 @@ export function dayBeforeReminderEmail(options: {
       signoffName: options.tenant.photographerName,
       signoffLine: options.tenant.email,
     },
+    options.tenant.email,
   );
 }
 
@@ -825,6 +852,7 @@ export function studioInviteEmail(options: {
   role: string;
   acceptUrl: string;
   studioName?: string;
+  replyTo?: string;
 }) {
   const brand = platformName();
   const studio = options.studioName?.trim();
@@ -848,6 +876,7 @@ export function studioInviteEmail(options: {
       outro: ["This invitation expires in 14 days."],
       signoffName: brand,
     },
+    options.replyTo,
   );
 }
 
@@ -869,6 +898,7 @@ export function agentPortalLoginEmail(options: {
       signoffName: options.tenant.photographerName,
       signoffLine: options.tenant.email,
     },
+    options.tenant.email,
   );
 }
 
@@ -892,6 +922,7 @@ export function reviewRequestEmail(options: {
       signoffName: options.tenant.photographerName,
       signoffLine: options.tenant.email,
     },
+    options.tenant.email,
   );
 }
 
@@ -913,6 +944,7 @@ export function photographerOnMyWayEmail(options: {
       signoffName: options.tenant.photographerName,
       signoffLine: options.tenant.email,
     },
+    options.tenant.email,
   );
 }
 
@@ -934,5 +966,6 @@ export function photographerArrivedEmail(options: {
       signoffName: options.tenant.photographerName,
       signoffLine: options.tenant.email,
     },
+    options.tenant.email,
   );
 }

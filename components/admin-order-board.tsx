@@ -1280,13 +1280,13 @@ export function AdminOrderBoard({
                         {formatMoney(order.priceCents, order.currency)} ·{" "}
                         {order.squareFootage} sq ft · {order.durationMinutes} min
                       </p>
-                      {order.priceCents <= 0 || order.status === "requested" ? (
+                      {order.status !== "paid" ? (
                         <div className="admin-quote-price">
                           <label className="field">
                             <span>
                               {order.priceCents <= 0
                                 ? "Set price (dollars)"
-                                : "Confirm price (dollars)"}
+                                : "Checkout price (dollars)"}
                             </span>
                             <input
                               type="number"
@@ -1316,7 +1316,11 @@ export function AdminOrderBoard({
                             {pending("savePrice") ? "Saving…" : "Save price"}
                           </button>
                         </div>
-                      ) : null}
+                      ) : (
+                        <p className="order-fact-note">
+                          Price is locked after payment.
+                        </p>
+                      )}
                     </section>
                   </div>
                   <div className="admin-delivery">
@@ -1560,7 +1564,28 @@ export function AdminOrderBoard({
                                   Preview gallery
                                 </a>
                               ) : null}
+                              {gallery && gallery.mediaCount > 0 ? (
+                                <>
+                                  <a
+                                    className="btn btn-outline"
+                                    href={`/api/admin/orders/${order.id}/zip?kind=mls`}
+                                  >
+                                    Download MLS zip
+                                  </a>
+                                  <a
+                                    className="btn btn-outline"
+                                    href={`/api/admin/orders/${order.id}/zip?kind=full`}
+                                  >
+                                    Download full-res zip
+                                  </a>
+                                </>
+                              ) : null}
                             </div>
+                            {gallery && gallery.mediaCount > 0 ? (
+                              <p className="muted">
+                                Your zips do not unlock the agent gallery or mark the job paid.
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                       </li>
@@ -1706,7 +1731,7 @@ export function AdminOrderBoard({
                           <p className="muted">
                             {paid
                               ? "Gallery is unlocked. Agent can download full-resolution files."
-                              : "Normally unlocks automatically after Stripe Checkout. Use this if they paid e-transfer or outside the app."}
+                              : "Use this if they paid e-transfer or outside the app. Set the agreed price first. This does not replace downloading your own zips."}
                           </p>
                           <div className="delivery-step-actions">
                             <button

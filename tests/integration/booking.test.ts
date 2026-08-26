@@ -220,6 +220,16 @@ describe("booking create", () => {
 
     expect((await updateOrderPrice(booked.orderId, -1, tenant.id)).ok).toBe(false);
     expect((await updateOrderPrice("missing", 1000, tenant.id)).ok).toBe(false);
+
+    await qRun(
+      getDb()
+        .update(schema.orders)
+        .set({ status: "paid" })
+        .where(eq(schema.orders.id, booked.orderId)),
+    );
+    const locked = await updateOrderPrice(booked.orderId, 11100, tenant.id);
+    expect(locked.ok).toBe(false);
+    if (!locked.ok) expect(locked.error.toLowerCase()).toContain("locked");
     expect((await updateOrderAddress("missing", {
       propertyAddress: "123 Main Street",
       postalCode: "H2X 1Y4",

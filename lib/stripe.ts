@@ -10,6 +10,15 @@ export function stripeEnabled() {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }
 
+/** Which Stripe environment the process is configured for (from STRIPE_SECRET_KEY). */
+export function stripeMode(): "test" | "live" | "off" {
+  const key = process.env.STRIPE_SECRET_KEY?.trim() ?? "";
+  if (!key) return "off";
+  if (key.startsWith("sk_test_") || key.startsWith("rk_test_")) return "test";
+  if (key.startsWith("sk_live_") || key.startsWith("rk_live_")) return "live";
+  return key.includes("_test_") ? "test" : key.includes("_live_") ? "live" : "off";
+}
+
 export function stripeErrorMessage(error: unknown) {
   if (error && typeof error === "object" && "message" in error) {
     return String((error as { message: unknown }).message);

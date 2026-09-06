@@ -1,8 +1,8 @@
-# Instagram cold DM context file — Lifetime deal
+# Instagram cold DM context file, Lifetime deal
 
 **Created:** 2026-09-01  
-**Updated:** 2026-09-01 (LTD focus)  
-**Sender:** Eric Guan — RE photographer in Montréal, founder of [StudioFront](https://studiofront.ca)  
+**Updated:** 2026-09-05 (bump + Loom how-to)  
+**Sender:** Eric Guan, RE photographer in Montréal, founder of [StudioFront](https://studiofront.ca)  
 **Goal:** Sell **Lifetime Starter** ($199 one-time) to RE photographers via Instagram DM.
 
 Full objection scripts + other channels: `docs/LTD-PRIVATE-SALES.md`
@@ -25,34 +25,60 @@ Full objection scripts + other channels: `docs/LTD-PRIVATE-SALES.md`
 
 **One-liner:** Book on your site → shoot → agent gets one link → proofs → they pay → MLS/full zip unlocks. No agent account.
 
-**Honest framing:** This is Starter-like access locked in once — not unlimited Studio forever. If they shoot 200+ listings/year or need a custom domain, point them to monthly plans at studiofront.ca/pricing.
+**Honest framing:** This is Starter-like access locked in once, not unlimited Studio forever. If they shoot 200+ listings/year or need a custom domain, point them to monthly plans at studiofront.ca/pricing.
 
 ---
 
 ## Before you send
 
-1. Like 2–3 recent **listing** posts (not their wedding/lifestyle stuff).
+1. Like 2-3 recent **listing** posts (not their wedding/lifestyle stuff).
 2. Send DM within a few hours.
 3. Swap in a specific post where noted.
-4. **One DM.** One follow-up 48–72h later max (template below).
-5. If they say pass — don't follow up again.
+4. **One DM.** One follow-up 48-72h later max (templates below).
+5. If they say pass, don't follow up again.
 
 ### Voice rules
 
-- 4–7 sentences. Still sounds like a person, not a landing page.
+- 4-7 sentences. Still sounds like a person, not a landing page.
 - Personal hook first, offer second, link third.
-- Say what it costs and what the caps are — hiding that feels scammy.
+- Say what it costs and what the caps are; hiding that feels scammy.
 - No bullet lists in the DM.
 - No "game-changer", "revolutionize", "hope you're well", "pick your brain".
 - OK to say: "private lifetime deal", "founding seats", "not for everyone".
 
-### Follow-up (48–72h, once)
+### How to record the Loom (15 min)
 
-> Hey — bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. Happy to send a 60s Loom instead of the page if that's easier: https://studiofront.ca/lifetime
+Full steps also live in `docs/LTD-PRIVATE-SALES.md` under **How to record the Loom**. Minimum:
+
+1. Free account at https://www.loom.com (browser extension or desktop app).
+2. Log into your dogfood StudioFront studio in Chrome. Open: booking page, then a sample gallery with watermarked proofs and **Pay & unlock** visible.
+3. Start **Screen + Cam** or **Screen only**, 60-90 seconds.
+4. Say the LTD kit script while clicking: branded site / booking → gallery → proofs → pay unlock → no agent login → $199 Lifetime Starter caps (125/yr, 1 seat, subdomain).
+5. Stop, copy the share URL into phone Notes next to https://studiofront.ca/lifetime.
+6. Use that URL in bumps and reply threads. Tracker: `Loom sent`.
+
+Until you have a Loom URL, use the **Bump without Loom** template below.
+
+### After the first 10 (no replies)
+
+1. Wait 48-72h after the original DM.
+2. Send **one** bump per person, then stop (no third message).
+3. Prefer bumping **after** you have a Loom URL; if not, use the no-Loom bump.
+4. Tracker: mark status `Bumped`, then leave alone unless they reply.
+
+**Bump with Loom** (replace `[LOOM]`):
+
+> Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. 60s walkthrough if easier than the page: [LOOM]
+> Or the FAQ: https://studiofront.ca/lifetime
+
+**Bump without Loom** (use until Loom exists):
+
+> Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. Caps + FAQ here: https://studiofront.ca/lifetime
+> Happy to answer anything if useful.
 
 ### When they're ready to buy
 
-> Awesome — here's the direct path:
+> Awesome, here's the direct path:
 > https://studiofront.ca/signup?plan=lifetime
 > Caps: 125 listings/year, 1 seat, subdomain. FAQ on that page if anything's unclear. Ping me if checkout acts up.
 
@@ -63,7 +89,7 @@ Full objection scripts + other channels: `docs/LTD-PRIVATE-SALES.md`
 | Tier | Who | LTD fit |
 |------|-----|---------|
 | **A** | Solo RE shooter, &lt;125 listings/yr, booking via DM or basic site | Best buyer |
-| **B** | Small team or multi-service — may need monthly instead | Pitch LTD if solo volume; otherwise monthly |
+| **B** | Small team or multi-service, may need monthly instead | Pitch LTD if solo volume; otherwise monthly |
 | **C** | Educator / partner | Affiliate angle, not LTD customer |
 | **Skip** | Not RE | Don't send |
 
@@ -71,15 +97,15 @@ Full objection scripts + other channels: `docs/LTD-PRIVATE-SALES.md`
 
 ## Accounts + DMs
 
-### 1. @brightspacemediachicago — Chicago · Yuliia Hurman · ~914 followers · Tier A
+### 1. @brightspacemediachicago, Chicago · Yuliia Hurman · ~914 followers · Tier A
 
 **Hook:** Developers + Airbnb in bio, not just MLS.
 
 **DM:**
 
-> Hey Yuliia — found Brightspace looking at Chicago RE shooters. Love that you're doing developers and Airbnb, not just cookie-cutter listings.
+> Hey Yuliia, found Brightspace looking at Chicago RE shooters. Love that you're doing developers and Airbnb, not just cookie-cutter listings.
 >
-> I'm Eric, RE photographer in Montréal. I built StudioFront for my own studio — branded booking, one gallery link, agents pay to unlock files, no agent login.
+> I'm Eric, RE photographer in Montréal. I built StudioFront for my own studio, branded booking, one gallery link, agents pay to unlock files, no agent login.
 >
 > Running a small private Lifetime deal right now: $199 once, 125 listings/year, 1 seat. Starter-level caps, not unlimited forever.
 >
@@ -88,13 +114,13 @@ Full objection scripts + other channels: `docs/LTD-PRIVATE-SALES.md`
 
 ---
 
-### 2. @skyeye__media — Florida · ~1,966 followers · Tier A
+### 2. @skyeye__media, Florida · ~1,966 followers · Tier A
 
 **Hook:** Builders highlight, drone/reel-heavy.
 
 **DM:**
 
-> Hey — your Builders highlight stood out. Cape Coral new construction + all those drone reels is a lot of delivery work.
+> Hey, your Builders highlight stood out. Cape Coral new construction + all those drone reels is a lot of delivery work.
 >
 > I'm Eric, RE shooter in Montréal. Built StudioFront so agents get one link (proofs → pay → unlock zips) without creating an account.
 >
@@ -105,125 +131,125 @@ Full objection scripts + other channels: `docs/LTD-PRIVATE-SALES.md`
 
 ---
 
-### 3. @ng_concept_media — Porto · Nuno Gil · ~2,854 followers · Tier B
+### 3. @ng_concept_media, Porto · Nuno Gil · ~2,854 followers · Tier B
 
 **Hook:** Agency highlights (KW Alfa, C21 Elite).
 
 **DM (English):**
 
-> Hey Nuno — NG Concept came up researching Porto RE media. Your agency highlights make it clear you work with the same teams a lot.
+> Hey Nuno, NG Concept came up researching Porto RE media. Your agency highlights make it clear you work with the same teams a lot.
 >
-> I'm Eric, RE photographer in Montréal, building StudioFront — own your booking and delivery, agents just open a link.
+> I'm Eric, RE photographer in Montréal, building StudioFront, own your booking and delivery, agents just open a link.
 >
-> I'm doing a small founding Lifetime round: $199 once, 125 listings/year, 1 seat. Not unlimited Studio — Starter-like caps.
+> I'm doing a small founding Lifetime round: $199 once, 125 listings/year, 1 seat. Not unlimited Studio, Starter-like caps.
 >
 > https://studiofront.ca/lifetime if you want the details. Totally fine if you're already set on your stack.
 
 **DM (Portuguese):**
 
-> Olá Nuno — vi o NG Concept à procura de media imobiliária em Portugal. Os highlights com agências (KW, C21) mostram que tens clientes fixos.
+> Olá Nuno, vi o NG Concept à procura de media imobiliária em Portugal. Os highlights com agências (KW, C21) mostram que tens clientes fixos.
 >
-> Sou o Eric, fotógrafo imobiliário em Montréal. Criei o StudioFront — marca própria, reservas e galeria num link, agente paga e desbloqueia ficheiros, sem conta.
+> Sou o Eric, fotógrafo imobiliário em Montréal. Criei o StudioFront, marca própria, reservas e galeria num link, agente paga e desbloqueia ficheiros, sem conta.
 >
 > Lifetime privado: 199$ uma vez, 125 listagens/ano, 1 lugar. Capacidades tipo Starter, não ilimitado.
 >
-> https://studiofront.ca/lifetime — se fizer sentido para o teu volume.
+> https://studiofront.ca/lifetime, se fizer sentido para o teu volume.
 
 ---
 
-### 4. @solid_rockmedia — Greenville NC · Kerlie Tollinchi · ~591 followers · Tier A
+### 4. @solid_rockmedia, Greenville NC · Kerlie Tollinchi · ~591 followers · Tier A
 
-**Hook:** Already has online booking at book.solidrockmediapro.com — ask if delivery/pay is the gap.
+**Hook:** Already has online booking at book.solidrockmediapro.com, ask if delivery/pay is the gap.
 
 **DM:**
 
-> Hey Kerlie — Solid Rock came up in NC RE media. You've already got online booking wired up which is ahead of most people at your size.
+> Hey Kerlie, Solid Rock came up in NC RE media. You've already got online booking wired up which is ahead of most people at your size.
 >
-> I'm Eric, RE photographer in Montréal. I built StudioFront for the part after the booking — one gallery link, watermarked proofs, agent pays, files unlock. No agent account.
+> I'm Eric, RE photographer in Montréal. I built StudioFront for the part after the booking, one gallery link, watermarked proofs, agent pays, files unlock. No agent account.
 >
-> Selling a private Lifetime Starter: $199 once, 125 listings/year, 1 seat. Might be redundant if your current stack already does pay-to-unlock — but if you're still emailing zips or chasing agent logins, worth comparing: https://studiofront.ca/lifetime
+> Selling a private Lifetime Starter: $199 once, 125 listings/year, 1 seat. Might be redundant if your current stack already does pay-to-unlock, but if you're still emailing zips or chasing agent logins, worth comparing: https://studiofront.ca/lifetime
 
 ---
 
-### 5. @luxelensphoto — Luxe Lens Photo & Video · ~871 followers · Tier A
+### 5. @luxelensphoto, Luxe Lens Photo & Video · ~871 followers · Tier A
 
 **Hook:** RE + business work on luxelensphoto.com.
 
 **DM:**
 
-> Hey — Luxe Lens caught my eye because you're doing RE and business, not just listings. That usually means two different client types to juggle.
+> Hey, Luxe Lens caught my eye because you're doing RE and business, not just listings. That usually means two different client types to juggle.
 >
 > I'm Eric, RE shooter in Montréal. Built StudioFront for the listing side: your branded site, booking, gallery link, pay-to-unlock. Agents never make an account.
 >
-> Founding Lifetime is $199 one-time — 125 listings/year, 1 seat, subdomain. Not custom domain / multi-seat (that's monthly if you need it).
+> Founding Lifetime is $199 one-time, 125 listings/year, 1 seat, subdomain. Not custom domain / multi-seat (that's monthly if you need it).
 >
-> https://studiofront.ca/lifetime — ignore me if you're happy on what you have.
+> https://studiofront.ca/lifetime, ignore me if you're happy on what you have.
 
 ---
 
-### 6. @wonderbugphotography — Ohio · Sarah Lines · **SKIP**
+### 6. @wonderbugphotography, Ohio · Sarah Lines · **SKIP**
 
-Lifestyle/wedding/seniors — not RE. Don't pitch LTD unless she posts about breaking into listings.
+Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaking into listings.
 
 ---
 
-### 7. @arizona_real_estate_photos — Ali Hohn · ~8,201 followers · Tier B
+### 7. @arizona_real_estate_photos, Ali Hohn · ~8,201 followers · Tier B
 
 **Hook:** Reels + Airbnb model highlight, visualicreative.com.
 
 **DM:**
 
-> Hey Ali — your page is one of the more content-forward AZ RE accounts I've seen. Airbnb model highlight is a smart niche.
+> Hey Ali, your page is one of the more content-forward AZ RE accounts I've seen. Airbnb model highlight is a smart niche.
 >
-> I'm Eric, RE photographer in Montréal. Built StudioFront for the boring backend — booking, one gallery link, proofs then pay-to-unlock, no agent login.
+> I'm Eric, RE photographer in Montréal. Built StudioFront for the boring backend, booking, one gallery link, proofs then pay-to-unlock, no agent login.
 >
-> Private Lifetime Starter: $199 once, 125 listings/year cap, 1 seat. If you're doing way more volume than that, monthly plans make more sense — but if you're solo and under the cap, it's basically locking Starter without $49/mo forever.
+> Private Lifetime Starter: $199 once, 125 listings/year cap, 1 seat. If you're doing way more volume than that, monthly plans make more sense, but if you're solo and under the cap, it's basically locking Starter without $49/mo forever.
 >
 > https://studiofront.ca/lifetime
 
 ---
 
-### 8. @millersartlab — Celebration FL · Irene Miller · ~6,389 followers · Tier B
+### 8. @millersartlab, Celebration FL · Irene Miller · ~6,389 followers · Tier B
 
 **Hook:** "Faces | Places | Things | Events", also shoots RE.
 
 **DM:**
 
-> Hey Irene — Millers Art Lab's been around a while and Celebration's a wild market with all the rental/tourism stuff.
+> Hey Irene, Millers Art Lab's been around a while and Celebration's a wild market with all the rental/tourism stuff.
 >
-> I'm Eric, RE photographer in Montréal. I built StudioFront for independent studios — your brand, your booking, delivery where agents open a link and pay to unlock. No portal login.
+> I'm Eric, RE photographer in Montréal. I built StudioFront for independent studios, your brand, your booking, delivery where agents open a link and pay to unlock. No portal login.
 >
-> Running a small Lifetime round for solo shooters: $199 once, 125 listings/year, 1 seat. Not meant to replace a big team setup — Starter-like caps.
+> Running a small Lifetime round for solo shooters: $199 once, 125 listings/year, 1 seat. Not meant to replace a big team setup, Starter-like caps.
 >
 > https://studiofront.ca/lifetime if the RE side of your business could use a simpler delivery loop.
 
 ---
 
-### 9. @kevinscreativevisuals — Redlands SoCal · Kevin · ~510 followers · Tier A
+### 9. @kevinscreativevisuals, Redlands SoCal · Kevin · ~510 followers · Tier A
 
-**Hook:** Bio says "DM me" for booking — perfect LTD buyer.
+**Hook:** Bio says "DM me" for booking, perfect LTD buyer.
 
 **DM:**
 
-> Hey Kevin — noticed you're still booking RE through DMs in Redlands. That gets old fast once you're doing more than a couple shoots a week.
+> Hey Kevin, noticed you're still booking RE through DMs in Redlands. That gets old fast once you're doing more than a couple shoots a week.
 >
-> I'm Eric, RE photographer in Montréal. Built StudioFront — branded site, online booking, gallery link, agent pays to unlock. No agent account.
+> I'm Eric, RE photographer in Montréal. Built StudioFront, branded site, online booking, gallery link, agent pays to unlock. No agent account.
 >
 > Founding Lifetime: $199 one-time, 125 listings/year, 1 seat. Cheaper than 4 months of most monthly platforms if you stay under the cap.
 >
-> https://studiofront.ca/lifetime — or I can send a 60s walkthrough first if you want.
+> https://studiofront.ca/lifetime, or I can send a 60s walkthrough first if you want.
 
 ---
 
-### 10. @castlerealestatephotography — Central Arkansas · ~1,104 followers · Tier A
+### 10. @castlerealestatephotography, Central Arkansas · ~1,104 followers · Tier A
 
 **Hook:** castlerep.com in bio.
 
 **DM:**
 
-> Hey — found Castle RE looking at Arkansas shooters. Having castlerep.com up already puts you ahead of a lot of smaller-market studios.
+> Hey, found Castle RE looking at Arkansas shooters. Having castlerep.com up already puts you ahead of a lot of smaller-market studios.
 >
-> I'm Eric, RE photographer in Montréal. I built StudioFront for my own listings — book on my site, deliver on one link, agent pays before download. No agent login.
+> I'm Eric, RE photographer in Montréal. I built StudioFront for my own listings, book on my site, deliver on one link, agent pays before download. No agent login.
 >
 > Private Lifetime Starter: $199 once, 125 listings/year, 1 seat, subdomain.
 >
@@ -231,82 +257,82 @@ Lifestyle/wedding/seniors — not RE. Don't pitch LTD unless she posts about bre
 
 ---
 
-### 11. @stellar_images_photography — Beaufort SC · Allex · ~849 followers · Tier A
+### 11. @stellar_images_photography, Beaufort SC · Allex · ~849 followers · Tier A
 
 **Hook:** Navy vet, RE + portraits + weddings.
 
 **DM:**
 
-> Hey Allex — Stellar Images in Beaufort makes sense with the military community out there. Navy vet shooting RE is a good combo.
+> Hey Allex, Stellar Images in Beaufort makes sense with the military community out there. Navy vet shooting RE is a good combo.
 >
-> I'm Eric, RE photographer in Montréal. Built StudioFront for the listing workflow — booking, one gallery link, pay-to-unlock, no agent account.
+> I'm Eric, RE photographer in Montréal. Built StudioFront for the listing workflow, booking, one gallery link, pay-to-unlock, no agent account.
 >
 > Lifetime deal open for solo shooters: $199 once, 125 listings/year hard cap. If RE is growing for you and you're still hand-delivering files, might be worth it: https://studiofront.ca/lifetime
 
 ---
 
-### 12. @chelwoodmedia — Utah · Rachel Perry · ~2,785 followers · Tier B
+### 12. @chelwoodmedia, Utah · Rachel Perry · ~2,785 followers · Tier B
 
 **Hook:** Hiring, order.chelwoodmedia.com, came from portrait work.
 
 **DM:**
 
-> Hey Rachel — Chelwood's growth is obvious (hiring, full package highlights, order page in bio). Big jump from portrait work into RE media.
+> Hey Rachel, Chelwood's growth is obvious (hiring, full package highlights, order page in bio). Big jump from portrait work into RE media.
 >
-> I'm Eric, RE shooter in Montréal. Built StudioFront — white-label booking, galleries, pay-before-download. Agents stay link-based.
+> I'm Eric, RE shooter in Montréal. Built StudioFront, white-label booking, galleries, pay-before-download. Agents stay link-based.
 >
-> Lifetime Starter is $199 once but it's 1 seat / 125 listings — probably better for your bench shooters than your whole team. Still worth knowing if you want a cheap ops stack for new hires or your solo work: https://studiofront.ca/lifetime
+> Lifetime Starter is $199 once but it's 1 seat / 125 listings, probably better for your bench shooters than your whole team. Still worth knowing if you want a cheap ops stack for new hires or your solo work: https://studiofront.ca/lifetime
 
 ---
 
-### 13. @dmytroflisak — New Jersey · ~1,466 followers · Tier A
+### 13. @dmytroflisak, New Jersey · ~1,466 followers · Tier A
 
 **Hook:** realestatepro.photography, NYC-view / Weehawken highlights.
 
 **DM:**
 
-> Hey Dmytro — your Weehawken / NYC view stuff is exactly the kind of listing that has to look perfect online. Great domain too.
+> Hey Dmytro, your Weehawken / NYC view stuff is exactly the kind of listing that has to look perfect online. Great domain too.
 >
-> I'm Eric, RE photographer in Montréal. Built StudioFront for my studio — book, shoot, one link, proofs, pay, unlock. No agent login.
+> I'm Eric, RE photographer in Montréal. Built StudioFront for my studio, book, shoot, one link, proofs, pay, unlock. No agent login.
 >
 > Private Lifetime: $199 once, 125 listings/year, 1 seat. ~4 months of Starter monthly if you do the math.
 >
-> https://studiofront.ca/lifetime — happy to answer anything honestly.
+> https://studiofront.ca/lifetime, happy to answer anything honestly.
 
 ---
 
-### 14. @corynixonphotography — Niagara ON · ~3,467 followers · Tier B
+### 14. @corynixonphotography, Niagara ON · ~3,467 followers · Tier B
 
 **Hook:** FPV, builder/contractor video, RE highlight.
 
 **DM:**
 
-> Hey Cory — fellow Canadian (Montréal). Your FPV and builder video work is a totally different lane than standard MLS — saw you on a Niagara basement reno reel.
+> Hey Cory, fellow Canadian (Montréal). Your FPV and builder video work is a totally different lane than standard MLS, saw you on a Niagara basement reno reel.
 >
-> I'm Eric, RE shooter. Built StudioFront for the listing delivery side — one gallery link, pay-to-unlock, no agent accounts.
+> I'm Eric, RE shooter. Built StudioFront for the listing delivery side, one gallery link, pay-to-unlock, no agent accounts.
 >
 > If RE is a growing lane for you: Lifetime Starter is $199 once, 125 listings/year, 1 seat. https://studiofront.ca/lifetime
-> If FPV/automotive is the main business, probably not your thing — no hard feelings.
+> If FPV/automotive is the main business, probably not your thing, no hard feelings.
 
 ---
 
-### 15. @fraservalleyvirtual — Surrey BC · ~36.7K followers · Tier B
+### 15. @fraservalleyvirtual, Surrey BC · ~36.7K followers · Tier B
 
 **Hook:** Same-day turnaround, full-service shop.
 
 **DM:**
 
-> Hey — Fraser Valley Virtual keeps coming up for Vancouver RE media. Same-day turnaround at your scale is serious ops.
+> Hey, Fraser Valley Virtual keeps coming up for Vancouver RE media. Same-day turnaround at your scale is serious ops.
 >
 > I'm Eric, RE photographer in Montréal, building StudioFront. Canadian shooter, dogfooding it on my own listings.
 >
-> Lifetime is really for solo/small studios (125 listings/yr, 1 seat, $199 once) — you're probably past that. But if you know a solo shooter in the valley who's still on Drive folders, send them https://studiofront.ca/lifetime
+> Lifetime is really for solo/small studios (125 listings/yr, 1 seat, $199 once), you're probably past that. But if you know a solo shooter in the valley who's still on Drive folders, send them https://studiofront.ca/lifetime
 >
 > Or if you want to see what I built anyway, happy to show you.
 
 ---
 
-### 16. @visuallysold — Atlanta GA · ~2,864 followers · Tier B
+### 16. @visuallysold, Atlanta GA · ~2,864 followers · Tier B
 
 **Note:** Georgia, not Maine.
 
@@ -314,40 +340,40 @@ Lifestyle/wedding/seniors — not RE. Don't pitch LTD unless she posts about bre
 
 **DM:**
 
-> Hey — Visually Sold's been on my radar as a solid Atlanta team since 2016. Same-day delivery is a real ops promise at your size.
+> Hey, Visually Sold's been on my radar as a solid Atlanta team since 2016. Same-day delivery is a real ops promise at your size.
 >
 > I'm Eric, RE photographer in Montréal. Built StudioFront for studios who want no-agent-login galleries + pay-to-unlock.
 >
-> Lifetime Starter ($199 once, 125 listings/yr, 1 seat) is really for solo shooters — probably not your whole team. But if you have photographers on the bench still using Dropbox, might be a cheap tool for them: https://studiofront.ca/lifetime
+> Lifetime Starter ($199 once, 125 listings/yr, 1 seat) is really for solo shooters, probably not your whole team. But if you have photographers on the bench still using Dropbox, might be a cheap tool for them: https://studiofront.ca/lifetime
 
 ---
 
-### 17. @trpeedin — Tyler Peedin · ~728 followers · Tier A
+### 17. @trpeedin, Tyler Peedin · ~728 followers · Tier A
 
 **Hook:** RE + landscape, Zillow 3D in bio, Etsy prints.
 
 **DM:**
 
-> Hey Tyler — cool that you're doing RE and landscape (and selling prints on Etsy). Most people pick one lane.
+> Hey Tyler, cool that you're doing RE and landscape (and selling prints on Etsy). Most people pick one lane.
 >
-> I'm Eric, RE shooter in Montréal. Built StudioFront for the listing side — booking, one gallery link, agent pays to unlock. No login.
+> I'm Eric, RE shooter in Montréal. Built StudioFront for the listing side, booking, one gallery link, agent pays to unlock. No login.
 >
 > Founding Lifetime: $199 once, 125 listings/year, 1 seat. https://studiofront.ca/lifetime
 > If you're still pretty manual on the RE delivery side, might save you headaches.
 
 ---
 
-### 18. @launchwithcasey — RE educator · ~5,911 followers · Tier C
+### 18. @launchwithcasey, RE educator · ~5,911 followers · Tier C
 
-**Not an LTD buyer — partnership.**
+**Not an LTD buyer, partnership.**
 
 **DM:**
 
-> Hey Casey — your REP content is everywhere. I'm Eric, RE photographer in Montréal — I shoot listings and built StudioFront (booking + no-login pay-to-unlock galleries).
+> Hey Casey, your REP content is everywhere. I'm Eric, RE photographer in Montréal, I shoot listings and built StudioFront (booking + no-login pay-to-unlock galleries).
 >
-> Running a private Lifetime Starter for shooters: $199 once, 125 listings/yr. Students always ask what software to use after they learn to shoot — I don't think anyone's giving them a clean answer.
+> Running a private Lifetime Starter for shooters: $199 once, 125 listings/yr. Students always ask what software to use after they learn to shoot, I don't think anyone's giving them a clean answer.
 >
-> Open to being the tool you mention when backend comes up? No pressure — happy to give you a free seat to try it first if you want to see it honestly.
+> Open to being the tool you mention when backend comes up? No pressure, happy to give you a free seat to try it first if you want to see it honestly.
 
 ---
 
@@ -377,7 +403,7 @@ Lifestyle/wedding/seniors — not RE. Don't pitch LTD unless she posts about bre
 | They say | You say |
 |----------|---------|
 | "I use Aryeo" | Stay if Showcase is why you pay. LTD is for ownership + no agent login + no monthly rent under 125/yr. |
-| "I need custom domain" | LTD doesn't include it — monthly Growth/Studio, or start LTD and upgrade later. |
+| "I need custom domain" | LTD doesn't include it, monthly Growth/Studio, or start LTD and upgrade later. |
 | "What does lifetime mean?" | Access while StudioFront runs, under published caps. FAQ: studiofront.ca/lifetime#faq |
 | "Too expensive" | $199 ≈ 4× $49 Starter. Break even fast if you're under the listing cap. |
 | "Can I try first?" | 14-day trial at studiofront.ca/signup, or buy Lifetime if you're already sure. |
@@ -390,6 +416,6 @@ Full scripts: `docs/LTD-PRIVATE-SALES.md`
 
 | Handle | Sent | Liked posts | Replied | Status | Notes |
 |--------|------|-------------|---------|--------|-------|
-| | | | | Sent / Replied / Loom / Paid / Pass | |
+| | | | | Sent / Bumped / Replied / Loom / Paid / Pass | |
 
-Statuses: `Sent` → `Replied` → `Loom sent` → `Checkout` → `Paid` / `Pass`
+Statuses: `Sent` → `Bumped` → `Replied` → `Loom sent` → `Checkout` → `Paid` / `Pass`

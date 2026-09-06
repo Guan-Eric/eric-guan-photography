@@ -1,29 +1,38 @@
 # Private LTD Sales Kit (Step 5)
 
 > Use this while selling **Lifetime Starter** ($199 one-time).  
-> Offer page: https://studiofront.ca/lifetime  
-> Checkout funnel: https://studiofront.ca/signup?plan=lifetime  
-> Target: ~$20–30k (≈ 100–150 seats at $199) from private channels before any marketplace.
+> Offer page: [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)  
+> Checkout funnel: [https://studiofront.ca/signup?plan=lifetime](https://studiofront.ca/signup?plan=lifetime)  
+> Target: ~$20-30k (≈ 100-150 seats at $199) from private channels before any marketplace.
 
 ---
 
-## 0. Before you post anything (30–60 min)
+## 0. Before you post anything (30-60 min)
 
 Do these once so every DM lands on a working product:
 
-| # | Task | Done |
-|---|---|---|
-| 1 | Open https://studiofront.ca/lifetime — page loads, seats remaining shows | [ ] |
-| 2 | Smoke-buy with your own card (or Stripe test if you prefer) → Settings shows **Lifetime Starter** | [ ] |
-| 3 | Record a **60–90 sec Loom** (script below) — book → gallery → “Pay & unlock” | [ ] |
-| 4 | Put the Loom URL + https://studiofront.ca/lifetime in your phone Notes | [ ] |
-| 5 | Make a simple tracker (Notion / Sheet): Name · Channel · Status · $ · Notes | [ ] |
-| 6 | Decide your **close date** (e.g. 21 days or “first 100 seats”) and stick to it | [ ] |
+| #   | Task                                                                                                       | Done |
+| --- | ---------------------------------------------------------------------------------------------------------- | ---- |
+| 1   | Open [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime), page loads, seats remaining shows | [ ]  |
+| 2   | Smoke-buy with your own card (or Stripe test if you prefer) → Settings shows **Lifetime Starter**          | [ ]  |
+| 3   | Record a **60-90 sec Loom** (how-to + script below): book → gallery → Pay & unlock                         | [ ]  |
+| 4   | Put the Loom URL + [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime) in your phone Notes  | [ ]  |
+| 5   | Make a simple tracker (Notion / Sheet): Name · Channel · Status · $ · Notes                                | [ ]  |
+| 6   | Decide your **close date** (e.g. 21 days or “first 100 seats”) and stick to it                             | [ ]  |
+
+### How to record the Loom (15 min)
+
+1. Create a free account at [https://www.loom.com](https://www.loom.com) (Chrome extension or desktop app).
+2. Log into your dogfood StudioFront studio. In Chrome, open: your booking page, then a sample gallery with watermarked proofs and the **Pay & unlock** control visible.
+3. Start a **Screen + Cam** or **Screen only** recording, 60-90 seconds.
+4. Click through while saying the script below: branded site / booking → gallery → proofs → pay unlock → no agent login → $199 Lifetime Starter caps.
+5. Stop, copy the share URL, paste into phone Notes next to [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime).
+6. Use that URL in bumps and reply threads. Until you have it, bump with the lifetime page only (see Channel 6).
 
 ### Loom script (say this out loud)
 
-> “I’m Eric — I built StudioFront for real estate photographers.  
-> Agent books on my branded site… I shoot… I upload… they get a link — no agent account.  
+> “I’m Eric, I built StudioFront for real estate photographers.  
+> Agent books on my branded site… I shoot… I upload… they get a link, no agent account.  
 > They pay in the gallery and unlock the zips.  
 > Lifetime Starter is $199 once: booking, galleries, pay-to-unlock, Connect payouts.  
 > Caps: 125 listings a year, 1 seat, subdomain. Not unlimited Studio forever.  
@@ -33,45 +42,45 @@ Do these once so every DM lands on a working product:
 
 ## Offer facts (copy-paste truth)
 
-Use these numbers everywhere — don’t improvise:
+Use these numbers everywhere, don’t improvise:
 
-| Item | Value |
-|---|---|
-| Price | **$199** one-time |
-| Name | Lifetime Starter |
-| Listings | **125 / year** (hard cap — no overage) |
-| Seats | **1** |
-| Storage | **20 GB** |
-| Domain | **Subdomain only** (`you.studiofront.ca`) |
-| Includes | White-label site, booking, watermarked proofs, token galleries, pay-to-unlock, Stripe Connect |
-| Not included | Custom domain, property pages, multi-seat, Studio-tier features |
-| Lifetime means | While StudioFront operates the product, under these caps |
-| Buy link | https://studiofront.ca/signup?plan=lifetime |
-| Info link | https://studiofront.ca/lifetime |
-| Monthly alternative | Starter $49 / Growth $99 / Studio $149 — https://studiofront.ca/pricing |
+| Item                | Value                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------- |
+| Price               | **$199** one-time                                                                                        |
+| Name                | Lifetime Starter                                                                                         |
+| Listings            | **125 / year** (hard cap, no overage)                                                                    |
+| Seats               | **1**                                                                                                    |
+| Storage             | **20 GB**                                                                                                |
+| Domain              | **Subdomain only** (`you.studiofront.ca`)                                                                |
+| Includes            | White-label site, booking, watermarked proofs, token galleries, pay-to-unlock, Stripe Connect            |
+| Not included        | Custom domain, property pages, multi-seat, Studio-tier features                                          |
+| Lifetime means      | While StudioFront operates the product, under these caps                                                 |
+| Buy link            | [https://studiofront.ca/signup?plan=lifetime](https://studiofront.ca/signup?plan=lifetime)               |
+| Info link           | [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)                                       |
+| Monthly alternative | Starter $49 / Growth $99 / Studio $149, [https://studiofront.ca/pricing](https://studiofront.ca/pricing) |
 
 ---
 
 ## 14-day selling plan
 
-| Day | Focus | Goal |
-|---|---|---|
-| **1** | Warm network texts / email (list of 20 people you know) | 5 replies |
-| **2** | Finish Loom + send to anyone who replied “send more” | 2 checkouts started |
-| **3–4** | Facebook: value post (not a hard pitch) in 1–2 RE photo groups | Comments + DMs |
-| **5** | 20 personalized DMs (Instagram / Facebook) to studios using Aryeo or Drive | 5 conversations |
-| **6** | LinkedIn post + 10 connection notes | Visibility |
-| **7** | Follow-ups on every open thread (template below) | Close 1–3 |
-| **8–10** | Reddit: answer 3–5 threads helpfully; **no product, links, or LTD** (r/realestatephotography Rule 8) | Trust |
-| **11** | Second FB post or story: “X seats left” scarcity | Urgency |
-| **12–13** | Another 20 DMs + close calls (15 min Zoom if needed) | Revenue |
-| **14** | Final “closing this week” message to warm list | Sweep |
+| Day       | Focus                                                                                                | Goal                |
+| --------- | ---------------------------------------------------------------------------------------------------- | ------------------- |
+| **1**     | Warm network texts / email (list of 20 people you know)                                              | 5 replies           |
+| **2**     | Finish Loom + send to anyone who replied “send more”                                                 | 2 checkouts started |
+| **3-4**   | Facebook: value post (not a hard pitch) in 1-2 RE photo groups                                       | Comments + DMs      |
+| **5**     | 20 personalized DMs (Instagram / Facebook) to studios using Aryeo or Drive                           | 5 conversations     |
+| **6**     | LinkedIn post + 10 connection notes                                                                  | Visibility          |
+| **7**     | Follow-ups on every open thread (template below)                                                     | Close 1-3           |
+| **8-10**  | Reddit: answer 3-5 threads helpfully; **no product, links, or LTD** (r/realestatephotography Rule 8) | Trust               |
+| **11**    | Second FB post or story: “X seats left” scarcity                                                     | Urgency             |
+| **12-13** | Another 20 DMs + close calls (15 min Zoom if needed)                                                 | Revenue             |
+| **14**    | Final “closing this week” message to warm list                                                       | Sweep               |
 
 Daily floor: **20 personalized outreaches** on outbound days. Revenue > polish.
 
 ---
 
-## Channel 1 — Direct network (do this first)
+## Channel 1, Direct network (do this first)
 
 **Where:** iMessage, WhatsApp, email, Instagram DM to photographers / assistants you’ve actually worked with. Montréal + regional RE photo circles first.
 
@@ -80,13 +89,13 @@ Daily floor: **20 personalized outreaches** on outbound days. Revenue > polish.
 ### Text / DM (short)
 
 ```
-Hey [Name] — quick one.
+Hey [Name], quick one.
 
 I built StudioFront (booking + agent galleries with no login + pay-to-unlock).
 Running a private Lifetime Starter for $199 one-time (125 listings/yr, hard caps).
 
 If you want the 60s demo + link: https://studiofront.ca/lifetime
-Happy to answer anything — no pressure.
+Happy to answer anything, no pressure.
 ```
 
 ### Email (warm)
@@ -96,7 +105,7 @@ Happy to answer anything — no pressure.
 ```
 Hi [Name],
 
-I’m selling a small private Lifetime deal for StudioFront — the platform I’ve been dogfooding for listing shoots.
+I’m selling a small private Lifetime deal for StudioFront, the platform I’ve been dogfooding for listing shoots.
 
 What you get (Lifetime Starter):
 • Branded subdomain site + booking
@@ -109,17 +118,17 @@ Not included: custom domain / multi-seat (upgrade later if you need them).
 Details + FAQ: https://studiofront.ca/lifetime
 Buy: https://studiofront.ca/signup?plan=lifetime
 
-If it’s not a fit, no worries — just reply “pass” and I won’t follow up.
+If it’s not a fit, no worries, just reply “pass” and I won’t follow up.
 
-— Eric
+, Eric
 ericguan.photo / StudioFront
 ```
 
 ---
 
-## Channel 2 — Facebook groups
+## Channel 2, Facebook groups
 
-**Where (examples — join as member, follow each group’s rules):**
+**Where (examples, join as member, follow each group’s rules):**
 
 - Real Estate Photography (national / vendor-friendly groups)
 - Local: Montréal real estate photographers, Québec RE vendors, your city RE networking groups
@@ -136,7 +145,7 @@ ericguan.photo / StudioFront
 ```
 Quick workflow question for RE photographers:
 
-How are you getting agents their finals right now —
+How are you getting agents their finals right now ,
 Drive folder, Aryeo, or something else?
 
 We kept getting stuck on agent logins + “can you resend the link?”
@@ -144,7 +153,7 @@ so I built a single gallery link: proofs first, pay unlocks the zips, no agent a
 
 If useful, I recorded a 60s walkthrough: [LOOM URL]
 
-(Also running a small founding Lifetime for studios who want to lock Starter-like access once — details only if anyone DMs. Not trying to spam the group.)
+(Also running a small founding Lifetime for studios who want to lock Starter-like access once, details only if anyone DMs. Not trying to spam the group.)
 ```
 
 ### First comment (if links allowed)
@@ -154,26 +163,26 @@ Lifetime Starter details (caps + FAQ): https://studiofront.ca/lifetime
 Happy to answer honestly how it compares to Aryeo for your volume.
 ```
 
-### Scarcity follow-up (7–10 days later, different group or story)
+### Scarcity follow-up (7-10 days later, different group or story)
 
 ```
 Update: the founding Lifetime Starter seats are moving.
 $199 once · 125 listings/yr hard cap · subdomain studios.
 
-Not for everyone — if you’re happy on Aryeo monthly, stay.
+Not for everyone, if you’re happy on Aryeo monthly, stay.
 If you want ownership + no agent login, details here: https://studiofront.ca/lifetime
 ```
 
 ---
 
-## Channel 3 — Reddit
+## Channel 3, Reddit
 
 **Where:**
 
-- r/realestatephotography — **Rule 8: no selling, ads, software users, brand accounts, or soliciting services** in posts or comments
-- r/realtors / r/smallbusiness / r/SaaS — only if their rules allow vendor talk; still not the LTD channel
+- r/realestatephotography, **Rule 8: no selling, ads, software users, brand accounts, or soliciting services** in posts or comments
+- r/realtors / r/smallbusiness / r/SaaS, only if their rules allow vendor talk; still not the LTD channel
 
-**Rule:** This is **not** a sales channel. Do not name StudioFront, drop links, mention Lifetime/$199, or post from a brand account. Use your personal photographer account. If someone DMs you unprompted, you can talk product there — never in the thread.
+**Rule:** This is **not** a sales channel. Do not name StudioFront, drop links, mention Lifetime/$199, or post from a brand account. Use your personal photographer account. If someone DMs you unprompted, you can talk product there, never in the thread.
 
 ### Answer template (workflow only)
 
@@ -183,7 +192,7 @@ Most of the pain I see is agent accounts + file chasing.
 What’s worked for me as a shooter:
 1) Book on the photographer’s own site
 2) One gallery link with watermarked proofs
-3) Full/MLS files after they’ve paid — same link, no agent login
+3) Full/MLS files after they’ve paid, same link, no agent login
 
 Google Drive was chaos for me (wrong folder, “resend the zip”). Curious what stuck for you if you’re not on Aryeo.
 ```
@@ -191,7 +200,7 @@ Google Drive was chaos for me (wrong folder, “resend the zip”). Curious what
 ### If they ask “what tool is that?”
 
 ```
-I don’t want to break the sub’s no-promo rule — happy to chat in DMs if you want the name. In-thread: any one-link proof → pay → unlock setup beats shared Drive folders for me.
+I don’t want to break the sub’s no-promo rule, happy to chat in DMs if you want the name. In-thread: any one-link proof → pay → unlock setup beats shared Drive folders for me.
 ```
 
 Do **not** paste studiofront.ca, /lifetime, or pricing in comments.
@@ -200,11 +209,11 @@ Do **not** paste studiofront.ca, /lifetime, or pricing in comments.
 
 Genuine workflow thread only. No product, no Loom, no first-comment links.
 
-**If Reddit’s filters remove it:** that’s the automod/spam filter, not always a human. Don’t repost the same text the same day. Comment on a few existing threads first (no product talk), wait 24–48h, then try the shorter version below. Message the mods once with “filters ate a workflow question, not selling — can you approve?” Don’t argue in public.
+**If Reddit’s filters remove it:** that’s the automod/spam filter, not always a human. Don’t repost the same text the same day. Comment on a few existing threads first (no product talk), wait 24-48h, then try the shorter version below. Message the mods once with “filters ate a workflow question, not selling, can you approve?” Don’t argue in public.
 
 Filter bait to avoid: “not selling / not spam,” competitor names in the **title**, numbered “here’s my stack,” any URL, or posting from a brand-new / low-karma account.
 
-**Title (use this — no brand names):**
+**Title (use this, no brand names):**
 
 - How do you send finals to agents without the Drive-folder chaos?
 
@@ -218,7 +227,7 @@ How are you handing off MLS + full-res right now? Shared Drive, Dropbox, WeTrans
 Trying to stop chasing files. Not hiring.
 ```
 
-**Do not use** the longer “what I do now / proofs / they pay / no agent login” version on this sub — it reads like software marketing and trips filters even with no product name.
+**Do not use** the longer “what I do now / proofs / they pay / no agent login” version on this sub, it reads like software marketing and trips filters even with no product name.
 
 **Posting notes:**
 
@@ -228,7 +237,7 @@ Trying to stop chasing files. Not hiring.
 
 ---
 
-## Channel 4 — LinkedIn
+## Channel 4, LinkedIn
 
 **Post**
 
@@ -240,7 +249,7 @@ Book → shoot → watermarked gallery → agent pays → unlocks zips.
 On your brand. Photographer-owned.
 
 Founding offer for a few studios:
-Lifetime Starter — $199 once
+Lifetime Starter, $199 once
 • 125 listings/year (hard cap)
 • 1 seat · subdomain
 • Same core as Starter, not “Studio forever”
@@ -248,20 +257,20 @@ Lifetime Starter — $199 once
 Details: https://studiofront.ca/lifetime
 60s demo: [LOOM]
 
-If you’re on Aryeo and it’s fine — stay.
-If monthly rent + agent friction is the issue — this is the wedge.
+If you’re on Aryeo and it’s fine, stay.
+If monthly rent + agent friction is the issue, this is the wedge.
 ```
 
 ### Connection note (after they accept)
 
 ```
-Thanks for connecting — I build StudioFront for RE photo studios.
+Thanks for connecting, I build StudioFront for RE photo studios.
 If you’re ever curious about no-login gallery unlock or a one-time Lifetime, happy to share a 60s demo. No pitch spam.
 ```
 
 ---
 
-## Channel 5 — X / Instagram
+## Channel 5, X / Instagram
 
 **X post**
 
@@ -275,52 +284,63 @@ studiofront.ca/lifetime
 
 **Instagram story sequence (3 frames)**
 
-1. Screen record: gallery “Pay & unlock” button  
+1. Screen record: gallery “Pay & unlock” button
    Text: “No agent account.”
-2. Price card: “$199 lifetime · 125 listings/yr”  
+2. Price card: “$199 lifetime · 125 listings/yr”
    Link sticker → studiofront.ca/lifetime
 3. “DMs open if you want the honest Aryeo comparison.”
 
 **IG DM opener**
 
 ```
-Hey — saw you deliver listings [in city / via stories].
+Hey, saw you deliver listings [in city / via stories].
 Curious: Drive or Aryeo for finals right now?
 
 I built a no-login pay-to-unlock gallery for photographers.
-Founding Lifetime is $199 if you want ownership without monthly Starter forever — happy to send the 60s Loom either way.
+Founding Lifetime is $199 if you want ownership without monthly Starter forever, happy to send the 60s Loom either way.
 ```
 
 ---
 
-## Channel 6 — Warm outbound (20/day)
+## Channel 6, Warm outbound (20/day)
 
 **Find people:** Instagram / Facebook search “real estate photographer [city]”, Aryeo portfolio mentions, local association directories.
 
-**Personalization (required — 1 line):**
+**Personalization (required, 1 line):**
 
-- “Saw your [neighborhood] listing photos — clean twilight work.”
+- “Saw your [neighborhood] listing photos, clean twilight work.”
 - “Noticed you still send Drive folders in stories.”
 - “Saw you mention Aryeo in your highlights.”
 
 ### Cold-ish DM
 
 ```
-Hey [Name] — [1-line personalization].
+Hey [Name], [1-line personalization].
 
 I built StudioFront for RE photographers: branded booking + gallery links with no agent login + pay-to-unlock.
 
 Private Lifetime Starter is open for a bit: $199 once, 125 listings/yr hard cap.
 Page: https://studiofront.ca/lifetime
 
-If it’s noisy, ignore — no second follow-up unless you reply.
+If it’s noisy, ignore, no second follow-up unless you reply.
 ```
 
-### Follow-up (48–72h later, once only)
+### Follow-up (48-72h later, once only)
+
+Prefer recording the Loom first (see **How to record the Loom** above). One bump only, then stop.
+
+**With Loom** (replace `[LOOM]`):
 
 ```
-Quick bump in case this got buried — Lifetime seats are limited.
-Happy to send a 60s Loom instead of the page if easier.
+Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. 60s walkthrough if easier than the page: [LOOM]
+Or the FAQ: https://studiofront.ca/lifetime
+```
+
+**Without Loom** (until you have the URL):
+
+```
+Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. Caps + FAQ here: https://studiofront.ca/lifetime
+Happy to answer anything if useful.
 ```
 
 ---
@@ -332,20 +352,20 @@ Happy to send a 60s Loom instead of the page if easier.
 ```
 Stay if the agent network is the whole business.
 StudioFront is for studios who want lower monthly rent, no agent accounts, and photographer-owned brand.
-Lifetime is Starter-like caps — not a free forever Studio tier. Compare: studiofront.ca/lifetime vs your current bill ÷ year.
+Lifetime is Starter-like caps, not a free forever Studio tier. Compare: studiofront.ca/lifetime vs your current bill ÷ year.
 ```
 
 **“Agents won’t change.”**
 
 ```
-They don’t create an account — they open a link, same as Drive, but proofs + pay are on one URL.
-Migration is parallel for 2–4 weeks: new jobs on StudioFront, old jobs finish where they are.
+They don’t create an account, they open a link, same as Drive, but proofs + pay are on one URL.
+Migration is parallel for 2-4 weeks: new jobs on StudioFront, old jobs finish where they are.
 ```
 
 **“I need custom domain / 3 seats.”**
 
 ```
-Lifetime doesn’t include those — by design (keeps the deal fair).
+Lifetime doesn’t include those, by design (keeps the deal fair).
 Start on Lifetime for the core loop, or go Growth/Studio monthly if you need domain + seats day one: studiofront.ca/pricing
 ```
 
@@ -360,7 +380,7 @@ Full FAQ: studiofront.ca/lifetime#faq
 **“Can I try first?”**
 
 ```
-Yes — 14-day trial at studiofront.ca/signup, then upgrade to Lifetime from Settings / the lifetime page if you want to lock it.
+Yes, 14-day trial at studiofront.ca/signup, then upgrade to Lifetime from Settings / the lifetime page if you want to lock it.
 (Or buy Lifetime immediately if you’re already sure.)
 ```
 
@@ -368,7 +388,7 @@ Yes — 14-day trial at studiofront.ca/signup, then upgrade to Lifetime from Set
 
 ```
 $199 ≈ 4 months of Starter ($49). After that you’re ahead if you stay under 125 listings/yr.
-If you need more volume, monthly Growth/Studio is the better path — Lifetime isn’t meant to replace those.
+If you need more volume, monthly Growth/Studio is the better path, Lifetime isn’t meant to replace those.
 ```
 
 ---
@@ -376,7 +396,7 @@ If you need more volume, monthly Growth/Studio is the better path — Lifetime i
 ## Close / payment path (what you send when they’re ready)
 
 ```
-Awesome — here’s the direct path:
+Awesome, here’s the direct path:
 
 1) Create your studio: https://studiofront.ca/signup?plan=lifetime
 2) After signup, continue to Lifetime checkout ($199)
@@ -385,20 +405,20 @@ Awesome — here’s the direct path:
 Caps reminder: 125 listings/year, 1 seat, subdomain.
 FAQ: https://studiofront.ca/lifetime
 
-Ping me if Checkout errors — I’ll help same day.
+Ping me if Checkout errors, I’ll help same day.
 ```
 
 ---
 
 ## Tracking (copy into a Sheet)
 
-| Date | Name | Channel | Status | Amount | Next step |
-|---|---|---|---|---|---|
-| | | DM / FB / LI / Reddit / Email | Sent / Replied / Checkout / Paid / Pass | $199 | |
+| Date | Name | Channel                       | Status                                  | Amount | Next step |
+| ---- | ---- | ----------------------------- | --------------------------------------- | ------ | --------- |
+|      |      | DM / FB / LI / Reddit / Email | Sent / Replied / Checkout / Paid / Pass | $199   |           |
 
 Statuses: `Sent` → `Replied` → `Loom sent` → `Checkout started` → `Paid` / `Pass`.
 
-Weekly review: replies ÷ sends, paid ÷ replies. If replies are high but paid is low, your Loom/caps explanation is weak — fix messaging, not the product.
+Weekly review: replies ÷ sends, paid ÷ replies. If replies are high but paid is low, your Loom/caps explanation is weak, fix messaging, not the product.
 
 ---
 
@@ -408,7 +428,7 @@ Weekly review: replies ÷ sends, paid ÷ replies. If replies are high but paid i
 - Don’t promise custom features for LTD buyers
 - Don’t sell Lifetime as Growth/Studio forever
 - Don’t spam the same Facebook group daily
-- Don’t argue with Aryeo loyalists in public — DM or move on
+- Don’t argue with Aryeo loyalists in public, DM or move on
 
 ---
 
@@ -417,7 +437,7 @@ Weekly review: replies ÷ sends, paid ÷ replies. If replies are high but paid i
 When you hit cash goal **or** seats/timebox ends:
 
 1. Optionally set `LTD_ENABLED=0` (or let seats hit 100)
-2. Keep https://studiofront.ca/lifetime as “sold out → monthly plans”
+2. Keep [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime) as “sold out → monthly plans”
 3. Email every buyer: onboarding checklist + ask for one honest review later
 4. Start content cadence in `docs/CONTENT-PLAN.md` (Aryeo alternative pages)
 
@@ -425,10 +445,10 @@ When you hit cash goal **or** seats/timebox ends:
 
 ## Quick reference links
 
-| Asset | URL |
-|---|---|
-| Offer + FAQ | https://studiofront.ca/lifetime |
-| Buy | https://studiofront.ca/signup?plan=lifetime |
-| Monthly plans | https://studiofront.ca/pricing |
-| Home | https://studiofront.ca |
-| This playbook step | `docs/SAAS-SUCCESS-PLAYBOOK.md` → Step 5 |
+| Asset              | URL                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| Offer + FAQ        | [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)                         |
+| Buy                | [https://studiofront.ca/signup?plan=lifetime](https://studiofront.ca/signup?plan=lifetime) |
+| Monthly plans      | [https://studiofront.ca/pricing](https://studiofront.ca/pricing)                           |
+| Home               | [https://studiofront.ca](https://studiofront.ca)                                           |
+| This playbook step | `docs/SAAS-SUCCESS-PLAYBOOK.md` → Step 5                                                   |

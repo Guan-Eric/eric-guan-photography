@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
  * Host routing (Edge Middleware — required by OpenNext Cloudflare).
  * Next.js 16 prefers `proxy.ts` (Node), but Workers still need Edge middleware.
  *
- * - localhost / apex → SaaS marketing (rewrite /, /pricing, /lifetime to /saas)
+ * - localhost / apex → SaaS marketing (rewrite /, /pricing, /lifetime, /demo to /saas)
  * - {slug}.localhost → photographer studio
  *
  * Keep this file free of app/lib imports so the edge bundle stays isolated.
@@ -32,6 +32,7 @@ export function middleware(request: NextRequest) {
     if (path === "/") return "/saas";
     if (path === "/pricing") return "/saas/pricing";
     if (path === "/lifetime" || path === "/ltd") return "/saas/lifetime";
+    if (path === "/demo") return "/saas/demo";
     return null;
   }
 

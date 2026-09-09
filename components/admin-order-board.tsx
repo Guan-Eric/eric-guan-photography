@@ -396,6 +396,24 @@ export function AdminOrderBoard({
     }
   }
 
+  async function copyShareCaption(orderId: string) {
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/share`);
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        captions?: { caption?: string };
+      } | null;
+      if (!json?.ok || !json.captions?.caption) {
+        fail(json?.error ?? "Could not build share copy.");
+        return;
+      }
+      await copyText(`${orderId}-share`, json.captions.caption);
+    } catch {
+      fail("Could not build share copy.");
+    }
+  }
+
   function galleryFor(orderId: string) {
     return galleries.find((gallery) => gallery.orderId === orderId) ?? null;
   }
@@ -1759,38 +1777,33 @@ export function AdminOrderBoard({
                     <details className="delivery-extras">
                       <summary>Share kit & reports</summary>
                       <div className="admin-delivery-actions">
-                        <a
+                        <button
+                          type="button"
                           className="btn btn-outline"
-                          href={`/api/admin/orders/${order.id}/share`}
+                          onClick={() => void copyShareCaption(order.id)}
                         >
-                          Share copy
-                        </a>
-                        <a
-                          className="btn btn-outline"
-                          href={`/api/admin/orders/${order.id}/share?flyer=1`}
-                        >
-                          Flyer PDF
-                        </a>
-                        <a
-                          className="btn btn-outline"
-                          href={`/api/admin/orders/${order.id}/share?preset=ig`}
-                        >
-                          IG crop
-                        </a>
-                        <a
-                          className="btn btn-outline"
-                          href={`/api/admin/orders/${order.id}/report`}
-                        >
-                          Report
-                        </a>
+                          {copiedKey === `${order.id}-share`
+                            ? "Copied"
+                            : "Share copy"}
+                        </button>
                         {gallery ? (
                           <a
-                            className="text-link"
+                            className="btn btn-outline"
                             href={`/g/${gallery.publicToken}/report`}
+                            target="_blank"
+                            rel="noreferrer"
                           >
-                            Agent report
+                            Report
                           </a>
-                        ) : null}
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => fail("Deliver photos first.")}
+                          >
+                            Report
+                          </button>
+                        )}
                       </div>
                     </details>
                   </div>

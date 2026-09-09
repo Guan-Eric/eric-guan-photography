@@ -5,6 +5,7 @@ import { PortalSignOut } from "@/components/portal-sign-out";
 import { getAgentSession } from "@/lib/agent-auth";
 import { galleryPublicUrl, getGalleryByOrderId } from "@/lib/galleries";
 import { getListingPageByOrder } from "@/lib/listing-pages";
+import { listMediaLinksForOrder } from "@/lib/media-links";
 import { listOrdersByAgentEmail } from "@/lib/orders";
 import { publicStudioUrl } from "@/lib/platform";
 import { getRequestTenant } from "@/lib/tenants";
@@ -37,6 +38,14 @@ export default async function AgentPortalPage() {
     orders.map(async (order) => {
       const gallery = await getGalleryByOrderId(order.id, tenant.id);
       const listing = await getListingPageByOrder(order.id, tenant.id);
+      const links = await listMediaLinksForOrder(order.id, tenant.id);
+      const extras = [
+        links.some((link) => link.kind === "video") ? "video" : null,
+        links.some((link) => link.kind === "tour") ? "tour" : null,
+        links.some((link) => link.kind === "floorplan" || link.kind === "doc")
+          ? "floor plan"
+          : null,
+      ].filter(Boolean);
       return {
         order,
         galleryUrl: gallery
@@ -44,7 +53,7 @@ export default async function AgentPortalPage() {
           : null,
         listingUrl: listing ? `${siteUrl.replace(/\/$/, "")}/p/${listing.slug}` : null,
         listingId: listing?.id ?? null,
-        hasCopy: Boolean(listing?.headline?.trim() || listing?.description?.trim()),
+        extrasHint: extras.length ? `Includes ${extras.join(" + ")}` : null,
       };
     }),
   );
@@ -65,7 +74,7 @@ export default async function AgentPortalPage() {
           <p>No listings yet. Book a shoot to see it here.</p>
         ) : (
           <ul className="listing-index">
-            {cards.map(({ order, galleryUrl, listingUrl, listingId, hasCopy }) => (
+            {cards.map(({ order, galleryUrl, listingUrl, listingId, extrasHint }) => (
               <li key={order.id}>
                 <div>
                   <strong>{order.propertyAddress}</strong>
@@ -75,9 +84,14 @@ export default async function AgentPortalPage() {
                 </div>
                 <div className="listing-index-actions">
                   {galleryUrl ? (
-                    <a className="text-link" href={galleryUrl}>
-                      Gallery
-                    </a>
+                    <>
+                      <a className="text-link" href={galleryUrl}>
+                        Gallery
+                      </a>
+                      {extrasHint ? (
+                        <span className="muted">{extrasHint}</span>
+                      ) : null}
+                    </>
                   ) : null}
                   {listingUrl ? (
                     <a className="text-link" href={listingUrl}>

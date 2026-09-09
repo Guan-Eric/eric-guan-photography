@@ -72,6 +72,9 @@ export function PlatformLifetime({ offer }: { offer: Offer }) {
               >
                 {ctaLabel}
               </Link>
+              <Link className="btn btn-outline" href="/demo">
+                60s silent walkthrough
+              </Link>
               {offer.open ? (
                 <Link className="btn btn-outline" href="/admin/settings">
                   Already have a studio? Buy in Settings

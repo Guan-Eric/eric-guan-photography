@@ -8,6 +8,7 @@ export const PLATFORM_SITEMAP_PATHS = [
   "/",
   "/pricing",
   "/lifetime",
+  "/demo",
   "/blog",
   "/terms",
   "/privacy",

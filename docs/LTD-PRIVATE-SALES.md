@@ -2,6 +2,7 @@
 
 > Use this while selling **Lifetime Starter** ($199 one-time).  
 > Offer page: [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)  
+> Silent walkthrough: [https://studiofront.ca/demo](https://studiofront.ca/demo)  
 > Checkout funnel: [https://studiofront.ca/signup?plan=lifetime](https://studiofront.ca/signup?plan=lifetime)  
 > Target: ~$20-30k (≈ 100-150 seats at $199) from private channels before any marketplace.
 
@@ -15,19 +16,24 @@ Do these once so every DM lands on a working product:
 | --- | ---------------------------------------------------------------------------------------------------------- | ---- |
 | 1   | Open [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime), page loads, seats remaining shows | [ ]  |
 | 2   | Smoke-buy with your own card (or Stripe test if you prefer) → Settings shows **Lifetime Starter**          | [ ]  |
-| 3   | Record a **60-90 sec Loom** (how-to + script below): book → gallery → Pay & unlock                         | [ ]  |
-| 4   | Put the Loom URL + [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime) in your phone Notes  | [ ]  |
+| 3   | Open the silent walkthrough: [https://studiofront.ca/demo](https://studiofront.ca/demo) (book → gallery → Pay & unlock) | [ ]  |
+| 4   | Put the demo URL + [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime) in your phone Notes | [ ]  |
 | 5   | Make a simple tracker (Notion / Sheet): Name · Channel · Status · $ · Notes                                | [ ]  |
 | 6   | Decide your **close date** (e.g. 21 days or “first 100 seats”) and stick to it                             | [ ]  |
 
-### How to record the Loom (15 min)
+### Silent demo (use this)
+
+Send [https://studiofront.ca/demo](https://studiofront.ca/demo) in DMs and bumps. No recording. Captions only, about 70 seconds.
+
+### Optional talking Loom
+
+Only if someone asks to hear you walk it:
 
 1. Create a free account at [https://www.loom.com](https://www.loom.com) (Chrome extension or desktop app).
 2. Log into your dogfood StudioFront studio. In Chrome, open: your booking page, then a sample gallery with watermarked proofs and the **Pay & unlock** control visible.
 3. Start a **Screen + Cam** or **Screen only** recording, 60-90 seconds.
 4. Click through while saying the script below: branded site / booking → gallery → proofs → pay unlock → no agent login → $199 Lifetime Starter caps.
-5. Stop, copy the share URL, paste into phone Notes next to [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime).
-6. Use that URL in bumps and reply threads. Until you have it, bump with the lifetime page only (see Channel 6).
+5. Stop, copy the share URL. Still lead with [https://studiofront.ca/demo](https://studiofront.ca/demo) unless they asked for your voice.
 
 ### Loom script (say this out loud)
 
@@ -57,6 +63,7 @@ Use these numbers everywhere, don’t improvise:
 | Lifetime means      | While StudioFront operates the product, under these caps                                                 |
 | Buy link            | [https://studiofront.ca/signup?plan=lifetime](https://studiofront.ca/signup?plan=lifetime)               |
 | Info link           | [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)                                       |
+| Silent demo         | [https://studiofront.ca/demo](https://studiofront.ca/demo)                                               |
 | Monthly alternative | Starter $49 / Growth $99 / Studio $149, [https://studiofront.ca/pricing](https://studiofront.ca/pricing) |
 
 ---
@@ -66,7 +73,7 @@ Use these numbers everywhere, don’t improvise:
 | Day       | Focus                                                                                                | Goal                |
 | --------- | ---------------------------------------------------------------------------------------------------- | ------------------- |
 | **1**     | Warm network texts / email (list of 20 people you know)                                              | 5 replies           |
-| **2**     | Finish Loom + send to anyone who replied “send more”                                                 | 2 checkouts started |
+| **2**     | Send https://studiofront.ca/demo to anyone who replied “send more”                                   | 2 checkouts started |
 | **3-4**   | Facebook: value post (not a hard pitch) in 1-2 RE photo groups                                       | Comments + DMs      |
 | **5**     | 20 personalized DMs (Instagram / Facebook) to studios using Aryeo or Drive                           | 5 conversations     |
 | **6**     | LinkedIn post + 10 connection notes                                                                  | Visibility          |
@@ -94,7 +101,8 @@ Hey [Name], quick one.
 I built StudioFront (booking + agent galleries with no login + pay-to-unlock).
 Running a private Lifetime Starter for $199 one-time (125 listings/yr, hard caps).
 
-If you want the 60s demo + link: https://studiofront.ca/lifetime
+If you want the 60s demo + link: https://studiofront.ca/demo
+FAQ: https://studiofront.ca/lifetime
 Happy to answer anything, no pressure.
 ```
 
@@ -151,7 +159,7 @@ Drive folder, Aryeo, or something else?
 We kept getting stuck on agent logins + “can you resend the link?”
 so I built a single gallery link: proofs first, pay unlocks the zips, no agent account.
 
-If useful, I recorded a 60s walkthrough: [LOOM URL]
+If useful, 60s silent walkthrough: https://studiofront.ca/demo
 
 (Also running a small founding Lifetime for studios who want to lock Starter-like access once, details only if anyone DMs. Not trying to spam the group.)
 ```
@@ -255,7 +263,7 @@ Lifetime Starter, $199 once
 • Same core as Starter, not “Studio forever”
 
 Details: https://studiofront.ca/lifetime
-60s demo: [LOOM]
+60s demo: https://studiofront.ca/demo
 
 If you’re on Aryeo and it’s fine, stay.
 If monthly rent + agent friction is the issue, this is the wedge.
@@ -297,7 +305,7 @@ Hey, saw you deliver listings [in city / via stories].
 Curious: Drive or Aryeo for finals right now?
 
 I built a no-login pay-to-unlock gallery for photographers.
-Founding Lifetime is $199 if you want ownership without monthly Starter forever, happy to send the 60s Loom either way.
+Founding Lifetime is $199 if you want ownership without monthly Starter forever, happy to send the 60s demo either way: https://studiofront.ca/demo
 ```
 
 ---
@@ -327,20 +335,11 @@ If it’s noisy, ignore, no second follow-up unless you reply.
 
 ### Follow-up (48-72h later, once only)
 
-Prefer recording the Loom first (see **How to record the Loom** above). One bump only, then stop.
-
-**With Loom** (replace `[LOOM]`):
+One bump only, then stop. Use the silent demo (no Loom required).
 
 ```
-Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. 60s walkthrough if easier than the page: [LOOM]
+Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. 60s walkthrough if easier than the page: https://studiofront.ca/demo
 Or the FAQ: https://studiofront.ca/lifetime
-```
-
-**Without Loom** (until you have the URL):
-
-```
-Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. Caps + FAQ here: https://studiofront.ca/lifetime
-Happy to answer anything if useful.
 ```
 
 ---
@@ -416,9 +415,9 @@ Ping me if Checkout errors, I’ll help same day.
 | ---- | ---- | ----------------------------- | --------------------------------------- | ------ | --------- |
 |      |      | DM / FB / LI / Reddit / Email | Sent / Replied / Checkout / Paid / Pass | $199   |           |
 
-Statuses: `Sent` → `Replied` → `Loom sent` → `Checkout started` → `Paid` / `Pass`.
+Statuses: `Sent` → `Replied` → `Demo sent` → `Checkout started` → `Paid` / `Pass`.
 
-Weekly review: replies ÷ sends, paid ÷ replies. If replies are high but paid is low, your Loom/caps explanation is weak, fix messaging, not the product.
+Weekly review: replies ÷ sends, paid ÷ replies. If replies are high but paid is low, your demo/caps explanation is weak, fix messaging, not the product.
 
 ---
 

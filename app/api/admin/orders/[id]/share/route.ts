@@ -11,6 +11,7 @@ import {
   shareCaptions,
   type SharePreset,
 } from "@/lib/share-kit";
+import { listMediaLinksForOrder } from "@/lib/media-links";
 import { getTenant } from "@/lib/tenants";
 
 export const runtime = "nodejs";
@@ -42,6 +43,7 @@ export async function GET(
   const page = await getListingPageByOrder(orderId, order.tenantId);
   const listingUrl = page ? listingPagePublicUrl(page, tenant.siteUrl) : null;
   const galleryUrl = gallery ? `${tenant.siteUrl}/g/${gallery.publicToken}` : undefined;
+  const mediaLinks = await listMediaLinksForOrder(orderId, order.tenantId);
   const url = new URL(request.url);
   const preset = url.searchParams.get("preset") as SharePreset | null;
   const flyer = url.searchParams.get("flyer") === "1";
@@ -73,7 +75,13 @@ export async function GET(
 
   return NextResponse.json({
     ok: true,
-    captions: shareCaptions({ tenant, order, listingUrl, galleryUrl }),
+    captions: shareCaptions({
+      tenant,
+      order,
+      listingUrl,
+      galleryUrl,
+      hasMediaLinks: mediaLinks.length > 0,
+    }),
     listingUrl,
     galleryUrl,
     presets: Object.keys(SHARE_PRESETS),

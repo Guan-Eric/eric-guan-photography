@@ -28,12 +28,16 @@ export function shareCaptions(options: {
   order: Order;
   listingUrl?: string | null;
   galleryUrl?: string;
+  hasMediaLinks?: boolean;
 }) {
   const lines = [
     `Just delivered: ${options.order.propertyAddress}.`,
     `${options.tenant.turnaround} turnaround · MLS-ready photos from ${options.tenant.studioName}.`,
     options.listingUrl ? `Listing page: ${options.listingUrl}` : null,
     options.galleryUrl ? `Gallery: ${options.galleryUrl}` : null,
+    options.hasMediaLinks
+      ? "Video, tours, and floor plans are on the gallery link."
+      : null,
   ].filter(Boolean);
   return {
     caption: lines.join(" "),

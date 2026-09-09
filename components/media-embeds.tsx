@@ -29,6 +29,7 @@ export function MediaEmbeds({ items }: { items: EmbedItem[] }) {
 
   return (
     <section className="media-embeds" aria-label="Video, tours and floor plans">
+      <h2 className="media-embeds-heading">Video, tours &amp; floor plans</h2>
       {items.map((item) => {
         const parsed = item.url ? parseEmbed(item.url, item.kind) : null;
         const embedUrl = parsed?.ok ? parsed.embed.embedUrl : null;

@@ -4,6 +4,7 @@ const PUBLIC_ROUTES = [
   "/",
   "/pricing",
   "/lifetime",
+  "/demo",
   "/work",
   "/privacy",
   "/terms",

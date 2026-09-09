@@ -9,6 +9,7 @@ describe("seo crawl lists", () => {
     expect(PLATFORM_SITEMAP_PATHS).toContain("/");
     expect(PLATFORM_SITEMAP_PATHS).toContain("/blog");
     expect(PLATFORM_SITEMAP_PATHS).toContain("/pricing");
+    expect(PLATFORM_SITEMAP_PATHS).toContain("/demo");
     expect(PLATFORM_SITEMAP_PATHS).not.toContain("/login");
     expect(PLATFORM_SITEMAP_PATHS).not.toContain("/signup");
     expect(PLATFORM_SITEMAP_PATHS).not.toContain("/work");

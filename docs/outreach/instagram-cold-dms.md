@@ -1,7 +1,7 @@
 # Instagram cold DM context file, Lifetime deal
 
 **Created:** 2026-09-01  
-**Updated:** 2026-09-05 (bump + Loom how-to)  
+**Updated:** 2026-09-07 (silent demo URL)  
 **Sender:** Eric Guan, RE photographer in Montréal, founder of [StudioFront](https://studiofront.ca)  
 **Goal:** Sell **Lifetime Starter** ($199 one-time) to RE photographers via Instagram DM.
 
@@ -11,17 +11,18 @@ Full objection scripts + other channels: `docs/LTD-PRIVATE-SALES.md`
 
 ## The offer (don't improvise these numbers)
 
-| | |
-|---|---|
-| **Price** | **$199** one-time |
-| **Name** | Lifetime Starter |
-| **Listings** | **125 / year** (hard cap, no overage) |
-| **Seats** | **1** |
-| **Domain** | Subdomain only (`you.studiofront.ca`) |
-| **Includes** | Branded site, booking, watermarked proofs, gallery link, pay-to-unlock, Stripe Connect |
-| **Not included** | Custom domain, property pages, multi-seat, Studio-tier extras |
-| **Info** | https://studiofront.ca/lifetime |
-| **Buy** | https://studiofront.ca/signup?plan=lifetime |
+|                  |                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| **Price**        | **$199** one-time                                                                          |
+| **Name**         | Lifetime Starter                                                                           |
+| **Listings**     | **125 / year** (hard cap, no overage)                                                      |
+| **Seats**        | **1**                                                                                      |
+| **Domain**       | Subdomain only (`you.studiofront.ca`)                                                      |
+| **Includes**     | Branded site, booking, watermarked proofs, gallery link, pay-to-unlock, Stripe Connect     |
+| **Not included** | Custom domain, property pages, multi-seat, Studio-tier extras                              |
+| **Info**         | [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)                         |
+| **Demo**         | [https://studiofront.ca/demo](https://studiofront.ca/demo)                                 |
+| **Buy**          | [https://studiofront.ca/signup?plan=lifetime](https://studiofront.ca/signup?plan=lifetime) |
 
 **One-liner:** Book on your site → shoot → agent gets one link → proofs → they pay → MLS/full zip unlocks. No agent account.
 
@@ -46,52 +47,37 @@ Full objection scripts + other channels: `docs/LTD-PRIVATE-SALES.md`
 - No "game-changer", "revolutionize", "hope you're well", "pick your brain".
 - OK to say: "private lifetime deal", "founding seats", "not for everyone".
 
-### How to record the Loom (15 min)
+### Silent demo (use this)
 
-Full steps also live in `docs/LTD-PRIVATE-SALES.md` under **How to record the Loom**. Minimum:
-
-1. Free account at https://www.loom.com (browser extension or desktop app).
-2. Log into your dogfood StudioFront studio in Chrome. Open: booking page, then a sample gallery with watermarked proofs and **Pay & unlock** visible.
-3. Start **Screen + Cam** or **Screen only**, 60-90 seconds.
-4. Say the LTD kit script while clicking: branded site / booking → gallery → proofs → pay unlock → no agent login → $199 Lifetime Starter caps (125/yr, 1 seat, subdomain).
-5. Stop, copy the share URL into phone Notes next to https://studiofront.ca/lifetime.
-6. Use that URL in bumps and reply threads. Tracker: `Loom sent`.
-
-Until you have a Loom URL, use the **Bump without Loom** template below.
+Send [https://studiofront.ca/demo](https://studiofront.ca/demo). No recording. Optional talking Loom steps still live in `docs/LTD-PRIVATE-SALES.md` if someone asks to hear you.
 
 ### After the first 10 (no replies)
 
 1. Wait 48-72h after the original DM.
 2. Send **one** bump per person, then stop (no third message).
-3. Prefer bumping **after** you have a Loom URL; if not, use the no-Loom bump.
-4. Tracker: mark status `Bumped`, then leave alone unless they reply.
+3. Tracker: mark status `Bumped`, then leave alone unless they reply.
 
-**Bump with Loom** (replace `[LOOM]`):
+**Bump:**
 
-> Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. 60s walkthrough if easier than the page: [LOOM]
-> Or the FAQ: https://studiofront.ca/lifetime
-
-**Bump without Loom** (use until Loom exists):
-
-> Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. Caps + FAQ here: https://studiofront.ca/lifetime
-> Happy to answer anything if useful.
+> Hey, bumping this in case it got buried. Lifetime seats are limited and I'm closing the private round soon. 60s walkthrough if easier than the page: [https://studiofront.ca/demo](https://studiofront.ca/demo)
+> Or the FAQ: [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 
 ### When they're ready to buy
 
 > Awesome, here's the direct path:
-> https://studiofront.ca/signup?plan=lifetime
+> [https://studiofront.ca/signup?plan=lifetime](https://studiofront.ca/signup?plan=lifetime)
 > Caps: 125 listings/year, 1 seat, subdomain. FAQ on that page if anything's unclear. Ping me if checkout acts up.
 
 ---
 
 ## Priority tiers
 
-| Tier | Who | LTD fit |
-|------|-----|---------|
-| **A** | Solo RE shooter, &lt;125 listings/yr, booking via DM or basic site | Best buyer |
-| **B** | Small team or multi-service, may need monthly instead | Pitch LTD if solo volume; otherwise monthly |
-| **C** | Educator / partner | Affiliate angle, not LTD customer |
-| **Skip** | Not RE | Don't send |
+| Tier     | Who                                                             | LTD fit                                     |
+| -------- | --------------------------------------------------------------- | ------------------------------------------- |
+| **A**    | Solo RE shooter, <125 listings/yr, booking via DM or basic site | Best buyer                                  |
+| **B**    | Small team or multi-service, may need monthly instead           | Pitch LTD if solo volume; otherwise monthly |
+| **C**    | Educator / partner                                              | Affiliate angle, not LTD customer           |
+| **Skip** | Not RE                                                          | Don't send                                  |
 
 ---
 
@@ -109,12 +95,12 @@ Until you have a Loom URL, use the **Bump without Loom** template below.
 >
 > Running a small private Lifetime deal right now: $199 once, 125 listings/year, 1 seat. Starter-level caps, not unlimited forever.
 >
-> If you're under ~125 shoots a year and tired of monthly platform rent, worth a look: https://studiofront.ca/lifetime
+> If you're under ~125 shoots a year and tired of monthly platform rent, worth a look: [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 > If not, no worries at all.
 
 ---
 
-### 2. @skyeye__media, Florida · ~1,966 followers · Tier A
+### 2. @skyeye\_\_media, Florida · ~1,966 followers · Tier A
 
 **Hook:** Builders highlight, drone/reel-heavy.
 
@@ -126,8 +112,8 @@ Until you have a Loom URL, use the **Bump without Loom** template below.
 >
 > Private Lifetime Starter is open: $199 one-time, 125 listings/year hard cap, 1 seat, subdomain.
 >
-> Details + honest FAQ: https://studiofront.ca/lifetime
-> Happy to send a quick Loom if you want to see the flow first.
+> Details + honest FAQ: [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
+> Silent walkthrough if useful: [https://studiofront.ca/demo](https://studiofront.ca/demo)
 
 ---
 
@@ -143,7 +129,7 @@ Until you have a Loom URL, use the **Bump without Loom** template below.
 >
 > I'm doing a small founding Lifetime round: $199 once, 125 listings/year, 1 seat. Not unlimited Studio, Starter-like caps.
 >
-> https://studiofront.ca/lifetime if you want the details. Totally fine if you're already set on your stack.
+> [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime) if you want the details. Totally fine if you're already set on your stack.
 
 **DM (Portuguese):**
 
@@ -153,7 +139,7 @@ Until you have a Loom URL, use the **Bump without Loom** template below.
 >
 > Lifetime privado: 199$ uma vez, 125 listagens/ano, 1 lugar. Capacidades tipo Starter, não ilimitado.
 >
-> https://studiofront.ca/lifetime, se fizer sentido para o teu volume.
+> [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime), se fizer sentido para o teu volume.
 
 ---
 
@@ -167,7 +153,7 @@ Until you have a Loom URL, use the **Bump without Loom** template below.
 >
 > I'm Eric, RE photographer in Montréal. I built StudioFront for the part after the booking, one gallery link, watermarked proofs, agent pays, files unlock. No agent account.
 >
-> Selling a private Lifetime Starter: $199 once, 125 listings/year, 1 seat. Might be redundant if your current stack already does pay-to-unlock, but if you're still emailing zips or chasing agent logins, worth comparing: https://studiofront.ca/lifetime
+> Selling a private Lifetime Starter: $199 once, 125 listings/year, 1 seat. Might be redundant if your current stack already does pay-to-unlock, but if you're still emailing zips or chasing agent logins, worth comparing: [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 
 ---
 
@@ -183,7 +169,7 @@ Until you have a Loom URL, use the **Bump without Loom** template below.
 >
 > Founding Lifetime is $199 one-time, 125 listings/year, 1 seat, subdomain. Not custom domain / multi-seat (that's monthly if you need it).
 >
-> https://studiofront.ca/lifetime, ignore me if you're happy on what you have.
+> [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime), ignore me if you're happy on what you have.
 
 ---
 
@@ -193,9 +179,11 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 
 ---
 
-### 7. @arizona_real_estate_photos, Ali Hohn · ~8,201 followers · Tier B
+### 7. @arizona_real_estate_photos, Ali Hohn · ~8,201 followers · Tier B · **PASS**
 
 **Hook:** Reels + Airbnb model highlight, visualicreative.com.
+
+**Her reply (2026-09-07):** Built her own over 6–7 months. https://www.visualicreative.com — Visuali, RE media packages in Phoenix. Custom site (VIBERA), package builder, Content Vault, agent login. Not an LTD buyer. Close politely, no second pitch.
 
 **DM:**
 
@@ -205,7 +193,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > Private Lifetime Starter: $199 once, 125 listings/year cap, 1 seat. If you're doing way more volume than that, monthly plans make more sense, but if you're solo and under the cap, it's basically locking Starter without $49/mo forever.
 >
-> https://studiofront.ca/lifetime
+> [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 
 ---
 
@@ -221,7 +209,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > Running a small Lifetime round for solo shooters: $199 once, 125 listings/year, 1 seat. Not meant to replace a big team setup, Starter-like caps.
 >
-> https://studiofront.ca/lifetime if the RE side of your business could use a simpler delivery loop.
+> [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime) if the RE side of your business could use a simpler delivery loop.
 
 ---
 
@@ -237,7 +225,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > Founding Lifetime: $199 one-time, 125 listings/year, 1 seat. Cheaper than 4 months of most monthly platforms if you stay under the cap.
 >
-> https://studiofront.ca/lifetime, or I can send a 60s walkthrough first if you want.
+> [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime) or the 60s walkthrough: [https://studiofront.ca/demo](https://studiofront.ca/demo)
 
 ---
 
@@ -253,7 +241,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > Private Lifetime Starter: $199 once, 125 listings/year, 1 seat, subdomain.
 >
-> https://studiofront.ca/lifetime if you want to see if it beats whatever you're using for delivery now.
+> [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime) if you want to see if it beats whatever you're using for delivery now.
 
 ---
 
@@ -267,7 +255,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > I'm Eric, RE photographer in Montréal. Built StudioFront for the listing workflow, booking, one gallery link, pay-to-unlock, no agent account.
 >
-> Lifetime deal open for solo shooters: $199 once, 125 listings/year hard cap. If RE is growing for you and you're still hand-delivering files, might be worth it: https://studiofront.ca/lifetime
+> Lifetime deal open for solo shooters: $199 once, 125 listings/year hard cap. If RE is growing for you and you're still hand-delivering files, might be worth it: [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 
 ---
 
@@ -281,7 +269,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > I'm Eric, RE shooter in Montréal. Built StudioFront, white-label booking, galleries, pay-before-download. Agents stay link-based.
 >
-> Lifetime Starter is $199 once but it's 1 seat / 125 listings, probably better for your bench shooters than your whole team. Still worth knowing if you want a cheap ops stack for new hires or your solo work: https://studiofront.ca/lifetime
+> Lifetime Starter is $199 once but it's 1 seat / 125 listings, probably better for your bench shooters than your whole team. Still worth knowing if you want a cheap ops stack for new hires or your solo work: [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 
 ---
 
@@ -297,7 +285,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > Private Lifetime: $199 once, 125 listings/year, 1 seat. ~4 months of Starter monthly if you do the math.
 >
-> https://studiofront.ca/lifetime, happy to answer anything honestly.
+> [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime), happy to answer anything honestly.
 
 ---
 
@@ -311,7 +299,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > I'm Eric, RE shooter. Built StudioFront for the listing delivery side, one gallery link, pay-to-unlock, no agent accounts.
 >
-> If RE is a growing lane for you: Lifetime Starter is $199 once, 125 listings/year, 1 seat. https://studiofront.ca/lifetime
+> If RE is a growing lane for you: Lifetime Starter is $199 once, 125 listings/year, 1 seat. [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 > If FPV/automotive is the main business, probably not your thing, no hard feelings.
 
 ---
@@ -326,7 +314,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > I'm Eric, RE photographer in Montréal, building StudioFront. Canadian shooter, dogfooding it on my own listings.
 >
-> Lifetime is really for solo/small studios (125 listings/yr, 1 seat, $199 once), you're probably past that. But if you know a solo shooter in the valley who's still on Drive folders, send them https://studiofront.ca/lifetime
+> Lifetime is really for solo/small studios (125 listings/yr, 1 seat, $199 once), you're probably past that. But if you know a solo shooter in the valley who's still on Drive folders, send them [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 >
 > Or if you want to see what I built anyway, happy to show you.
 
@@ -344,7 +332,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > I'm Eric, RE photographer in Montréal. Built StudioFront for studios who want no-agent-login galleries + pay-to-unlock.
 >
-> Lifetime Starter ($199 once, 125 listings/yr, 1 seat) is really for solo shooters, probably not your whole team. But if you have photographers on the bench still using Dropbox, might be a cheap tool for them: https://studiofront.ca/lifetime
+> Lifetime Starter ($199 once, 125 listings/yr, 1 seat) is really for solo shooters, probably not your whole team. But if you have photographers on the bench still using Dropbox, might be a cheap tool for them: [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 
 ---
 
@@ -358,7 +346,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 >
 > I'm Eric, RE shooter in Montréal. Built StudioFront for the listing side, booking, one gallery link, agent pays to unlock. No login.
 >
-> Founding Lifetime: $199 once, 125 listings/year, 1 seat. https://studiofront.ca/lifetime
+> Founding Lifetime: $199 once, 125 listings/year, 1 seat. [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)
 > If you're still pretty manual on the RE delivery side, might save you headaches.
 
 ---
@@ -386,7 +374,7 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 5. trpeedin
 6. stellar_images_photography
 7. brightspacemediachicago
-8. skyeye__media
+8. skyeye\_\_media
 9. luxelensphoto
 10. arizona_real_estate_photos
 11. millersartlab
@@ -400,13 +388,13 @@ Lifestyle/wedding/seniors, not RE. Don't pitch LTD unless she posts about breaki
 
 ## Objection quick hits
 
-| They say | You say |
-|----------|---------|
-| "I use Aryeo" | Stay if Showcase is why you pay. LTD is for ownership + no agent login + no monthly rent under 125/yr. |
-| "I need custom domain" | LTD doesn't include it, monthly Growth/Studio, or start LTD and upgrade later. |
-| "What does lifetime mean?" | Access while StudioFront runs, under published caps. FAQ: studiofront.ca/lifetime#faq |
-| "Too expensive" | $199 ≈ 4× $49 Starter. Break even fast if you're under the listing cap. |
-| "Can I try first?" | 14-day trial at studiofront.ca/signup, or buy Lifetime if you're already sure. |
+| They say                   | You say                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| "I use Aryeo"              | Stay if Showcase is why you pay. LTD is for ownership + no agent login + no monthly rent under 125/yr. |
+| "I need custom domain"     | LTD doesn't include it, monthly Growth/Studio, or start LTD and upgrade later.                         |
+| "What does lifetime mean?" | Access while StudioFront runs, under published caps. FAQ: studiofront.ca/lifetime#faq                  |
+| "Too expensive"            | $199 ≈ 4× $49 Starter. Break even fast if you're under the listing cap.                                |
+| "Can I try first?"         | 14-day trial at studiofront.ca/signup, or buy Lifetime if you're already sure.                         |
 
 Full scripts: `docs/LTD-PRIVATE-SALES.md`
 
@@ -415,7 +403,7 @@ Full scripts: `docs/LTD-PRIVATE-SALES.md`
 ## Tracking
 
 | Handle | Sent | Liked posts | Replied | Status | Notes |
-|--------|------|-------------|---------|--------|-------|
-| | | | | Sent / Bumped / Replied / Loom / Paid / Pass | |
+| ------ | ---- | ----------- | ------- | ------ | ----- |
+| arizona_real_estate_photos | yes | | 2026-09-07 | Pass | Built own site (visualicreative.com) over 6–7 months. Close, no second pitch. |
 
-Statuses: `Sent` → `Bumped` → `Replied` → `Loom sent` → `Checkout` → `Paid` / `Pass`
+Statuses: `Sent` → `Bumped` → `Replied` → `Demo sent` → `Checkout` → `Paid` / `Pass`

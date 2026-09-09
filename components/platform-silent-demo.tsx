@@ -19,6 +19,34 @@ type Offer = {
 
 const SCENE_MS = 14_000;
 
+/** Listing photos already used on the marketing site (Unsplash). */
+const DEMO_THUMBS = [
+  {
+    src: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=640&q=80",
+    alt: "Living room with large windows",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=640&q=80",
+    alt: "Modern kitchen with island",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?auto=format&fit=crop&w=640&q=80",
+    alt: "Primary bedroom with soft daylight",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=640&q=80",
+    alt: "Home exterior with landscaping",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=640&q=80",
+    alt: "Bathroom with clean finishes",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=640&q=80",
+    alt: "Dining area with outdoor light",
+  },
+] as const;
+
 const SCENES = [
   {
     id: "book",
@@ -102,13 +130,13 @@ export function PlatformSilentDemo({ offer }: { offer: Offer }) {
       if (event.key === "ArrowRight") {
         event.preventDefault();
         goNext();
-        setPaused(true);
+        setPaused(false);
         return;
       }
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         goBack();
-        setPaused(true);
+        setPaused(false);
         return;
       }
       if (event.key === " " || event.key === "Spacebar") {
@@ -129,6 +157,7 @@ export function PlatformSilentDemo({ offer }: { offer: Offer }) {
     if (target.closest("a") || target.closest(".silent-demo-controls")) return;
     if (reduced || index >= lastIndex) return;
     goNext();
+    setPaused(false);
   }
 
   return (
@@ -199,7 +228,7 @@ export function PlatformSilentDemo({ offer }: { offer: Offer }) {
                   className="btn btn-outline"
                   onClick={() => {
                     goBack();
-                    setPaused(true);
+                    setPaused(false);
                   }}
                   disabled={index === 0}
                 >
@@ -210,7 +239,7 @@ export function PlatformSilentDemo({ offer }: { offer: Offer }) {
                   className="btn btn-outline"
                   onClick={() => {
                     goNext();
-                    setPaused(true);
+                    setPaused(false);
                   }}
                   disabled={index >= lastIndex}
                 >
@@ -241,7 +270,7 @@ export function PlatformSilentDemo({ offer }: { offer: Offer }) {
                         aria-label={`Show ${item.kicker}`}
                         onClick={() => {
                           setIndex(sceneIndex);
-                          setPaused(true);
+                          setPaused(false);
                         }}
                       />
                     </li>
@@ -311,8 +340,8 @@ function SceneVisual({
             Request booking
           </span>
           <p className="silent-demo-check">Booked. Confirmation sent.</p>
+          <span className="silent-demo-pointer" aria-hidden="true" />
         </div>
-        <span className="silent-demo-pointer" aria-hidden="true" />
       </div>
     );
   }
@@ -322,8 +351,17 @@ function SceneVisual({
       <div className="silent-demo-chrome">
         <p className="silent-demo-url">Studio · Upload</p>
         <div className="silent-demo-thumbs" aria-hidden="true">
-          {Array.from({ length: 6 }, (_, thumb) => (
-            <span key={thumb} className={`silent-demo-thumb is-${thumb}`} />
+          {DEMO_THUMBS.map((thumb, index) => (
+            <span key={thumb.src} className={`silent-demo-thumb is-${index}`}>
+              <img
+                src={thumb.src}
+                alt=""
+                width={640}
+                height={480}
+                loading="lazy"
+                decoding="async"
+              />
+            </span>
           ))}
         </div>
         <div className="silent-demo-bar" aria-hidden="true">
@@ -339,8 +377,16 @@ function SceneVisual({
       <div className="silent-demo-chrome">
         <p className="silent-demo-url">yours.studiofront.ca/g/ready</p>
         <div className="silent-demo-thumbs is-proof" aria-hidden="true">
-          {Array.from({ length: 6 }, (_, thumb) => (
-            <span key={thumb} className={`silent-demo-thumb is-${thumb}`}>
+          {DEMO_THUMBS.map((thumb, index) => (
+            <span key={thumb.src} className={`silent-demo-thumb is-${index}`}>
+              <img
+                src={thumb.src}
+                alt=""
+                width={640}
+                height={480}
+                loading="lazy"
+                decoding="async"
+              />
               <em>PROOF</em>
             </span>
           ))}
@@ -365,8 +411,8 @@ function SceneVisual({
             <span>MLS.zip</span>
             <span>Full-res.zip</span>
           </div>
+          <span className="silent-demo-pointer" aria-hidden="true" />
         </div>
-        <span className="silent-demo-pointer" aria-hidden="true" />
       </div>
     );
   }

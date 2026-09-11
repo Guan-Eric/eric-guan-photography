@@ -4,16 +4,16 @@ overview: Install Cloudflare Web Analytics on the marketing site, generate real 
 todos:
   - id: cf-analytics
     content: Add Cloudflare Web Analytics beacon to app/layout.tsx gated on no-tenant + token; wire .env.example, wrangler.jsonc vars, optional setup-check, privacy line
-    status: pending
+    status: completed
   - id: screens-capture
     content: Add tests/e2e/screens.spec.ts + chromium-screens project + brand:screens script; add ~6 real Silent Shutter fixture photos; output four PNGs to public/screens/
-    status: pending
+    status: completed
   - id: homepage-swap
     content: Replace Unsplash HERO and DELIVERY in components/platform-home.tsx with own listing photo and gallery-proofing.png
-    status: pending
+    status: completed
   - id: proof-section
     content: Add Silent Shutter founder proof section to the homepage using only verifiable numbers
-    status: pending
+    status: completed
 isProject: false
 ---
 

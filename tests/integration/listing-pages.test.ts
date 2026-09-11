@@ -112,6 +112,18 @@ describe("listing pages", () => {
     );
     expect(await getListingPage(byOrder!.id, "demo-studio")).toBeNull();
     expect(await listingPageForPublic(tenant.id, slug)).toBeTruthy();
+
+    // Agent-owned fields (copy / open houses) must not clear photographer-owned enquiry.
+    await updateListingPage(byOrder!.id, tenant.id, {
+      headline: "Agent headline",
+      openHouses: [{ date: "2026-09-19", start: "1pm", end: "3pm", note: "" }],
+    });
+    const afterAgentCopy = await getListingPage(byOrder!.id, tenant.id);
+    expect(afterAgentCopy?.headline).toBe("Agent headline");
+    expect(afterAgentCopy?.leadCapture).toBeTruthy();
+
+    await updateListingPage(byOrder!.id, tenant.id, { leadCapture: false });
+    expect((await getListingPage(byOrder!.id, tenant.id))?.leadCapture).toBeFalsy();
   });
 
   it("publishes a listing page from a delivered-ready order", async () => {

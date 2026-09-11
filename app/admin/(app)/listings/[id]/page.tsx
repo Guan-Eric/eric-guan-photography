@@ -44,6 +44,7 @@ export default async function EditListingPage({
         heroAssetId: page.heroAssetId ?? "",
         brandMode: page.brandMode,
         published: Boolean(page.publishedAt),
+        leadCapture: page.leadCapture === 1,
         captions: Object.fromEntries(
           media.map((asset) => [asset.id, asset.roomLabel ?? ""]),
         ),

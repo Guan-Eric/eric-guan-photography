@@ -159,6 +159,13 @@ const checks = [
       ? "configured — Custom Hostname provisioning enabled"
       : "optional until vanity domains; DNS save still works, SSL attach skipped",
   ),
+  check(
+    "Cloudflare Web Analytics (NEXT_PUBLIC_CF_ANALYTICS_TOKEN)",
+    present("NEXT_PUBLIC_CF_ANALYTICS_TOKEN"),
+    present("NEXT_PUBLIC_CF_ANALYTICS_TOKEN")
+      ? "beacon on marketing host only"
+      : "optional; marketing site has no traffic analytics until set",
+  ),
 ];
 
 let failed = 0;

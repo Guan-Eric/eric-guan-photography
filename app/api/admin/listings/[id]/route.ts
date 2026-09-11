@@ -13,6 +13,7 @@ const patchSchema = z.object({
   heroAssetId: z.string().trim().max(40).nullable().optional(),
   brandMode: z.enum(["branded", "unbranded"]).optional(),
   published: z.boolean().optional(),
+  leadCapture: z.boolean().optional(),
   captions: z
     .array(
       z.object({

@@ -7,17 +7,17 @@ import { PLAN_DEFS } from "@/lib/plan-defs";
 import { platformName } from "@/lib/platform";
 
 const HERO = {
-  src: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2400&q=80",
+  src: "/marketing/hero.jpg",
   alt: "Bright modern home ready for listing photographs",
   width: 2400,
   height: 1600,
 };
 
 const DELIVERY = {
-  src: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=2000&q=80",
-  alt: "Sunlit living room photographed for a listing gallery",
-  width: 2000,
-  height: 1333,
+  src: "/screens/gallery-proofing.png",
+  alt: "StudioFront gallery with watermarked proofs and Pay and unlock",
+  width: 2880,
+  height: 1800,
 };
 
 export function PlatformHome() {
@@ -107,7 +107,7 @@ export function PlatformHome() {
               downloads unlock in seconds.
             </p>
           </div>
-          <div className="platform-band">
+          <div className="platform-band platform-band--screen">
             <Image
               src={DELIVERY.src}
               alt={DELIVERY.alt}
@@ -142,6 +142,55 @@ export function PlatformHome() {
                 </p>
               </li>
             </ol>
+          </div>
+        </section>
+
+        <section className="services" id="proof">
+          <div className="services-inner">
+            <div className="section-intro">
+              <p className="eyebrow">Built for the work</p>
+              <h2>I run my own studio on this.</h2>
+              <p className="section-copy">
+                {name} started as the operating system for Silent Shutter, my
+                Montréal real estate photography studio. Book on the branded
+                site, deliver a gallery link, and get paid when the agent unlocks
+                the files — the same loop I use on my own shoots.
+              </p>
+            </div>
+            <ul className="price-list">
+              <li>
+                <div>
+                  <h3>No agent accounts</h3>
+                  <p>
+                    Agents open a token gallery. No password reset tickets before
+                    MLS upload day.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <h3>Pay on the same link</h3>
+                  <p>
+                    Watermarked proofs first. Checkout unlocks MLS and full-res
+                    zips without a separate invoice chase.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <div>
+                  <h3>Your brand, not ours</h3>
+                  <p>
+                    The booking site and delivery link carry the studio name. I
+                    built that because I needed it for Silent Shutter.
+                  </p>
+                </div>
+              </li>
+            </ul>
+            <p className="section-copy" style={{ marginTop: "2rem" }}>
+              <Link className="btn btn-outline" href="/demo">
+                Watch the 60s walkthrough
+              </Link>
+            </p>
           </div>
         </section>
 

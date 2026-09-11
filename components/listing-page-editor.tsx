@@ -16,6 +16,7 @@ type EditorState = {
   heroAssetId: string;
   brandMode: "branded" | "unbranded";
   published: boolean;
+  leadCapture: boolean;
   captions: Record<string, string>;
 };
 
@@ -58,6 +59,7 @@ export function ListingPageEditor({
           heroAssetId: state.heroAssetId || null,
           brandMode: state.brandMode,
           published: state.published,
+          leadCapture: state.leadCapture,
           captions: photos.map((photo) => ({
             id: photo.id,
             caption: state.captions[photo.id] ?? "",
@@ -105,7 +107,8 @@ export function ListingPageEditor({
 
       <p className="field-hint">
         Headline, description, extra sections, and open houses are written by the
-        agent in their listings portal.
+        agent in their listings portal. You control look, captions, and the
+        enquiry form.
       </p>
 
       <section className="studio-section">
@@ -205,6 +208,16 @@ export function ListingPageEditor({
             <option value="branded">Branded (agent details shown)</option>
             <option value="unbranded">Unbranded (MLS safe)</option>
           </select>
+        </label>
+        <label className="field-check">
+          <span>
+            <input
+              type="checkbox"
+              checked={state.leadCapture}
+              onChange={(event) => patch({ leadCapture: event.target.checked })}
+            />
+            Show the enquiry form (emails the listing agent)
+          </span>
         </label>
         <button type="button" className={`btn btn-solid${busy ? " is-busy" : ""}`} disabled={busy} onClick={save}>
           {busy ? "Saving…" : "Save page"}

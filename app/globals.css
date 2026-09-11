@@ -153,6 +153,23 @@ button {
   object-fit: cover;
 }
 
+/* Full product UI shots — do not crop chrome / pay panel. */
+.platform-band--screen {
+  background: var(--paper);
+  outline: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  outline-offset: 0;
+  box-shadow: 0 18px 48px rgba(23, 26, 23, 0.1);
+  overflow: hidden;
+}
+
+.platform-band--screen img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+}
+
 .logo {
   display: inline-flex;
   align-items: center;

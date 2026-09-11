@@ -67,6 +67,12 @@ export default function PrivacyPage() {
                 update Studiofront shoot events and, if you enable it, treat
                 other events as busy for booking.
               </li>
+              <li>
+                <strong>Marketing analytics (cookieless):</strong> on the
+                Studiofront marketing site only, we use Cloudflare Web Analytics
+                to count page views. It does not use cookies and does not run on
+                photographer studio sites or agent gallery links.
+              </li>
             </ul>
 
             <h2>How we use information</h2>
@@ -106,6 +112,7 @@ export default function PrivacyPage() {
               <li>Payments and Connect: Stripe</li>
               <li>Transactional email: Resend</li>
               <li>Hosting and media storage: Cloudflare Workers and R2</li>
+              <li>Marketing analytics: Cloudflare Web Analytics (apex only)</li>
               <li>Database: Neon Postgres</li>
               <li>Optional calendar sync: Google</li>
             </ul>

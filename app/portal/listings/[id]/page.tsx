@@ -52,7 +52,6 @@ export default async function AgentListingCopyPage({
             description: page.description ?? "",
             sections: parseSections(page.sectionsJson),
             openHouses: parseOpenHouses(page.openHouseJson),
-            leadCapture: page.leadCapture === 1,
           }}
         />
       </div>

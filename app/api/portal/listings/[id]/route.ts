@@ -17,7 +17,6 @@ const patchSchema = z.object({
   description: z.string().trim().max(4000).optional(),
   sections: z.array(listingSectionSchema).max(8).optional(),
   openHouses: z.array(openHouseSchema).max(8).optional(),
-  leadCapture: z.boolean().optional(),
 });
 
 async function agentPage(id: string) {
@@ -58,7 +57,6 @@ export async function PATCH(request: Request, context: { params: Promise<Params>
     description: parsed.data.description,
     sections: parsed.data.sections,
     openHouses: parsed.data.openHouses,
-    leadCapture: parsed.data.leadCapture,
   });
   if (!result.ok) return NextResponse.json(result, { status: 404 });
   return NextResponse.json(result);

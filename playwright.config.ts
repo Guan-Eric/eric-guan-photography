@@ -17,7 +17,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `npm run dev:e2e -- -p ${PORT}`,
+    command: `npx next dev -p ${PORT}`,
     url: baseURL,
     reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
     timeout: 180_000,
@@ -46,6 +46,15 @@ export default defineConfig({
       name: "chromium-regression",
       grep: /@regression/,
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "chromium-screens",
+      grep: /@screens/,
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1440, height: 900 },
+        deviceScaleFactor: 2,
+      },
     },
   ],
 });

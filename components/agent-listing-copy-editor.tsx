@@ -11,7 +11,6 @@ type CopyState = {
   description: string;
   sections: ListingSection[];
   openHouses: OpenHouse[];
-  leadCapture: boolean;
 };
 
 function AgentListingCopyForm({
@@ -53,7 +52,6 @@ function AgentListingCopyForm({
             (section) => section.heading.trim() || section.body.trim(),
           ),
           openHouses: state.openHouses.filter((entry) => entry.date.trim()),
-          leadCapture: state.leadCapture,
         }),
       });
       const json = await response.json().catch(() => null);
@@ -103,8 +101,9 @@ function AgentListingCopyForm({
       {notice ? <p className="form-success">{notice}</p> : null}
 
       <p className="field-hint">
-        Photos and the page look are set by the photographer. Add the words buyers
-        see — optional, the page can go live with just the address.
+        Photos, page look, and the enquiry form are set by the photographer. Add
+        the words buyers see — optional, the page can go live with just the
+        address.
       </p>
 
       <section className="studio-section">
@@ -260,20 +259,6 @@ function AgentListingCopyForm({
             Add open house
           </button>
         ) : null}
-      </section>
-
-      <section className="studio-section">
-        <h2>Enquiries</h2>
-        <label className="field-check">
-          <span>
-            <input
-              type="checkbox"
-              checked={state.leadCapture}
-              onChange={(event) => patch({ leadCapture: event.target.checked })}
-            />
-            Show the enquiry form (emails you)
-          </span>
-        </label>
         <button
           type="button"
           className={`btn btn-solid${busy ? " is-busy" : ""}`}

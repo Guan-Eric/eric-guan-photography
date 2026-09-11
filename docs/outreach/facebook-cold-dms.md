@@ -18,8 +18,8 @@ Objection scripts + other channels: `docs/LTD-PRIVATE-SALES.md`
 | **Listings** | **125 / year** (hard cap, no overage) |
 | **Seats** | **1** |
 | **Domain** | Subdomain only (`you.studiofront.ca`) |
-| **Includes** | Branded site, booking, watermarked proofs, gallery link, pay-to-unlock, Stripe Connect |
-| **Not included** | Custom domain, property pages, multi-seat, Studio-tier extras |
+| **Includes** | Branded site, booking, watermarked proofs, gallery link, pay-to-unlock, Stripe Connect, share kit, gallery reports |
+| **Not included** | Custom domain, property pages, multi-seat, in-gallery upsells |
 | **Info** | https://studiofront.ca/lifetime |
 | **Demo** | https://studiofront.ca/demo |
 | **Buy** | https://studiofront.ca/signup?plan=lifetime |

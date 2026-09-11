@@ -97,7 +97,8 @@ export function PlatformPricing() {
                       <li>Gated galleries + MLS zips</li>
                       {extras.customDomain ? <li>Custom domain</li> : <li>Subdomain only</li>}
                       {extras.propertyPages ? <li>Property websites</li> : null}
-                      {extras.shareKit ? <li>Share kit + reports + upsells</li> : null}
+                      {extras.shareKit ? <li>Share kit + gallery reports</li> : null}
+                      {extras.upsells ? <li>In-gallery upsells</li> : null}
                       {id === "payg" ? null : (
                         <li>{formatUsd(def.meteredUsd)} per listing beyond plan</li>
                       )}
@@ -232,7 +233,7 @@ export function PlatformPricing() {
               </div>
               <p className="plan-math-note">
                 Growth and Studio still earn the extra seats, custom domain,
-                property websites, share kit, reports, and upsells even when
+                property websites, and (on Studio) in-gallery upsells even when
                 Starter plus overage is the cheaper invoice.
               </p>
             </div>

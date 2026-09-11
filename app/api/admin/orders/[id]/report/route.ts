@@ -26,7 +26,7 @@ export async function GET(
   const row = await getTenantRow(order.tenantId);
   if (!row || !entitlements(row.plan).reports) {
     return NextResponse.json(
-      { ok: false, error: "Listing reports are on the Studio plan." },
+      { ok: false, error: "Listing reports are not available on this plan." },
       { status: 403 },
     );
   }

@@ -63,10 +63,20 @@ describe("billing entitlements & access", () => {
     expect(entitlements("starter").propertyPages).toBe(false);
     expect(entitlements("trial").propertyPages).toBe(true);
     expect(entitlements("growth").propertyPages).toBe(true);
-    expect(entitlements("studio").shareKit).toBe(true);
-    expect(entitlements("growth").shareKit).toBe(false);
     expect(entitlements("trial").customDomain).toBe(true);
     expect(entitlements("starter").customDomain).toBe(false);
+
+    for (const plan of ["trial", "starter", "growth", "studio", "payg", "lifetime"] as const) {
+      expect(entitlements(plan).shareKit).toBe(true);
+      expect(entitlements(plan).reports).toBe(true);
+    }
+
+    expect(entitlements("trial").upsells).toBe(true);
+    expect(entitlements("studio").upsells).toBe(true);
+    expect(entitlements("payg").upsells).toBe(true);
+    expect(entitlements("starter").upsells).toBe(false);
+    expect(entitlements("growth").upsells).toBe(false);
+    expect(entitlements("lifetime").upsells).toBe(false);
   });
 
   it("trialEndsAt is ~14 days out", () => {

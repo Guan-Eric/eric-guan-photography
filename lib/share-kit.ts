@@ -18,7 +18,7 @@ export async function assertShareKit(tenantId: string) {
   const row = await getTenantRow(tenantId);
   if (!row) return { ok: false as const, error: "Studio not found." };
   if (!entitlements(row.plan).shareKit) {
-    return { ok: false as const, error: "Share kit is on the Studio plan." };
+    return { ok: false as const, error: "Share kit is not available on this plan." };
   }
   return { ok: true as const, row };
 }

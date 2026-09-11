@@ -58,8 +58,8 @@ Use these numbers everywhere, don’t improvise:
 | Seats               | **1**                                                                                                    |
 | Storage             | **20 GB**                                                                                                |
 | Domain              | **Subdomain only** (`you.studiofront.ca`)                                                                |
-| Includes            | White-label site, booking, watermarked proofs, token galleries, pay-to-unlock, Stripe Connect            |
-| Not included        | Custom domain, property pages, multi-seat, Studio-tier features                                          |
+| Includes            | White-label site, booking, watermarked proofs, token galleries, pay-to-unlock, Stripe Connect, share kit, gallery reports |
+| Not included        | Custom domain, property pages, multi-seat, in-gallery upsells                                          |
 | Lifetime means      | While StudioFront operates the product, under these caps                                                 |
 | Buy link            | [https://studiofront.ca/signup?plan=lifetime](https://studiofront.ca/signup?plan=lifetime)               |
 | Info link           | [https://studiofront.ca/lifetime](https://studiofront.ca/lifetime)                                       |

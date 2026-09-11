@@ -22,7 +22,7 @@ const FAQ = [
   },
   {
     q: "What do I get?",
-    a: `Lifetime Starter: white-label subdomain studio site, booking, watermarked proofs, token galleries with pay-to-unlock, and Stripe Connect payouts. Caps: ${PLAN_DEFS.lifetime.listingQuota} listings per year, ${PLAN_DEFS.lifetime.seats} seat, 20 GB storage. No custom domain on this tier.`,
+    a: `Lifetime Starter: white-label subdomain studio site, booking, watermarked proofs, token galleries with pay-to-unlock, Stripe Connect payouts, share kit, and gallery reports. Caps: ${PLAN_DEFS.lifetime.listingQuota} listings per year, ${PLAN_DEFS.lifetime.seats} seat, 20 GB storage. No custom domain on this tier.`,
   },
   {
     q: "Can I upgrade later?",
@@ -110,6 +110,7 @@ export function PlatformLifetime({ offer }: { offer: Offer }) {
                   <li>Subdomain studio site</li>
                   <li>Booking + gated galleries</li>
                   <li>Pay-to-unlock + Connect payouts</li>
+                  <li>Share kit + gallery reports</li>
                   <li>No custom domain (upgrade later)</li>
                   <li>No listing overages — upgrade when you outgrow</li>
                 </ul>

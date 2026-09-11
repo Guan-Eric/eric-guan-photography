@@ -114,8 +114,8 @@ export function entitlements(plan: PlanId) {
   return {
     customDomain: plan === "trial" || plan === "growth" || plan === "studio",
     propertyPages: plan === "trial" || plan === "growth" || plan === "studio",
-    shareKit: plan === "studio",
-    reports: plan === "studio",
-    upsells: plan === "studio",
+    shareKit: true,
+    reports: true,
+    upsells: plan === "trial" || plan === "studio",
   };
 }

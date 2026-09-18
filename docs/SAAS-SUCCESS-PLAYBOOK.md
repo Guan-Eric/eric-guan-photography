@@ -3,7 +3,8 @@
 > A detailed, StudioFront-specific adaptation of Mike’s 10-step Starter Story framework (bootstrapped SaaS that “can’t fail”).
 >
 > **Product:** Multi-tenant real estate media platform for photographers (white-label sites, booking, gated delivery, property pages).
-> **Positioning:** Beat Aryeo on cost, agent friction, and photographer-owned brand — not on Zillow Showcase exclusivity.
+> **Positioning:** No-login, usage-priced studio brand stack for independents — not feature exclusivity vs Aryeo, and not Zillow Showcase.
+> **Copy / claim rules:** See [`docs/POSITIONING-REWRITE-PLAN.md`](./POSITIONING-REWRITE-PLAN.md) before editing homepage or Aryeo comparison pages.
 > **Source frame:** [Starter Story — Mike’s $200k MRR playbook](https://youtu.be/67zh8_yiPh4)
 
 Use this document as the go-to-market operating system. Engineering detail lives in `PLATFORM-PLAN.md`, `DEPLOY.md`, and `docs/TECH-STACK.md`.
@@ -57,13 +58,13 @@ You are already in a proven category:
 
 - [ ] Job-to-be-done is clear: photographer runs brand + bookings + paid delivery without agent logins
 - [ ] Competitors have customers despite mediocre UX or high pricing (proof of demand)
-- [ ] Your wedge is specific and durable:
-  - Per-listing / usage-first pricing vs high monthly rent
-  - Token galleries (no agent account)
-  - Pay-in-gallery unlock
-  - Full white-label (theme, domain, packages)
-  - Photographer-owned data
-- [ ] Explicit non-goals written down (e.g. Zillow Showcase / national staffing)
+- [ ] Your wedge is specific and durable (**stance, not fake feature gaps** — Aryeo already has pay-lock, branded delivery, and white-label):
+  - Link-only agent UX **by design** (no agent accounts)
+  - True $5/listing PAYG with $0 base for seasonal volume
+  - Narrow book → proof → pay → unlock loop (not a portal/media OS)
+  - Photographer-owned brand + Stripe Connect; Zillow/Showcase is a non-goal
+- [ ] Explicit non-goals written down (e.g. Zillow Showcase / national staffing / marketing builder parity)
+- [ ] Claim rules in `docs/POSITIONING-REWRITE-PLAN.md` followed on all public copy
 
 ### Exit criteria
 

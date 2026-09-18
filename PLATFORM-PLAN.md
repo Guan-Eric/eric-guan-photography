@@ -1,6 +1,6 @@
 # Real Estate Media Platform — SaaS Plan
 
-> A multi-tenant SaaS for real estate photographers: white-label sites, booking, gated delivery, and shareable listing pages — priced to beat Aryeo on cost and agent friction.
+> A multi-tenant SaaS for real estate photographers: white-label sites, booking, gated delivery, and shareable listing pages — positioned as a no-login, usage-priced studio OS (not Aryeo feature exclusivity). See `docs/POSITIONING-REWRITE-PLAN.md`.
 >
 > **Eric Guan Photography is tenant #1** (dogfood customer), not the product. Every feature must work for the next photographer who signs up.
 
@@ -28,15 +28,18 @@ Photographers run their business on **their brand**, not a Zillow-adjacent porta
 
 ## Why this can win vs Aryeo
 
-| Gap | Aryeo | This SaaS |
+> **Honesty rule:** Aryeo already offers branded delivery, download links, pay-before-download, and white-label options. Do not market fake feature gaps. Full claim rules: `docs/POSITIONING-REWRITE-PLAN.md`.
+
+| Dimension | Aryeo | This SaaS |
 |---|---|---|
-| Cost | ~$49–$179/mo whether you shoot or not | Per-listing / usage-first; low fixed |
-| Agent friction | Agent login / portal | Token gallery links, no login |
-| Ownership | Zillow Group (ShowingTime+) | Photographer-owned data + media |
-| Payment unlock | Invoice round-trip | Pay-in-gallery unlock (wallet-ready later) |
-| Trust | One-size gate | Per-agent trust tiers (`pay_first` / `net7`) |
-| White-label | Platform-branded feel | Full white-label (theme, domain, packages) |
-| Market lane | All-in portal | Portal-independent + modern UX (open vs Spiro / HDPhotoHub pricing models) |
+| Default agent UX | Portal-first (login is a core product) | Link-only by design — no agent accounts |
+| Cost shape | Lite $0 delivery; Pro ~$49–$179 suite rent | True $5/listing PAYG ($0 base) or $49 / $99 / $149 bands |
+| Product scope | Broad media OS (video, 3D, marketing, Showcase) | Narrow loop: book → proof → pay → unlock |
+| Ownership / ecosystem | Zillow-adjacent portal gravity | Photographer-owned brand + media; Showcase is a non-goal |
+| Payment unlock | Available (download center lock) | First-class gallery checkout as the default path |
+| Trust | Customer billing settings / lock downloads | Per-agent trust tiers (`pay_first` / `net7`) |
+| White-label | Available on their stack | Site + delivery *are* the product for independents |
+| Market lane | All-in portal / team OS | Portal-independent studio OS for solos & small crews |
 
 ---
 

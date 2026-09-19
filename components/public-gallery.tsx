@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CoachTour, type CoachStep } from "@/components/coach-tour";
 import { MediaEmbeds, type EmbedItem } from "@/components/media-embeds";
+import { marketingLicense } from "@/lib/legal-copy";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 type GalleryMedia = {
@@ -26,7 +27,7 @@ const AGENT_GALLERY_TOUR: CoachStep[] = [
   {
     selector: '[data-tour="gallery-pay"]',
     title: "Pay to unlock",
-    body: "Add optional add-ons if shown, then pay to download the zip files from this same link.",
+    body: "Add optional add-ons if shown, then pay. You’ll get a new download link by email — the preview link stops working.",
   },
 ];
 
@@ -46,6 +47,10 @@ export function PublicGallery({
   cancelledFlag,
   upsells = [],
   allowStubUnlock = false,
+  licenseAccepted = false,
+  preferFrenchLicense = false,
+  listingsHref = "/portal",
+  allowPortalDevBypass = false,
 }: {
   token: string;
   title: string;
@@ -62,12 +67,29 @@ export function PublicGallery({
   cancelledFlag: boolean;
   upsells?: Upsell[];
   allowStubUnlock?: boolean;
+  licenseAccepted?: boolean;
+  preferFrenchLicense?: boolean;
+  listingsHref?: string;
+  allowPortalDevBypass?: boolean;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<"pay" | "stub" | null>(null);
+  const [busy, setBusy] = useState<"pay" | "stub" | "license" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
+  const [licenseChecked, setLicenseChecked] = useState(false);
+  const [licenseOk, setLicenseOk] = useState(licenseAccepted);
+  const [licenseLang, setLicenseLang] = useState<"en" | "fr">(
+    preferFrenchLicense ? "fr" : "en",
+  );
   const unlocked = state === "unlocked";
+
+  useEffect(() => {
+    setLicenseOk(licenseAccepted);
+  }, [licenseAccepted]);
+
+  useEffect(() => {
+    setLicenseLang(preferFrenchLicense ? "fr" : "en");
+  }, [preferFrenchLicense]);
 
   // Webhook may lag Stripe return — keep refreshing until DB shows unlocked.
   useEffect(() => {
@@ -121,6 +143,7 @@ export function PublicGallery({
         alreadyUnlocked?: boolean;
         stubbed?: boolean;
         url?: string | null;
+        galleryUrl?: string;
       } | null;
       if (!json || !json.ok) {
         const message = json?.error ?? "Checkout failed.";
@@ -128,8 +151,17 @@ export function PublicGallery({
         toastError(message);
         return;
       }
-      if (json.alreadyUnlocked || json.stubbed) {
+      if (json.stubbed && json.galleryUrl) {
+        toastSuccess("Gallery unlocked — opening your download link.");
+        window.location.href = `${json.galleryUrl}${json.galleryUrl.includes("?") ? "&" : "?"}paid=1`;
+        return;
+      }
+      if (json.alreadyUnlocked) {
         toastSuccess("Gallery unlocked.");
+        if (json.galleryUrl) {
+          window.location.href = json.galleryUrl;
+          return;
+        }
         router.refresh();
         return;
       }
@@ -148,6 +180,44 @@ export function PublicGallery({
     }
   }
 
+  async function acceptLicense() {
+    if (!licenseChecked) {
+      setError(
+        licenseLang === "fr"
+          ? "Cochez la case pour accepter la licence de marketing limitée."
+          : "Check the box to accept the Limited Marketing License.",
+      );
+      return;
+    }
+    setBusy("license");
+    setError(null);
+    try {
+      const response = await fetch(`/api/g/${token}/license`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: licenseLang }),
+      });
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (!json?.ok) {
+        const message = json?.error ?? "Could not save license acceptance.";
+        setError(message);
+        toastError(message);
+        return;
+      }
+      setLicenseOk(true);
+      toastSuccess(marketingLicense[licenseLang].accepted);
+      router.refresh();
+    } catch {
+      setError("Network error saving license acceptance.");
+      toastError("Network error saving license acceptance.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <main className={`delivery-shell ${branded ? "" : "delivery-shell--unbranded"}`} id="main">
       <div className="delivery-main">
@@ -155,6 +225,13 @@ export function PublicGallery({
           {branded ? <p className="eyebrow delivery-brand">{studioName}</p> : null}
           <h1>{title}</h1>
           <p className="lede">{propertyAddress}</p>
+          {!unlocked ? (
+            <p className="delivery-copyright-banner" role="note">
+              © {branded ? photographerName : "Photographer"}. Watermarked proofs for review only.
+              This link is for the booking agent — do not publish or share with other brokerages.
+              Screenshots are not licensed for MLS.
+            </p>
+          ) : null}
           <div className="delivery-portal-callout">
             <div className="delivery-portal-callout-copy">
               <p className="eyebrow">Agent portal</p>
@@ -165,9 +242,25 @@ export function PublicGallery({
                 Sign in with your email; no password.
               </p>
             </div>
-            <Link className="btn btn-outline delivery-portal-callout-link" href="/portal">
-              Your listings
-            </Link>
+            {allowPortalDevBypass ? (
+              <form
+                className="delivery-portal-callout-link"
+                action="/api/portal/dev-bypass"
+                method="POST"
+              >
+                <input type="hidden" name="galleryToken" value={token} />
+                <button className="btn btn-outline" type="submit">
+                  Your listings
+                </button>
+              </form>
+            ) : (
+              <Link
+                className="btn btn-outline delivery-portal-callout-link"
+                href={listingsHref}
+              >
+                Your listings
+              </Link>
+            )}
           </div>
         </header>
 
@@ -189,11 +282,13 @@ export function PublicGallery({
                 />
                 <figcaption>
                   {asset.roomLabel ? <span>{asset.roomLabel}</span> : <span />}
-                  {unlocked ? (
+                  {unlocked && licenseOk ? (
                     <span className="delivery-item-links">
                       <a href={`/api/g/${token}/media/${asset.id}?v=mls`}>MLS</a>
                       <a href={`/api/g/${token}/media/${asset.id}?v=full`}>Full</a>
                     </span>
+                  ) : unlocked ? (
+                    <span>Accept license to download</span>
                   ) : (
                     <span>Proof</span>
                   )}
@@ -222,28 +317,89 @@ export function PublicGallery({
           <>
             <p className="eyebrow">Unlocked</p>
             <p className="booking-quote-price">Ready</p>
-            <p className="field-hint">Full-resolution and MLS zips are on this same link.</p>
-            <div className="delivery-download-row">
-              <a
-                className="btn btn-solid"
-                href={`/api/g/${token}/download?kind=mls${branded ? "" : "&brand=off"}`}
-              >
-                Download MLS zip
-              </a>
-              <a
-                className="btn btn-outline"
-                href={`/api/g/${token}/download?kind=full${branded ? "" : "&brand=off"}`}
-              >
-                Download full-res zip
-              </a>
-            </div>
+            {licenseOk ? (
+              <>
+                <p className="field-hint">
+                  Full-resolution and MLS zips are ready on this download link.
+                </p>
+                <div className="delivery-download-row">
+                  <a
+                    className="btn btn-solid"
+                    href={`/api/g/${token}/download?kind=mls${branded ? "" : "&brand=off"}`}
+                  >
+                    Download MLS zip
+                  </a>
+                  <a
+                    className="btn btn-outline"
+                    href={`/api/g/${token}/download?kind=full${branded ? "" : "&brand=off"}`}
+                  >
+                    Download full-res zip
+                  </a>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="field-hint">{marketingLicense[licenseLang].prompt}</p>
+                {preferFrenchLicense && licenseLang === "fr" ? (
+                  <p className="field-hint">
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={() => setLicenseLang("en")}
+                    >
+                      {marketingLicense.fr.continueEn}
+                    </button>
+                  </p>
+                ) : preferFrenchLicense && licenseLang === "en" ? (
+                  <p className="field-hint">
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={() => setLicenseLang("fr")}
+                    >
+                      Afficher en français
+                    </button>
+                  </p>
+                ) : null}
+                <label className="delivery-license-check" lang={licenseLang}>
+                  <input
+                    type="checkbox"
+                    checked={licenseChecked}
+                    onChange={(event) => setLicenseChecked(event.target.checked)}
+                  />
+                  <span>
+                    {marketingLicense[licenseLang].summary}{" "}
+                    <Link
+                      href={licenseLang === "fr" ? "/fr/terms" : "/terms"}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {marketingLicense[licenseLang].title}
+                    </Link>
+                  </span>
+                </label>
+                <div className="delivery-download-row">
+                  <button
+                    type="button"
+                    className={`btn btn-solid${busy === "license" ? " is-busy" : ""}`}
+                    disabled={busy !== null || !licenseChecked}
+                    onClick={() => void acceptLicense()}
+                  >
+                    {busy === "license"
+                      ? "…"
+                      : marketingLicense[licenseLang].accept}
+                  </button>
+                </div>
+              </>
+            )}
           </>
         ) : (
           <>
             <p className="eyebrow">Your quote</p>
             <p className="booking-quote-price">{price}</p>
             <p className="field-hint">
-              Watermarked proofs until payment. Same link unlocks full + MLS files.
+              Watermarked proofs until payment. After payment you’ll get a new download link by
+              email — this preview link will stop working.
             </p>
             {upsells.length > 0 ? (
               <fieldset className="upsell-list">

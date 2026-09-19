@@ -188,6 +188,8 @@ function ensureSchema(db: import("better-sqlite3").Database) {
       currency TEXT NOT NULL DEFAULT 'CAD',
       unlocked_at TEXT,
       revoked_at TEXT,
+      expires_at TEXT,
+      license_accepted_at TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -334,6 +336,17 @@ function ensureSchema(db: import("better-sqlite3").Database) {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS agent_otp_challenges (
+      id TEXT PRIMARY KEY NOT NULL,
+      tenant_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS referral_codes (
       id TEXT PRIMARY KEY NOT NULL,
       user_id TEXT NOT NULL,
@@ -396,6 +409,7 @@ function ensureSchema(db: import("better-sqlite3").Database) {
     CREATE UNIQUE INDEX IF NOT EXISTS membership_invites_token_idx ON membership_invites(token);
     CREATE INDEX IF NOT EXISTS billing_events_tenant_idx ON billing_events(tenant_id);
     CREATE UNIQUE INDEX IF NOT EXISTS agent_login_tokens_token_idx ON agent_login_tokens(token);
+    CREATE INDEX IF NOT EXISTS agent_otp_challenges_email_idx ON agent_otp_challenges(tenant_id, email, created_at);
     CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_user_idx ON referral_codes(user_id);
     CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_code_idx ON referral_codes(code);
     CREATE INDEX IF NOT EXISTS referral_credits_referrer_idx ON referral_credits(referrer_user_id);
@@ -474,6 +488,42 @@ function ensureSchema(db: import("better-sqlite3").Database) {
   addColumnIfMissing(db, "appointments", "arrived_at", "TEXT");
   addColumnIfMissing(db, "appointments", "completed_at", "TEXT");
   addColumnIfMissing(db, "orders", "calendar_event_id", "TEXT");
+  addColumnIfMissing(db, "galleries", "expires_at", "TEXT");
+  addColumnIfMissing(db, "galleries", "license_accepted_at", "TEXT");
+  addColumnIfMissing(db, "galleries", "license_accepted_language", "TEXT");
+  addColumnIfMissing(db, "media_assets", "enhancement_tag", "TEXT");
+  addColumnIfMissing(db, "media_assets", "original_disclosure_asset_id", "TEXT");
+  addColumnIfMissing(
+    db,
+    "media_assets",
+    "disclosure_public",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
+  addColumnIfMissing(db, "listing_pages", "brokerage_phone", "TEXT");
+  addColumnIfMissing(
+    db,
+    "listing_pages",
+    "listing_status",
+    "TEXT NOT NULL DEFAULT 'active'",
+  );
+  addColumnIfMissing(db, "listing_pages", "advertising_ends_at", "TEXT");
+  addColumnIfMissing(db, "listing_pages", "deed_signed_at", "TEXT");
+  addColumnIfMissing(
+    db,
+    "listing_pages",
+    "compliance_region",
+    "TEXT NOT NULL DEFAULT 'ca_other'",
+  );
+  addColumnIfMissing(db, "listing_pages", "license_display_name", "TEXT");
+  addColumnIfMissing(db, "listing_pages", "license_type", "TEXT");
+  addColumnIfMissing(db, "listing_pages", "agency_legal_name", "TEXT");
+  addColumnIfMissing(db, "listing_pages", "agency_license_type", "TEXT");
+  addColumnIfMissing(
+    db,
+    "listing_pages",
+    "alteration_disclaimer",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
   db.exec(
     `CREATE UNIQUE INDEX IF NOT EXISTS tenants_domain_unique_idx ON tenants(domain) WHERE domain IS NOT NULL AND domain != ''`,
   );

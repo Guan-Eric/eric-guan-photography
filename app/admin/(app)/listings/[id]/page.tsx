@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ListingPageEditor } from "@/components/listing-page-editor";
 import { getPhotographerSession } from "@/lib/auth";
+import type { ComplianceRegion, ListingStatus } from "@/lib/db/schema";
 import { getListingPage, listingPageMedia } from "@/lib/listing-pages";
 import { listingTheme } from "@/lib/listing-themes";
 import { publicStudioUrl } from "@/lib/platform";
@@ -39,6 +40,7 @@ export default async function EditListingPage({
     <ListingPageEditor
       pageId={page.id}
       publicUrl={`${siteUrl.replace(/\/$/, "")}/p/${page.slug}`}
+      propertyAddress={page.propertyAddress}
       initial={{
         theme: listingTheme(page.theme),
         heroAssetId: page.heroAssetId ?? "",
@@ -48,12 +50,28 @@ export default async function EditListingPage({
         captions: Object.fromEntries(
           media.map((asset) => [asset.id, asset.roomLabel ?? ""]),
         ),
+        brokerage: page.brokerage ?? "",
+        brokeragePhone: page.brokeragePhone ?? "",
+        agentPhone: page.agentPhone ?? "",
+        agentName: page.agentName,
+        complianceRegion: (page.complianceRegion ?? "ca_other") as ComplianceRegion,
+        licenseDisplayName: page.licenseDisplayName ?? "",
+        licenseType: page.licenseType ?? "",
+        agencyLegalName: page.agencyLegalName ?? "",
+        agencyLicenseType: page.agencyLicenseType ?? "",
+        listingStatus: (page.listingStatus ?? "active") as ListingStatus,
+        advertisingEndsAt: page.advertisingEndsAt
+          ? page.advertisingEndsAt.slice(0, 10)
+          : "",
+        deedSignedAt: Boolean(page.deedSignedAt),
+        photos: media.map((asset) => ({
+          id: asset.id,
+          caption: asset.roomLabel ?? "",
+          enhancementTag: asset.enhancementTag ?? null,
+          originalDisclosureAssetId: asset.originalDisclosureAssetId ?? "",
+          disclosurePublic: asset.disclosurePublic === 1,
+        })),
       }}
-      photos={media.map((asset) => ({
-        id: asset.id,
-        caption: asset.roomLabel ?? "",
-      }))}
-      propertyAddress={page.propertyAddress}
     />
   );
 }

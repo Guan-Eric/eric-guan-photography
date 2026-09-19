@@ -271,7 +271,7 @@ Submit **Send request** / *Sending request…* on the summary card (and at the b
 
 ### B4. Booking confirmation — `/book/confirmation/[id]?token=`
 
-Eyebrow *Request received*. H1 *Thanks, {first name}.* Mentions email if Resend is configured. Buttons: **Open seller prep checklist**, **Your listings**, **Email {photographer}.** Line: *Coming back later? Open your listings and we’ll email a sign-in link — no password.*
+Eyebrow *Request received*. H1 *Thanks, {first name}.* Mentions email if Resend is configured. Buttons: **Open seller prep checklist**, **Your listings**, **Email {photographer}.** Line: *Coming back later? Open your listings and we’ll email a sign-in code — no password.*
 
 Card **Request summary**: Reference, Status, Property, Package (price · minutes · sq ft), Preferred times (1st/2nd/3rd), Access.
 
@@ -343,13 +343,13 @@ Minimal page, no chrome. H1 *How was the shoot?* Body about `{propertyAddress}`.
 
 ### B11. Agent portal login — `/portal/login`
 
-Auth shell; tagline *Listings and downloads from {studio}.* H1 *Agent portal.* *We’ll email a sign-in link. No password.* Email + send-link control. Magic-link `/portal/callback?token=` shows *Continue to your listings* (POST, so inbox scanners don’t burn the link). Expired links return here with an error. Already-signed-in visitors go to `/portal`.
+Auth shell; tagline *Listings and downloads from {studio}.* H1 *Agent portal.* *We’ll email a 6-digit sign-in code. No password.* Email → code step. Legacy magic-link `/portal/callback?token=` still confirms with *Continue to your listings* (POST). Expired links return here with an error. Already-signed-in visitors go to `/portal` (or `next`).
 
 ---
 
 ### B12. Agent portal — `/portal`
 
-Requires magic-link session. Agents reach it from booking confirmation, gallery footer, studio footer **Your listings**, and confirmation/gallery-ready emails. Eyebrow studio, h1 *Your listings*, email, **Sign out**. Referral URL in a `<code>` block. Each order: address, package · status, links **Gallery** / **Listing page** / **Add listing copy** (or **Edit listing**), button **Book again**. Empty: *No listings yet. Book a shoot to see it here.*
+Requires OTP session (`sf_agent`). Agents reach it from booking confirmation, gallery **Your listings** (deep-links to that order’s listing editor when present), studio footer, and confirmation/gallery-ready emails. Eyebrow studio, h1 *Your listings*, email, **Sign out**. Referral URL in a `<code>` block. Each order: address, package · status, links **Gallery** / **Listing page** / **Add listing copy** (or **Edit listing**), button **Book again**. Empty: *No listings yet. Book a shoot to see it here.*
 
 Copy editor `/portal/listings/[id]`: headline, description, extra sections, open houses. Photos, theme, and the enquiry form stay with the photographer.
 

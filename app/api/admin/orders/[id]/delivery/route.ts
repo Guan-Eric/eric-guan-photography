@@ -5,6 +5,7 @@ import {
   galleryPublicUrl,
   getGalleryByOrderId,
   publishDelivery,
+  refreshGalleryLink,
   setGalleryBrandMode,
   unlockGallery,
 } from "@/lib/galleries";
@@ -57,6 +58,33 @@ export async function POST(
     return NextResponse.json({ ok: true, gallery: updated });
   }
 
+  if (action === "refresh") {
+    const gallery = await getGalleryByOrderId(orderId, order.tenantId);
+    if (!gallery) {
+      return NextResponse.json({ ok: false, error: "No gallery yet." }, { status: 404 });
+    }
+    const result = await refreshGalleryLink(gallery.id, order.tenantId);
+    if (!result.ok) {
+      return NextResponse.json(result, { status: 400 });
+    }
+    const brandedUrl = galleryPublicUrl(
+      result.gallery.publicToken,
+      "branded",
+      tenant.siteUrl,
+    );
+    const unbrandedUrl = galleryPublicUrl(
+      result.gallery.publicToken,
+      "unbranded",
+      tenant.siteUrl,
+    );
+    return NextResponse.json({
+      ok: true,
+      gallery: result.gallery,
+      brandedUrl,
+      unbrandedUrl,
+    });
+  }
+
   if (action === "unlock") {
     const gallery = await getGalleryByOrderId(orderId, order.tenantId);
     if (!gallery) {
@@ -69,14 +97,18 @@ export async function POST(
       await notifyGalleryPaid({
         tenantId: order.tenantId,
         orderId,
-        galleryToken: gallery.publicToken,
+        galleryToken: result.gallery.publicToken,
       });
     } else if (result.ok) {
       await notifyOrderStatusChange({
         tenantId: order.tenantId,
         order: { ...order, status: "delivered" },
         status: "delivered",
-        galleryUrl: galleryPublicUrl(gallery.publicToken, "branded", tenant.siteUrl),
+        galleryUrl: galleryPublicUrl(
+          result.gallery.publicToken,
+          "branded",
+          tenant.siteUrl,
+        ),
       });
     }
     return NextResponse.json(result);

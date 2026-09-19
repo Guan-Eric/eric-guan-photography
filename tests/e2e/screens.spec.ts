@@ -90,7 +90,7 @@ test.describe("Marketing product screenshots", () => {
       await stub.click();
     } else {
       // Browser resolves *.localhost; Node's API client often does not on Windows.
-      await page.evaluate(async (galleryToken) => {
+      const nextToken = await page.evaluate(async (galleryToken) => {
         const response = await fetch(`/api/g/${galleryToken}/checkout`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -99,10 +99,12 @@ test.describe("Marketing product screenshots", () => {
         if (!response.ok) {
           throw new Error(`stub unlock failed: ${response.status}`);
         }
+        const json = (await response.json()) as { publicToken?: string };
+        return json.publicToken ?? galleryToken;
       }, token);
-      await page.reload();
+      await page.goto(`${origin}/g/${nextToken}?paid=1`);
     }
-    await expect(page.getByText(/unlocked|download/i).first()).toBeVisible({
+    await expect(page.getByText(/unlocked|accept|download/i).first()).toBeVisible({
       timeout: 15_000,
     });
     await page.waitForTimeout(600);

@@ -24,6 +24,7 @@ export default defineConfig({
     env: {
       ...process.env,
       ALLOW_GALLERY_STUB_UNLOCK: "1",
+      ALLOW_PORTAL_DEV_BYPASS: "1",
       ALLOW_E2E_TEAM_SETUP: "1",
       MEDIA_PROCESS_WITH_SHARP: "1",
       E2E_TRIAL_SEATS: "3",

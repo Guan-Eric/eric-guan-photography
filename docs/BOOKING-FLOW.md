@@ -529,7 +529,7 @@ When testing without Resend, watch Worker / server logs for `[email:stub]` to co
 | Flow | Detail |
 |---|---|
 | Address autocomplete | Booking form calls `POST /api/geo/suggest` then `POST /api/geo/resolve` (Google Places, session token). Missing `GOOGLE_PLACES_API_KEY` degrades to plain text. Coords stored on `orders.place_id` / `map_lat` / `map_lng` and reused when publishing a listing page. |
-| Agent portal | `{studio}/portal/login` emails a magic link to `/portal/callback?token=`. Cookie `sf_agent`. Index of that email's galleries, listing pages, book-again, referral link. |
+| Agent portal | `{studio}/portal/login` emails a 6-digit OTP (10 min). `POST /api/portal/verify-otp` sets cookie `sf_agent`. Legacy `/portal/callback?token=` still works for one release. Index of that email's galleries, listing pages, book-again, referral link. Local: `ALLOW_PORTAL_DEV_BYPASS` lets gallery “Your listings” mint a session. |
 | Referrals | `?ref=` on `/book` credits the referrer $25 on their next booking (`referral_credits`). |
 | Reviews | After gallery pay, `ensureReviewRequest` queues an email (cron, 3 days later) to `/review/{token}`. Admin `/admin/reviews` approves; approved reviews render on the home page + LocalBusiness JSON-LD. |
 | Shoot day | `/admin/today` lists today's appointments. On my way / arrived emails the agent. |

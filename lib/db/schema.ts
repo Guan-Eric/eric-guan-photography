@@ -260,9 +260,41 @@ export const galleries = sqliteTable("galleries", {
   currency: text("currency").notNull().default("CAD"),
   unlockedAt: text("unlocked_at"),
   revokedAt: text("revoked_at"),
+  expiresAt: text("expires_at"),
+  licenseAcceptedAt: text("license_accepted_at"),
+  licenseAcceptedLanguage: text("license_accepted_language").$type<"en" | "fr" | null>(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const ENHANCEMENT_TAGS = [
+  "virtually_staged",
+  "ai_generated",
+  "digitally_altered",
+] as const;
+export type EnhancementTag = (typeof ENHANCEMENT_TAGS)[number];
+
+export const LISTING_STATUSES = ["active", "pending", "sold"] as const;
+export type ListingStatus = (typeof LISTING_STATUSES)[number];
+
+export const COMPLIANCE_REGIONS = ["ca_other", "ca_qc", "us_ca"] as const;
+export type ComplianceRegion = (typeof COMPLIANCE_REGIONS)[number];
+
+export const BROKER_LICENSE_TYPES = [
+  "broker",
+  "residential",
+  "commercial",
+  "residential_commercial",
+] as const;
+export type BrokerLicenseType = (typeof BROKER_LICENSE_TYPES)[number];
+
+export const AGENCY_LICENSE_TYPES = [
+  "agency",
+  "residential_agency",
+  "commercial_agency",
+  "residential_commercial_agency",
+] as const;
+export type AgencyLicenseType = (typeof AGENCY_LICENSE_TYPES)[number];
 
 export const mediaAssets = sqliteTable("media_assets", {
   id: text("id").primaryKey(),
@@ -283,6 +315,9 @@ export const mediaAssets = sqliteTable("media_assets", {
   pathWeb: text("path_web").notNull(),
   pathProof: text("path_proof").notNull(),
   pathMls: text("path_mls").notNull(),
+  enhancementTag: text("enhancement_tag").$type<EnhancementTag | null>(),
+  originalDisclosureAssetId: text("original_disclosure_asset_id"),
+  disclosurePublic: integer("disclosure_public").notNull().default(0),
   createdAt: text("created_at").notNull(),
 });
 
@@ -370,6 +405,22 @@ export const listingPages = sqliteTable("listing_pages", {
   sectionsJson: text("sections_json").notNull().default("[]"),
   openHouseJson: text("open_house_json").notNull().default("[]"),
   leadCapture: integer("lead_capture").notNull().default(1),
+  brokeragePhone: text("brokerage_phone"),
+  listingStatus: text("listing_status")
+    .$type<ListingStatus>()
+    .notNull()
+    .default("active"),
+  advertisingEndsAt: text("advertising_ends_at"),
+  deedSignedAt: text("deed_signed_at"),
+  complianceRegion: text("compliance_region")
+    .$type<ComplianceRegion>()
+    .notNull()
+    .default("ca_other"),
+  licenseDisplayName: text("license_display_name"),
+  licenseType: text("license_type").$type<BrokerLicenseType | null>(),
+  agencyLegalName: text("agency_legal_name"),
+  agencyLicenseType: text("agency_license_type").$type<AgencyLicenseType | null>(),
+  alterationDisclaimer: integer("alteration_disclaimer").notNull().default(0),
   publishedAt: text("published_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -424,7 +475,7 @@ export const reminderSends = sqliteTable("reminder_sends", {
   sentAt: text("sent_at").notNull(),
 });
 
-/** Magic-link tokens for the agent portal (no password). */
+/** Magic-link tokens for the agent portal (legacy; still consumed for one release). */
 export const agentLoginTokens = sqliteTable("agent_login_tokens", {
   id: text("id").primaryKey(),
   tenantId: text("tenant_id").notNull(),
@@ -432,6 +483,18 @@ export const agentLoginTokens = sqliteTable("agent_login_tokens", {
   token: text("token").notNull(),
   expiresAt: text("expires_at").notNull(),
   consumedAt: text("consumed_at"),
+  createdAt: text("created_at").notNull(),
+});
+
+/** Email OTP challenges for agent portal sign-in (primary). */
+export const agentOtpChallenges = sqliteTable("agent_otp_challenges", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  email: text("email").notNull(),
+  codeHash: text("code_hash").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  consumedAt: text("consumed_at"),
+  attempts: integer("attempts").notNull().default(0),
   createdAt: text("created_at").notNull(),
 });
 
@@ -506,6 +569,7 @@ export type ListingDomain = typeof listingDomains.$inferSelect;
 export type GalleryEvent = typeof galleryEvents.$inferSelect;
 export type MembershipInvite = typeof membershipInvites.$inferSelect;
 export type AgentLoginToken = typeof agentLoginTokens.$inferSelect;
+export type AgentOtpChallenge = typeof agentOtpChallenges.$inferSelect;
 export type ReferralCode = typeof referralCodes.$inferSelect;
 export type ReferralCredit = typeof referralCredits.$inferSelect;
 

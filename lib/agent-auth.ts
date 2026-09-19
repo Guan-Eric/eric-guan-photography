@@ -1,16 +1,19 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { customAlphabet } from "nanoid";
 import { getDb, qGet, qRun, schema } from "@/lib/db";
-import type { AgentLoginToken } from "@/lib/db/schema";
+import type { AgentLoginToken, AgentOtpChallenge } from "@/lib/db/schema";
 import { cookieDomain, hostnameFromHost } from "@/lib/platform";
 import { authSessionSecret } from "@/lib/secrets";
 
 const COOKIE = "sf_agent";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_MAX_ATTEMPTS = 5;
 const tokenId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 28);
+const otpDigits = customAlphabet("0123456789", 6);
 
 function secret() {
   return authSessionSecret();
@@ -99,6 +102,7 @@ export async function clearAgentSession(response: NextResponse, host?: string | 
   return response;
 }
 
+/** Legacy magic-link tokens — still consumed for one release of in-flight emails. */
 export async function createAgentLoginToken(tenantId: string, email: string) {
   const db = getDb();
   const createdAt = new Date().toISOString();
@@ -137,4 +141,136 @@ export async function consumeAgentLoginToken(token: string) {
       .where(and(eq(schema.agentLoginTokens.id, row.id))),
   );
   return { tenantId: row.tenantId, email: row.email };
+}
+
+function hashOtpCode(tenantId: string, email: string, code: string) {
+  return createHmac("sha256", secret())
+    .update(`${tenantId}|${email}|${code}`)
+    .digest("hex");
+}
+
+function codesEqual(leftHex: string, rightHex: string) {
+  const left = Buffer.from(leftHex, "utf8");
+  const right = Buffer.from(rightHex, "utf8");
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
+/**
+ * Creates a 6-digit OTP challenge. Returns plaintext code for email only —
+ * never log or return it to clients.
+ */
+export async function createAgentOtpChallenge(tenantId: string, email: string) {
+  const db = getDb();
+  const normalized = email.trim().toLowerCase();
+  const createdAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
+  const code = otpDigits();
+
+  await qRun(
+    db
+      .update(schema.agentOtpChallenges)
+      .set({ consumedAt: createdAt })
+      .where(
+        and(
+          eq(schema.agentOtpChallenges.tenantId, tenantId),
+          eq(schema.agentOtpChallenges.email, normalized),
+          isNull(schema.agentOtpChallenges.consumedAt),
+        ),
+      ),
+  );
+
+  await qRun(
+    db.insert(schema.agentOtpChallenges).values({
+      id: `aoc_${tokenId()}`,
+      tenantId,
+      email: normalized,
+      codeHash: hashOtpCode(tenantId, normalized, code),
+      expiresAt,
+      consumedAt: null,
+      attempts: 0,
+      createdAt,
+    }),
+  );
+
+  return code;
+}
+
+export type VerifyOtpResult =
+  | { ok: true; session: AgentSession }
+  | { ok: false; error: "invalid" | "expired" | "locked" };
+
+export async function verifyAgentOtpChallenge(
+  tenantId: string,
+  email: string,
+  code: string,
+): Promise<VerifyOtpResult> {
+  const db = getDb();
+  const normalized = email.trim().toLowerCase();
+  const trimmedCode = code.trim();
+  if (!/^\d{6}$/.test(trimmedCode)) {
+    return { ok: false, error: "invalid" };
+  }
+
+  const row =
+    (await qGet<AgentOtpChallenge>(
+      db
+        .select()
+        .from(schema.agentOtpChallenges)
+        .where(
+          and(
+            eq(schema.agentOtpChallenges.tenantId, tenantId),
+            eq(schema.agentOtpChallenges.email, normalized),
+            isNull(schema.agentOtpChallenges.consumedAt),
+          ),
+        )
+        .orderBy(desc(schema.agentOtpChallenges.createdAt))
+        .limit(1),
+    )) ?? null;
+
+  if (!row) return { ok: false, error: "invalid" };
+  if (new Date(row.expiresAt).getTime() < Date.now()) {
+    return { ok: false, error: "expired" };
+  }
+  if (row.attempts >= OTP_MAX_ATTEMPTS) {
+    return { ok: false, error: "locked" };
+  }
+
+  const expected = hashOtpCode(tenantId, normalized, trimmedCode);
+  if (!codesEqual(row.codeHash, expected)) {
+    const nextAttempts = row.attempts + 1;
+    await qRun(
+      db
+        .update(schema.agentOtpChallenges)
+        .set({
+          attempts: nextAttempts,
+          ...(nextAttempts >= OTP_MAX_ATTEMPTS
+            ? { consumedAt: new Date().toISOString() }
+            : {}),
+        })
+        .where(eq(schema.agentOtpChallenges.id, row.id)),
+    );
+    if (nextAttempts >= OTP_MAX_ATTEMPTS) {
+      return { ok: false, error: "locked" };
+    }
+    return { ok: false, error: "invalid" };
+  }
+
+  await qRun(
+    db
+      .update(schema.agentOtpChallenges)
+      .set({ consumedAt: new Date().toISOString() })
+      .where(eq(schema.agentOtpChallenges.id, row.id)),
+  );
+
+  return { ok: true, session: { tenantId, email: normalized } };
+}
+
+/** Dev/E2E only — never allow portal session bypass in production. */
+export function portalDevBypassAllowed() {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    (process.env.NODE_ENV === "development" ||
+      process.env.ALLOW_PORTAL_DEV_BYPASS === "1")
+  );
 }

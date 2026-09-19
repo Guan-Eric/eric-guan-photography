@@ -1,22 +1,16 @@
 import { customAlphabet } from "nanoid";
 import { writeMediaFile } from "@/lib/media-storage";
+import {
+  proofWatermarkLabel,
+  renderWatermarkPng,
+  watermarkFontUrl,
+} from "@/lib/watermark-overlay";
 
 const id = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 
 const MLS_LONG_EDGE = 2048;
 const WEB_LONG_EDGE = 1600;
 const PROOF_LONG_EDGE = 1200;
-
-/**
- * CF Images `.text()` requires a fetchable font URL (ttf/otf/woff).
- * Override with WATERMARK_FONT_URL if needed.
- */
-function watermarkFontUrl() {
-  return (
-    process.env.WATERMARK_FONT_URL?.trim() ||
-    "https://cdn.jsdelivr.net/fontsource/fonts/inter@5.2.5/latin-700-normal.ttf"
-  );
-}
 
 export type ProcessedMedia = {
   assetId: string;
@@ -136,6 +130,19 @@ async function cfResize(
   return { data, width: meta.width, height: meta.height };
 }
 
+async function cfDrawJpeg(
+  images: ImagesBinding,
+  input: Buffer,
+  overlay: ImageTransformer | ReadableStream | ArrayBufferView,
+  options: Record<string, unknown>,
+) {
+  const result = await images
+    .input(toStream(input))
+    .draw(overlay, options)
+    .output({ format: "image/jpeg", quality: 68 });
+  return Buffer.from(await result.response().arrayBuffer());
+}
+
 async function cfWatermarkProof(
   images: ImagesBinding,
   input: Buffer,
@@ -151,48 +158,74 @@ async function cfWatermarkProof(
   const width = Math.max(1, Math.round(info.width * scale));
   const height = Math.max(1, Math.round(info.height * scale));
   const fontSize = Math.max(28, Math.round(Math.min(width, height) * 0.045));
-  const label = `${studioName.toUpperCase()}  ·  PROOF — NOT FOR MLS`;
+  const label = proofWatermarkLabel(studioName);
 
-  if (typeof images.text !== "function") {
-    throw new Error("CF Images text watermark API unavailable.");
-  }
+  // Prefer CF `.text()` (real type). If the font URL fetch 500s — jsDelivr on
+  // Cloudflare commonly returns IMAGES_TRANSFORM_ERROR 9410 — draw a PNG
+  // overlay from bytes so proofs still get a visible mark.
+  if (typeof images.text === "function") {
+    const withFont = {
+      color: "#FFFFFF",
+      size: fontSize,
+      font: { url: watermarkFontUrl() },
+    };
+    const noFont = { color: "#FFFFFF", size: fontSize };
 
-  const textOpts = {
-    color: "#FFFFFF",
-    size: fontSize,
-    font: { url: watermarkFontUrl() },
-  };
-
-  // Prefer diagonal tiled text; fall back to a centered mark. Never return a
-  // clean resize as a "proof" — that shipped unmarked galleries in production.
-  try {
-    const result = await images
-      .input(toStream(resized.data))
-      .draw(
-        images.text(label, textOpts).transform({ rotate: -28 }),
+    try {
+      const data = await cfDrawJpeg(
+        images,
+        resized.data,
+        images.text(label, withFont).transform({ rotate: -28 }),
         { opacity: 0.42, repeat: true },
-      )
-      .output({ format: "image/jpeg", quality: 68 });
-    const data = Buffer.from(await result.response().arrayBuffer());
-    return { data, width, height };
-  } catch (error) {
-    console.warn(
-      "[media] watermark tiled/rotate failed, trying centered text:",
-      error,
-    );
+      );
+      return { data, width, height };
+    } catch (error) {
+      console.warn(
+        "[media] watermark tiled/rotate failed, trying centered text:",
+        error,
+      );
+    }
+
+    try {
+      const data = await cfDrawJpeg(
+        images,
+        resized.data,
+        images.text(label, withFont),
+        { opacity: 0.5 },
+      );
+      return { data, width, height };
+    } catch (error) {
+      console.warn(
+        "[media] watermark centered text failed, trying default font:",
+        error,
+      );
+    }
+
+    try {
+      const data = await cfDrawJpeg(
+        images,
+        resized.data,
+        images.text(label, noFont),
+        { opacity: 0.5 },
+      );
+      return { data, width, height };
+    } catch (error) {
+      console.warn(
+        "[media] watermark default font failed, drawing PNG overlay:",
+        error,
+      );
+    }
   }
 
   try {
-    const result = await images
-      .input(toStream(resized.data))
-      .draw(images.text(label, textOpts), {
-        opacity: 0.5,
-      })
-      .output({ format: "image/jpeg", quality: 68 });
-    const data = Buffer.from(await result.response().arrayBuffer());
+    const overlay = renderWatermarkPng(label);
+    const data = await cfDrawJpeg(images, resized.data, toStream(overlay), {
+      opacity: 0.42,
+      repeat: true,
+    });
     return { data, width, height };
   } catch (error) {
-    console.warn("[media] watermark failed:", error);
+    console.warn("[media] watermark PNG overlay failed:", error);
     throw error instanceof Error
       ? error
       : new Error("CF Images watermark failed.");

@@ -13,7 +13,9 @@ export function PlatformFooter() {
         <Link href="/blog">Blog</Link>
         <Link href="/signup">Start trial</Link>
         <Link href="/terms">Terms</Link>
+        <Link href="/fr/terms">Conditions</Link>
         <Link href="/privacy">Privacy</Link>
+        <Link href="/fr/privacy">Confidentialité</Link>
       </div>
     </footer>
   );

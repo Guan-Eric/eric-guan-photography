@@ -3753,6 +3753,33 @@ span.status-select--locked {
   box-shadow: var(--shadow-soft);
 }
 
+.delivery-copyright-banner {
+  margin: 0.85rem 0 0;
+  max-width: 52ch;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
+  border-left: 3px solid var(--ink-soft);
+}
+
+.delivery-license-check {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  margin: 0.75rem 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.delivery-license-check input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
 .delivery-portal-callout-copy {
   flex: 1 1 14rem;
   min-width: 0;
@@ -4130,6 +4157,48 @@ span.status-select--locked {
 .listing-agent {
   padding: clamp(2rem, 5vw, 3.5rem) 6vw 1.5rem;
 }
+
+.listing-agency-name {
+  font-size: 1.15rem;
+  margin: 0 0 0.35rem;
+  color: inherit;
+}
+
+.listing-broker-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.listing-status-banner,
+.listing-alteration-banner {
+  margin: 0;
+  padding: 0.75rem 6vw;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+.listing-alteration-banner {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+
+.listing-image-disclosure {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.listing-lang-switch {
+  margin: 0;
+  padding: 0.6rem 6vw 0;
+  text-align: right;
+}
+
+.listing-originals .listing-copy {
+  padding-top: 2rem;
+}
+
 
 .listing-lead {
   padding: 0 6vw clamp(2rem, 5vw, 3rem);

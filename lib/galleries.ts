@@ -12,8 +12,33 @@ const tokenId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 28);
 const assetNano = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 14);
 const paymentId = customAlphabet("23456789ABCDEFGHJKLMNPQRSTUVWXYZ", 12);
 
+/** Proofing and download gallery links expire after 14 days. */
+export const GALLERY_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+
 function nowIso() {
   return new Date().toISOString();
+}
+
+export function galleryExpiresAtFrom(fromMs = Date.now()) {
+  return new Date(fromMs + GALLERY_TOKEN_TTL_MS).toISOString();
+}
+
+export function isGalleryLinkExpired(gallery: Gallery, atMs = Date.now()) {
+  if (gallery.revokedAt) return true;
+  if (!gallery.expiresAt) return false;
+  return new Date(gallery.expiresAt).getTime() < atMs;
+}
+
+export function galleryAccessDeniedReason(
+  gallery: Gallery | null,
+  atMs = Date.now(),
+): "not_found" | "revoked" | "expired" | null {
+  if (!gallery) return "not_found";
+  if (gallery.revokedAt) return "revoked";
+  if (gallery.expiresAt && new Date(gallery.expiresAt).getTime() < atMs) {
+    return "expired";
+  }
+  return null;
 }
 
 export async function galleryHasPaidAccess(gallery: Gallery) {
@@ -197,6 +222,9 @@ export async function ensureGalleryForOrder(order: Order, tenant: Tenant) {
     currency: order.currency,
     unlockedAt: null,
     revokedAt: null,
+    expiresAt: null,
+    licenseAcceptedAt: null,
+    licenseAcceptedLanguage: null,
     createdAt,
     updatedAt: createdAt,
   };
@@ -243,6 +271,9 @@ export async function addUploadsToGallery(options: {
       pathWeb: processed.pathWeb,
       pathProof: processed.pathProof,
       pathMls: processed.pathMls,
+      enhancementTag: null,
+      originalDisclosureAssetId: null,
+      disclosurePublic: 0,
       createdAt: nowIso(),
     };
 
@@ -338,10 +369,20 @@ export async function unlockGallery(
   }
 
   const unlockedAt = nowIso();
+  const publicToken = tokenId();
+  const expiresAt = galleryExpiresAtFrom(Date.parse(unlockedAt));
   await qRun(
     db
       .update(schema.galleries)
-      .set({ state: "unlocked", unlockedAt, updatedAt: unlockedAt })
+      .set({
+        state: "unlocked",
+        unlockedAt,
+        publicToken,
+        expiresAt,
+        licenseAcceptedAt: null,
+        licenseAcceptedLanguage: null,
+        updatedAt: unlockedAt,
+      })
       .where(eq(schema.galleries.id, galleryIdValue)),
   );
 
@@ -362,6 +403,105 @@ export async function unlockGallery(
   }
 
   return { ok: true as const, gallery: (await getGalleryById(galleryIdValue))! };
+}
+
+/** Rotate the public token and reset the 14-day window (proofing or unlocked). */
+export async function refreshGalleryLink(galleryIdValue: string, tenantId?: string) {
+  const gallery = await getGalleryById(galleryIdValue, tenantId);
+  if (!gallery) return { ok: false as const, error: "Gallery not found." };
+  if (gallery.revokedAt) return { ok: false as const, error: "Gallery revoked." };
+
+  const updatedAt = nowIso();
+  const publicToken = tokenId();
+  const expiresAt = galleryExpiresAtFrom(Date.parse(updatedAt));
+  const db = getDb();
+  await qRun(
+    db
+      .update(schema.galleries)
+      .set({
+        publicToken,
+        expiresAt,
+        licenseAcceptedAt: null,
+        licenseAcceptedLanguage: null,
+        updatedAt,
+      })
+      .where(eq(schema.galleries.id, galleryIdValue)),
+  );
+
+  return { ok: true as const, gallery: (await getGalleryById(galleryIdValue))! };
+}
+
+export async function updateMediaEnhancementTags(
+  tenantId: string,
+  galleryId: string,
+  updates: Array<{
+    id: string;
+    enhancementTag: import("@/lib/db/schema").EnhancementTag | null;
+    originalDisclosureAssetId?: string | null;
+    disclosurePublic?: boolean;
+  }>,
+) {
+  const db = getDb();
+  for (const item of updates) {
+    const values: Record<string, unknown> = {
+      enhancementTag: item.enhancementTag,
+    };
+    if (item.originalDisclosureAssetId !== undefined) {
+      values.originalDisclosureAssetId = item.originalDisclosureAssetId?.trim() || null;
+    }
+    if (item.disclosurePublic !== undefined) {
+      values.disclosurePublic = item.disclosurePublic ? 1 : 0;
+    }
+    await qRun(
+      db
+        .update(schema.mediaAssets)
+        .set(values)
+        .where(
+          and(
+            eq(schema.mediaAssets.id, item.id),
+            eq(schema.mediaAssets.galleryId, galleryId),
+            eq(schema.mediaAssets.tenantId, tenantId),
+          ),
+        ),
+    );
+  }
+}
+
+export async function acceptGalleryLicense(
+  galleryIdValue: string,
+  language: "en" | "fr" = "en",
+) {
+  const gallery = await getGalleryById(galleryIdValue);
+  if (!gallery) return { ok: false as const, error: "Gallery not found." };
+  if (gallery.revokedAt) return { ok: false as const, error: "Gallery revoked." };
+  if (isGalleryLinkExpired(gallery)) {
+    return { ok: false as const, error: "This gallery link has expired." };
+  }
+  if (!(await galleryHasPaidAccess(gallery))) {
+    return { ok: false as const, error: "Downloads unlock after payment." };
+  }
+  if (gallery.licenseAcceptedAt) {
+    return { ok: true as const, gallery, alreadyAccepted: true as const };
+  }
+
+  const acceptedAt = nowIso();
+  const db = getDb();
+  await qRun(
+    db
+      .update(schema.galleries)
+      .set({
+        licenseAcceptedAt: acceptedAt,
+        licenseAcceptedLanguage: language,
+        updatedAt: acceptedAt,
+      })
+      .where(eq(schema.galleries.id, galleryIdValue)),
+  );
+
+  return {
+    ok: true as const,
+    gallery: (await getGalleryById(galleryIdValue))!,
+    alreadyAccepted: false as const,
+  };
 }
 
 export async function revokeGallery(galleryIdValue: string) {
@@ -386,14 +526,17 @@ export async function publishDelivery(orderId: string, tenantId?: string) {
 
   const paid = await galleryHasPaidAccess(gallery);
   const nextState: GalleryState = paid ? "unlocked" : "proofing";
+  const updatedAt = nowIso();
+  const expiresAt = gallery.expiresAt ?? galleryExpiresAtFrom(Date.parse(updatedAt));
 
   await qRun(
     db
       .update(schema.galleries)
       .set({
         state: nextState,
-        unlockedAt: nextState === "unlocked" ? gallery.unlockedAt ?? nowIso() : gallery.unlockedAt,
-        updatedAt: nowIso(),
+        unlockedAt: nextState === "unlocked" ? gallery.unlockedAt ?? updatedAt : gallery.unlockedAt,
+        expiresAt,
+        updatedAt,
       })
       .where(eq(schema.galleries.id, gallery.id)),
   );
@@ -487,11 +630,12 @@ export async function markPaymentPaidBySession(sessionId: string) {
 /**
  * After Stripe Checkout return (?session_id=…), confirm payment and unlock
  * without waiting for the webhook (avoids proofing flash / stuck refresh).
+ * Returns the gallery with the post-unlock (rotated) token.
  */
 export async function confirmCheckoutSessionForGallery(options: {
   sessionId: string;
-  galleryId: string;
-  publicToken: string;
+  galleryId?: string;
+  publicToken?: string;
 }) {
   const { getStripe } = await import("@/lib/stripe");
   const stripe = getStripe();
@@ -507,11 +651,13 @@ export async function confirmCheckoutSessionForGallery(options: {
       return { ok: false as const, error: "Payment not completed yet." };
     }
     if (
+      options.galleryId &&
       session.metadata?.galleryId &&
       session.metadata.galleryId !== options.galleryId
     ) {
       return { ok: false as const, error: "Session does not match this gallery." };
     }
+    void options.publicToken;
     return markPaymentPaidBySession(options.sessionId);
   } catch (error) {
     return {

@@ -1,6 +1,10 @@
 import { vi } from "vitest";
 
 const cookieStore = new Map<string, string>();
+const requestHeaders = new Map<string, string>([
+  ["host", "localhost:3000"],
+  ["x-platform-host", "1"],
+]);
 
 export function resetCookieStore() {
   cookieStore.clear();
@@ -8,6 +12,22 @@ export function resetCookieStore() {
 
 export function getCookieValue(name: string) {
   return cookieStore.get(name);
+}
+
+/** Override next/headers request headers for the current test. */
+export function setRequestHeaders(headers: Record<string, string | null>) {
+  for (const [key, value] of Object.entries(headers)) {
+    const name = key.toLowerCase();
+    if (value === null) requestHeaders.delete(name);
+    else requestHeaders.set(name, value);
+  }
+}
+
+/** Restore the default platform-host mock used by most tests. */
+export function resetRequestHeaders() {
+  requestHeaders.clear();
+  requestHeaders.set("host", "localhost:3000");
+  requestHeaders.set("x-platform-host", "1");
 }
 
 /**
@@ -43,9 +63,9 @@ vi.mock("next/headers", () => ({
       cookieStore.delete(name);
     },
   }),
-  headers: async () =>
-    new Headers({
-      host: "localhost:3000",
-      "x-platform-host": "1",
-    }),
+  headers: async () => ({
+    get(name: string) {
+      return requestHeaders.get(name.toLowerCase()) ?? null;
+    },
+  }),
 }));

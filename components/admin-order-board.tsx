@@ -220,6 +220,7 @@ export function AdminOrderBoard({
       | "upload"
       | "publish"
       | "unlock"
+      | "refresh"
       | "regenerateProofs";
   } | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
@@ -868,6 +869,7 @@ export function AdminOrderBoard({
   async function forceUnlock(orderId: string) {
     setBusy({ orderId, action: "unlock" });
     setError(null);
+    setNotice(null);
     try {
       const response = await fetch(`/api/admin/orders/${orderId}/delivery`, {
         method: "POST",
@@ -882,15 +884,68 @@ export function AdminOrderBoard({
       setGalleries((current) =>
         current.map((gallery) =>
           gallery.orderId === orderId
-            ? { ...gallery, state: json.gallery.state }
+            ? {
+                ...gallery,
+                state: json.gallery.state,
+                publicToken: json.gallery.publicToken,
+              }
             : gallery,
         ),
       );
+      if (json.gallery?.publicToken) {
+        setLinks((current) => ({
+          ...current,
+          [orderId]: {
+            ...current[orderId],
+            branded: galleryUrl(json.gallery.publicToken, "branded"),
+            unbranded: galleryUrl(json.gallery.publicToken, "unbranded"),
+          },
+        }));
+      }
       setOrders((current) =>
         current.map((order) =>
           order.id === orderId ? { ...order, status: "paid" } : order,
         ),
       );
+      ok(
+        "Marked paid. Agent was emailed a new download link — the old preview URL no longer works.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function refreshLink(orderId: string) {
+    setBusy({ orderId, action: "refresh" });
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "refresh" }),
+      });
+      const json = await response.json();
+      if (!json.ok) {
+        fail(json.error ?? "Could not refresh link.");
+        return;
+      }
+      setGalleries((current) =>
+        current.map((gallery) =>
+          gallery.orderId === orderId
+            ? { ...gallery, publicToken: json.gallery.publicToken }
+            : gallery,
+        ),
+      );
+      setLinks((current) => ({
+        ...current,
+        [orderId]: {
+          ...current[orderId],
+          branded: json.brandedUrl,
+          unbranded: json.unbrandedUrl,
+        },
+      }));
+      ok("New gallery link ready — copy it below. The previous URL no longer works.");
     } finally {
       setBusy(null);
     }
@@ -1018,7 +1073,7 @@ export function AdminOrderBoard({
               const badges = mediaBadges(gallery);
               const coverUrl =
                 gallery?.coverAssetId
-                  ? `/api/g/${gallery.publicToken}/media/${gallery.coverAssetId}?v=web`
+                  ? `/api/g/${gallery.publicToken}/media/${gallery.coverAssetId}?v=proof`
                   : null;
 
               return (
@@ -1700,8 +1755,8 @@ export function AdminOrderBoard({
                           <div className="delivery-step-title">Unlock downloads</div>
                           <p className="muted">
                             {paid
-                              ? "Gallery is unlocked. Agent can download full-resolution files."
-                              : "Use this if they paid e-transfer or outside the app. Set the agreed price first. This does not replace downloading your own zips."}
+                              ? "Gallery is unlocked. The agent was emailed a new download link (the old preview URL no longer works)."
+                              : "Use this if they paid e-transfer or outside the app. Set the agreed price first. This emails a new download link and retires the preview URL."}
                           </p>
                           <div className="delivery-step-actions">
                             <button
@@ -1716,6 +1771,16 @@ export function AdminOrderBoard({
                                   ? "Already unlocked"
                                   : "Mark paid & unlock"}
                             </button>
+                            {gallery ? (
+                              <button
+                                type="button"
+                                className={`btn btn-outline${pending("refresh") ? " is-busy" : ""}`}
+                                disabled={orderLocked || pending("refresh")}
+                                onClick={() => void refreshLink(order.id)}
+                              >
+                                {pending("refresh") ? "Refreshing…" : "Refresh link"}
+                              </button>
+                            ) : null}
                           </div>
                         </div>
                       </li>

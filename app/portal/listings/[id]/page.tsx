@@ -52,6 +52,19 @@ export default async function AgentListingCopyPage({
             description: page.description ?? "",
             sections: parseSections(page.sectionsJson),
             openHouses: parseOpenHouses(page.openHouseJson),
+            brokerage: page.brokerage ?? "",
+            brokeragePhone: page.brokeragePhone ?? "",
+            agentPhone: page.agentPhone ?? "",
+            complianceRegion: page.complianceRegion ?? "ca_other",
+            licenseDisplayName: page.licenseDisplayName ?? "",
+            licenseType: page.licenseType ?? "",
+            agencyLegalName: page.agencyLegalName ?? "",
+            agencyLicenseType: page.agencyLicenseType ?? "",
+            listingStatus: page.listingStatus ?? "active",
+            advertisingEndsAt: page.advertisingEndsAt
+              ? page.advertisingEndsAt.slice(0, 10)
+              : "",
+            deedSignedAt: Boolean(page.deedSignedAt),
           }}
         />
       </div>

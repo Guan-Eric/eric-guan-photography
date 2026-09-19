@@ -139,7 +139,7 @@ export async function localStubUnlock(gallery: Gallery) {
     await notifyGalleryPaid({
       tenantId: gallery.tenantId,
       orderId: gallery.orderId,
-      galleryToken: gallery.publicToken,
+      galleryToken: unlocked.gallery.publicToken,
     });
   }
   return unlocked;

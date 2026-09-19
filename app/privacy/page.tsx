@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PlatformFooter } from "@/components/platform-footer";
 import { PlatformHeader } from "@/components/platform-header";
 import { platformName, platformPublicUrl } from "@/lib/platform";
@@ -6,8 +7,11 @@ import { platformName, platformPublicUrl } from "@/lib/platform";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "How Studiofront collects, uses, and stores account, booking, media, payment, and Google Calendar data.",
-  alternates: { canonical: "/privacy" },
+    "How Studiofront collects, uses, and stores account, booking, media, payment, and Google Calendar data under PIPEDA and Québec Law 25.",
+  alternates: {
+    canonical: "/privacy",
+    languages: { en: "/privacy", fr: "/fr/privacy" },
+  },
 };
 
 export default function PrivacyPage() {
@@ -22,7 +26,12 @@ export default function PrivacyPage() {
           <div className="page-header-inner">
             <p className="eyebrow">Legal</p>
             <h1>Privacy Policy</h1>
-            <p className="section-copy">Last updated: August 19, 2026</p>
+            <p className="section-copy">Last updated: September 19, 2026</p>
+            <p className="section-copy">
+              <Link className="text-link" href="/fr/privacy">
+                Français
+              </Link>
+            </p>
           </div>
         </header>
         <section className="page-section" style={{ paddingTop: 0 }}>
@@ -30,8 +39,22 @@ export default function PrivacyPage() {
             <p>
               This policy describes how {name} ({site}) collects, uses, and
               shares information when you use our software for real estate
-              photographers. Contact:{" "}
-              <a href="mailto:hello@studiofront.ca">hello@studiofront.ca</a>.
+              photographers. It is written for Canadian operations under the
+              federal Personal Information Protection and Electronic Documents
+              Act (PIPEDA) and Québec&rsquo;s Act respecting the protection of
+              personal information in the private sector (CQLR c. P-39.1,{" "}
+              &ldquo;Law 25&rdquo;).
+            </p>
+
+            <h2>Person in charge of the protection of personal information</h2>
+            <p>
+              The person in charge of the protection of personal information for{" "}
+              {name} is the Privacy Officer. Title: Privacy Officer. Contact:{" "}
+              <a href="mailto:privacy@studiofront.ca">privacy@studiofront.ca</a>{" "}
+              (or{" "}
+              <a href="mailto:hello@studiofront.ca">hello@studiofront.ca</a> if
+              that mailbox is unavailable). You may contact this person to
+              exercise access, correction, or other privacy rights.
             </p>
 
             <h2>Who this applies to</h2>
@@ -50,7 +73,7 @@ export default function PrivacyPage() {
               <li>
                 <strong>Booking and delivery data:</strong> property details,
                 agent contact information, access notes, shoot times, gallery
-                views and downloads.
+                views and downloads (first-party product events).
               </li>
               <li>
                 <strong>Media:</strong> photos and files you upload, stored to
@@ -71,7 +94,13 @@ export default function PrivacyPage() {
                 <strong>Marketing analytics (cookieless):</strong> on the
                 Studiofront marketing site only, we use Cloudflare Web Analytics
                 to count page views. It does not use cookies and does not run on
-                photographer studio sites or agent gallery links.
+                photographer studio sites or agent gallery links. We do not use
+                third-party advertising pixels or session-replay tools.
+              </li>
+              <li>
+                <strong>Session cookies:</strong> necessary cookies for
+                photographer and agent sign-in. These are required to operate the
+                service and are not used for profiling.
               </li>
             </ul>
 
@@ -91,6 +120,24 @@ export default function PrivacyPage() {
               data for advertising, credit decisions, or unrelated AI/training
               products. Google Calendar data is used only to provide the
               calendar features you enable in the studio admin.
+            </p>
+
+            <h2>Technology that identifies, locates, or profiles</h2>
+            <p>
+              Under Law 25, functions that identify, locate, or profile a person
+              must be disabled by default, with clear information on how to
+              activate them. {name} does not currently offer such profiling or
+              advertising trackers. If we introduce them later, they will remain
+              off by default until you opt in.
+            </p>
+
+            <h2>Communication outside Québec</h2>
+            <p>
+              Personal information may be processed by providers outside Québec
+              (and outside Canada) as listed below. Before those transfers we
+              assess privacy impacts for the project (privacy impact assessment
+              under s. 3.3) covering purpose, sensitivity, and contractual
+              safeguards with Stripe, Resend, Cloudflare, Neon, and Google.
             </p>
 
             <h2>Google API Limited Use</h2>
@@ -128,11 +175,13 @@ export default function PrivacyPage() {
 
             <h2>Your choices</h2>
             <p>
-              Email{" "}
-              <a href="mailto:hello@studiofront.ca">hello@studiofront.ca</a> to
-              access, correct, or delete personal data we hold. Agents who
+              Email the Privacy Officer at{" "}
+              <a href="mailto:privacy@studiofront.ca">privacy@studiofront.ca</a>{" "}
+              to access, correct, or delete personal data we hold. Agents who
               received a gallery link should contact the photographer who sent
-              it.
+              it. Complaints about Québec privacy compliance may also be
+              directed to the Commission d&rsquo;accès à l&rsquo;information du
+              Québec.
             </p>
           </div>
         </section>

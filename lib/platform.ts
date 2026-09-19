@@ -48,7 +48,7 @@ export function hostnameFromHost(host: string | null | undefined) {
 }
 
 /**
- * Allow only same-origin portal paths after magic-link sign-in.
+ * Allow only same-origin portal paths after OTP (or legacy magic-link) sign-in.
  */
 export function safePortalPath(value: unknown) {
   if (typeof value !== "string") return null;
@@ -95,6 +95,11 @@ export function isLocalPlatform() {
   return root === "localhost" || root === "127.0.0.1";
 }
 
+/** `next dev` should keep share/gallery links on localhost even if env points at prod. */
+export function preferLocalStudioUrls() {
+  return process.env.NODE_ENV === "development" || isLocalPlatform();
+}
+
 function isLocalhostUrl(value: string | null | undefined) {
   if (!value) return false;
   try {
@@ -107,6 +112,29 @@ function isLocalhostUrl(value: string | null | undefined) {
   } catch {
     return /localhost|127\.0\.0\.1/i.test(value);
   }
+}
+
+function localDevPort(requestOrigin?: string | null) {
+  const candidates = [
+    requestOrigin,
+    process.env.PORT ? `http://localhost:${process.env.PORT}` : null,
+    "http://localhost:3000",
+  ];
+  for (const candidate of candidates) {
+    if (!candidate || !isLocalhostUrl(candidate)) continue;
+    try {
+      const port = new URL(candidate).port;
+      return port || "3000";
+    } catch {
+      /* try next */
+    }
+  }
+  return "3000";
+}
+
+function localDevStudioOrigin(slug: string, requestOrigin?: string | null) {
+  const port = localDevPort(requestOrigin);
+  return `http://${slug}.localhost:${port}`;
 }
 
 export function cookieDomain(hostname?: string | null) {
@@ -142,38 +170,31 @@ export function isLocalRequestHost(hostname?: string | null) {
 /**
  * Canonical public origin for a studio.
  * Production: always https, never a port.
- * Local (`PLATFORM_ROOT_DOMAIN=localhost`): http://{slug}.localhost:{port}.
+ * Local (`PLATFORM_ROOT_DOMAIN=localhost` or `next dev`): http://{slug}.localhost:{port}.
  */
 export function studioOrigin(options: {
   slug: string;
   domain?: string | null;
   requestOrigin?: string | null;
 }) {
+  if (preferLocalStudioUrls()) {
+    // Custom domains / prod env values don't resolve in next dev.
+    return localDevStudioOrigin(options.slug, options.requestOrigin);
+  }
+
   if (options.domain) {
-    const proto = isLocalPlatform() ? "http" : "https";
-    return `${proto}://${options.domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
+    return `https://${options.domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
   }
 
   const root = platformRootDomain();
-  if (!isLocalPlatform()) {
-    return `https://${options.slug}.${root}`;
-  }
-
-  let port = "";
-  const origin = options.requestOrigin ?? platformPublicUrl();
-  try {
-    port = new URL(origin).port;
-  } catch {
-    port = "";
-  }
-  const host = port ? `${options.slug}.${root}:${port}` : `${options.slug}.${root}`;
-  return `http://${host}`;
+  return `https://${options.slug}.${root}`;
 }
 
 /**
  * Resolve the public studio base URL for share links, emails, and galleries.
  * Ignores a stored siteUrl that still points at localhost when the platform is prod.
- * Custom domains are used only when domainStatus is active (HTTPS live).
+ * In `next dev`, always returns a localhost slug URL so admin "Open gallery" stays local.
+ * Custom domains are used only when domainStatus is active (HTTPS live) outside development.
  */
 export function publicStudioUrl(options: {
   slug: string;
@@ -182,6 +203,10 @@ export function publicStudioUrl(options: {
   siteUrl?: string | null;
   requestOrigin?: string | null;
 }) {
+  if (preferLocalStudioUrls()) {
+    return localDevStudioOrigin(options.slug, options.requestOrigin);
+  }
+
   const domainLive =
     Boolean(options.domain) &&
     (options.domainStatus === "active" || options.domainStatus === "verified");
@@ -195,18 +220,12 @@ export function publicStudioUrl(options: {
   const stored = options.siteUrl?.trim();
   if (!stored) return rebuilt;
 
-  if (!isLocalPlatform() && isLocalhostUrl(stored)) {
-    return rebuilt;
-  }
-
-  if (isLocalPlatform() && !isLocalhostUrl(stored) && !domainLive) {
-    // Local dev with a prod-looking stored URL — prefer live local origin.
+  if (isLocalhostUrl(stored)) {
     return rebuilt;
   }
 
   // Stored custom-domain URL while domain is not live yet → fall back to slug host.
   if (
-    !isLocalPlatform() &&
     !domainLive &&
     options.domain &&
     stored.includes(options.domain)

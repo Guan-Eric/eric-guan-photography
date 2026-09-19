@@ -10,7 +10,9 @@ Apply in order on each new environment. Idempotent scripts are safe to re-run.
 | 4 | `scripts/postgres-migrate-referrals.sql` | `node scripts/apply-referrals-migration.mjs` |
 | 5 | `scripts/postgres-migrate-custom-domain.sql` | `node scripts/apply-custom-domain-migration.mjs` |
 | 6 | `scripts/postgres-migrate-bigint-storage.sql` | manual |
-| 7 | `scripts/postgres-rls.sql` | optional — RLS policies (app must set `app.tenant_id` to enforce) |
+| 7 | `scripts/postgres-migrate-gallery-token-security.sql` | manual / Neon SQL editor |
+| 8 | `scripts/postgres-migrate-listing-compliance.sql` | `node scripts/apply-listing-compliance-migration.mjs` |
+| 9 | `scripts/postgres-rls.sql` | optional — RLS policies (app must set `app.tenant_id` to enforce) |
 
 **Pre-deploy:** run any scripts added since last deploy against production Neon **before** `npm run deploy`.
 

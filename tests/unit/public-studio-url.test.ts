@@ -86,6 +86,22 @@ describe("public studio URLs", () => {
     ).toBe("http://silentshutter.localhost:3000");
   });
 
+  it("forces localhost gallery URLs in next development even with prod env", () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    process.env.PLATFORM_ROOT_DOMAIN = "studiofront.ca";
+    process.env.PLATFORM_PUBLIC_URL = "https://studiofront.ca";
+    expect(
+      publicStudioUrl({
+        slug: "silentshutter",
+        siteUrl: "https://silentshutter.studiofront.ca",
+        domain: "photos.example.com",
+        domainStatus: "active",
+      }),
+    ).toBe("http://silentshutter.localhost:3000");
+    process.env.NODE_ENV = previousNodeEnv;
+  });
+
   it("prefers forwarded host over the workers.dev request URL", () => {
     const request = new Request("https://studiofront.workers.dev/portal/callback", {
       headers: {

@@ -65,3 +65,17 @@ describe("galleryStubUnlockAllowed", () => {
     process.env.ALLOW_GALLERY_STUB_UNLOCK = prevAllow;
   });
 });
+
+describe("portalDevBypassAllowed", () => {
+  it("is false in production even with ALLOW_PORTAL_DEV_BYPASS", async () => {
+    const prevNode = process.env.NODE_ENV;
+    const prevAllow = process.env.ALLOW_PORTAL_DEV_BYPASS;
+    process.env.NODE_ENV = "production";
+    process.env.ALLOW_PORTAL_DEV_BYPASS = "1";
+    vi.resetModules();
+    const { portalDevBypassAllowed } = await import("@/lib/agent-auth");
+    expect(portalDevBypassAllowed()).toBe(false);
+    process.env.NODE_ENV = prevNode;
+    process.env.ALLOW_PORTAL_DEV_BYPASS = prevAllow;
+  });
+});

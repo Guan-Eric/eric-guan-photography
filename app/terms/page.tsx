@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PlatformFooter } from "@/components/platform-footer";
 import { PlatformHeader } from "@/components/platform-header";
 import { platformName, platformPublicUrl } from "@/lib/platform";
@@ -6,8 +7,11 @@ import { platformName, platformPublicUrl } from "@/lib/platform";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
-    "Terms for using Studiofront: accounts, subscriptions, acceptable use, media licenses, and Google Calendar.",
-  alternates: { canonical: "/terms" },
+    "Terms for using Studiofront: accounts, subscriptions, media licenses, MLS use, and liability limits.",
+  alternates: {
+    canonical: "/terms",
+    languages: { en: "/terms", fr: "/fr/terms" },
+  },
 };
 
 export default function TermsPage() {
@@ -22,7 +26,12 @@ export default function TermsPage() {
           <div className="page-header-inner">
             <p className="eyebrow">Legal</p>
             <h1>Terms of Service</h1>
-            <p className="section-copy">Last updated: August 19, 2026</p>
+            <p className="section-copy">Last updated: September 19, 2026</p>
+            <p className="section-copy">
+              <Link className="text-link" href="/fr/terms">
+                Français
+              </Link>
+            </p>
           </div>
         </header>
         <section className="page-section" style={{ paddingTop: 0 }}>
@@ -32,15 +41,17 @@ export default function TermsPage() {
               creating an account or using the service you agree to these terms.
               Questions:{" "}
               <a href="mailto:hello@studiofront.ca">hello@studiofront.ca</a>.
+              This page is product copy and not a substitute for legal advice;
+              we recommend independent counsel before treating it as final for
+              your practice.
             </p>
 
             <h2>Accounts and studios</h2>
             <p>
               You must provide accurate signup information and keep your login
               secure. You are responsible for your studio&rsquo;s content,
-              bookings, team members, and media. Photographers own their
-              uploaded media. Agents access galleries by signed link, not by{" "}
-              {name} accounts.
+              bookings, team members, and media. Agents access galleries by
+              signed link, not by {name} accounts.
             </p>
 
             <h2>Subscriptions</h2>
@@ -68,18 +79,64 @@ export default function TermsPage() {
               your Google account.
             </p>
 
-            <h2>Media license defaults</h2>
+            <h2>Copyright</h2>
             <p>
-              Unless a studio states otherwise, agents receive a license to use
-              delivered photos to market the photographed property and their own
-              services. Resale or sublicensing to unrelated third parties is not
-              included.
+              Photographers retain underlying copyright in media they upload to{" "}
+              {name}. The platform does not claim ownership of studio media.
+              Galleries and downloads are delivery mechanisms for licenses the
+              studio grants to agents.
             </p>
 
-            <h2>Disclaimer</h2>
+            <h2>Limited marketing license</h2>
             <p>
-              The service is provided as-is. We work to keep it available but do
-              not guarantee uninterrupted access. We are not a party to the
+              Unless a studio grants broader rights in writing, the default
+              agent license is a Limited Marketing License: use delivered photos
+              only to market the active listing and the agent&rsquo;s own
+              services related to that property. It is not a perpetual MLS
+              redistribution right, and it does not include resale, transfer to
+              another brokerage or listing agent, or reuse after the listing
+              expires or is reassigned, unless the studio agrees otherwise.
+            </p>
+
+            <h2>MLS and distribution indemnification</h2>
+            <p>
+              Some MLS boards and marketing systems demand perpetual or
+              worldwide licenses. If an agent uploads or submits media obtained
+              through {name} into an MLS or other system that requires rights
+              beyond the Limited Marketing License, the agent certifies they
+              have obtained all necessary rights from the photographer. The
+              agent indemnifies {name} and the studio (as a software user) for
+              claims arising from that distribution, including copyright and
+              license disputes.
+            </p>
+
+            <h2>Gallery links and sharing</h2>
+            <p>
+              Gallery URLs are secret credentials intended for the booking or
+              purchasing agent. Links expire (typically after 14 days from
+              publish or unlock); studios can refresh links from admin.{" "}
+              {name} is not liable for third-party misuse after an agent shares
+              their link, screenshots proofs, or otherwise discloses access.
+            </p>
+
+            <h2>True Picture, alterations, and AI tools</h2>
+            <p>
+              Platform tools (editing workflows, future staging or AI features,
+              and external exports) are for legitimate aesthetic delivery.
+              Users assume all regulatory liability for structural
+              misrepresentation of a property—including removing damage,
+              inventing features, or deceptive AI edits. {name} does not warrant
+              MLS or regulatory compliance of altered images.
+            </p>
+
+            <h2>Limitation of liability and uptime</h2>
+            <p>
+              The service is provided as-is. We aim for high availability but do
+              not guarantee uninterrupted access. To the fullest extent
+              permitted by law, {name} is not liable for lost real-estate
+              commissions, failed showings, missed listing deadlines, or other
+              business interruption arising from downtime, expired tokens,
+              delivery delays, or link misuse. We are not a party to the
               photographer–agent booking relationship except as a software
               provider.
             </p>

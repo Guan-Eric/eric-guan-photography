@@ -87,6 +87,10 @@ describe("listing pages", () => {
     await updateListingPage(byOrder!.id, tenant.id, {
       headline: "Sun-filled semi",
       description: "Two beds near the park.",
+      brokerage: "Agence Exemple",
+      brokeragePhone: "514-555-0100",
+      complianceRegion: "ca_other",
+      advertisingEndsAt: new Date(Date.now() + 86400000 * 365).toISOString(),
     });
     await updateListingPage(byOrder!.id, tenant.id, { theme: "editorial" });
     const afterPhotoSave = await getListingPageByOrder(order!.id, tenant.id);
@@ -99,13 +103,17 @@ describe("listing pages", () => {
       openHouses: [{ date: "2026-09-12", start: "2pm", end: "4pm", note: "" }],
       leadCapture: true,
       published: true,
-      brandMode: "unbranded",
+      brandMode: "branded",
+      brokerage: "Agence Exemple",
+      brokeragePhone: "514-555-0100",
+      complianceRegion: "ca_other",
+      advertisingEndsAt: new Date(Date.now() + 86400000 * 365).toISOString(),
     });
     const listed = await listListingPages(tenant.id);
     expect(listed.some((page) => page.id === byOrder!.id)).toBe(true);
     const fetched = await getListingPage(byOrder!.id, tenant.id);
     expect(fetched?.leadCapture).toBeTruthy();
-    expect(fetched?.brandMode).toBe("unbranded");
+    expect(fetched?.brandMode).toBe("branded");
     expect(listingPagePublicUrl(fetched!, "https://example.test")).toMatch(/\/p\//);
     expect(listingCopyUrl(fetched!, "https://example.test")).toMatch(
       `/portal/listings/${fetched!.id}`,
@@ -136,6 +144,8 @@ describe("listing pages", () => {
     expect(published.ok).toBe(true);
     if (!published.ok) return;
     expect(published.page.slug.length).toBeGreaterThan(2);
+    // Montreal postal → QC checklist incomplete until brokerage/OACIQ fields filled.
+    expect(published.published === false || published.page.publishedAt == null).toBe(true);
     const again = await publishListingPage(order!);
     expect(again.ok).toBe(true);
     expect(await listingPageMedia(published.page)).toEqual([]);

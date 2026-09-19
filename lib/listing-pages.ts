@@ -2,9 +2,22 @@ import { and, desc, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { entitlements } from "@/lib/billing";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
-import type { ListingPage, Order } from "@/lib/db/schema";
-import { getGalleryByOrderId, listMedia, updateMediaCaptions } from "@/lib/galleries";
+import type {
+  AgencyLicenseType,
+  BrokerLicenseType,
+  ComplianceRegion,
+  ListingPage,
+  ListingStatus,
+  Order,
+} from "@/lib/db/schema";
+import { getGalleryByOrderId, listMedia, updateMediaCaptions, updateMediaEnhancementTags } from "@/lib/galleries";
 import type { ListingSection, OpenHouse } from "@/lib/listing-content";
+import {
+  assertListingPublishReady,
+  defaultAdvertisingEndsAt,
+  listingIsPubliclyLive,
+  suggestComplianceRegion,
+} from "@/lib/listing-compliance";
 import { type ListingTheme, listingTheme } from "@/lib/listing-themes";
 import { listMediaLinksForOrder, visibleLinks } from "@/lib/media-links";
 import { getOrder } from "@/lib/orders";
@@ -67,6 +80,29 @@ async function geocode(address: string) {
   }
 }
 
+async function mediaForPage(page: ListingPage) {
+  if (!page.galleryId) return [];
+  return listMedia(page.galleryId);
+}
+
+export async function unpublishListingIfExpired(page: ListingPage) {
+  if (!page.publishedAt) return page;
+  if (listingIsPubliclyLive(page)) return page;
+  const updatedAt = nowIso();
+  const db = getDb();
+  await qRun(
+    db
+      .update(schema.listingPages)
+      .set({ publishedAt: null, updatedAt })
+      .where(eq(schema.listingPages.id, page.id)),
+  );
+  return { ...page, publishedAt: null, updatedAt };
+}
+
+/**
+ * Ensures a listing_pages row exists for the order. Publishes only when the
+ * compliance checklist passes; otherwise leaves/creates a draft.
+ */
 export async function publishListingPage(order: Order) {
   const row = await getTenantRow(order.tenantId);
   if (!row) return { ok: false as const, error: "Studio not found." };
@@ -84,53 +120,106 @@ export async function publishListingPage(order: Order) {
       : await geocode(order.propertyAddress);
 
   const db = getDb();
-  const publishedAt = nowIso();
+  const now = nowIso();
+  const region =
+    existing?.complianceRegion ?? suggestComplianceRegion(order.postalCode);
 
+  let page: ListingPage;
   if (existing) {
     await qRun(
       db
         .update(schema.listingPages)
         .set({
           galleryId: gallery?.id ?? existing.galleryId,
-          publishedAt,
           brandMode: gallery?.brandMode ?? existing.brandMode,
-          updatedAt: publishedAt,
+          agentName: existing.agentName || order.agentName,
+          agentEmail: existing.agentEmail || order.agentEmail,
+          agentPhone: existing.agentPhone ?? order.agentPhone,
+          brokerage: existing.brokerage ?? order.brokerage,
+          complianceRegion: existing.complianceRegion || region,
+          updatedAt: now,
         })
         .where(eq(schema.listingPages.id, existing.id)),
     );
-    return { ok: true as const, page: (await getListingPageByOrder(order.id, order.tenantId))! };
+    page = (await getListingPageByOrder(order.id, order.tenantId))!;
+  } else {
+    let slug = slugifyAddress(order.propertyAddress);
+    let attempt = 0;
+    while (await getListingPageBySlug(order.tenantId, slug)) {
+      attempt += 1;
+      slug = `${slugifyAddress(order.propertyAddress)}-${attempt}`;
+    }
+
+    await qRun(
+      db.insert(schema.listingPages).values({
+        id: `lp_${id()}`,
+        tenantId: order.tenantId,
+        orderId: order.id,
+        galleryId: gallery?.id ?? null,
+        slug,
+        brandMode: gallery?.brandMode ?? "branded",
+        title: order.propertyAddress,
+        propertyAddress: order.propertyAddress,
+        agentName: order.agentName,
+        agentEmail: order.agentEmail,
+        agentPhone: order.agentPhone,
+        brokerage: order.brokerage,
+        mapLat: coords.lat,
+        mapLng: coords.lng,
+        complianceRegion: region,
+        listingStatus: "active",
+        publishedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+    page = (await getListingPageByOrder(order.id, order.tenantId))!;
   }
 
-  let slug = slugifyAddress(order.propertyAddress);
-  let attempt = 0;
-  while (await getListingPageBySlug(order.tenantId, slug)) {
-    attempt += 1;
-    slug = `${slugifyAddress(order.propertyAddress)}-${attempt}`;
+  const media = await mediaForPage(page);
+  const advertisingEndsAt =
+    page.advertisingEndsAt ?? defaultAdvertisingEndsAt(now, null);
+  const ready = assertListingPublishReady({
+    page: { ...page, advertisingEndsAt },
+    media,
+  });
+
+  if (!ready.ok) {
+    if (!page.advertisingEndsAt) {
+      await qRun(
+        db
+          .update(schema.listingPages)
+          .set({ advertisingEndsAt, updatedAt: now })
+          .where(eq(schema.listingPages.id, page.id)),
+      );
+      page = { ...page, advertisingEndsAt };
+    }
+    return {
+      ok: true as const,
+      page,
+      published: false as const,
+      checklistErrors: ready.errors,
+    };
   }
 
   await qRun(
-    db.insert(schema.listingPages).values({
-      id: `lp_${id()}`,
-      tenantId: order.tenantId,
-      orderId: order.id,
-      galleryId: gallery?.id ?? null,
-      slug,
-      brandMode: gallery?.brandMode ?? "branded",
-      title: order.propertyAddress,
-      propertyAddress: order.propertyAddress,
-      agentName: order.agentName,
-      agentEmail: order.agentEmail,
-      agentPhone: order.agentPhone,
-      brokerage: order.brokerage,
-      mapLat: coords.lat,
-      mapLng: coords.lng,
-      publishedAt,
-      createdAt: publishedAt,
-      updatedAt: publishedAt,
-    }),
+    db
+      .update(schema.listingPages)
+      .set({
+        publishedAt: page.publishedAt ?? now,
+        advertisingEndsAt,
+        alterationDisclaimer: ready.alterationDisclaimer ? 1 : 0,
+        listingStatus: page.listingStatus || "active",
+        updatedAt: now,
+      })
+      .where(eq(schema.listingPages.id, page.id)),
   );
 
-  return { ok: true as const, page: (await getListingPageByOrder(order.id, order.tenantId))! };
+  return {
+    ok: true as const,
+    page: (await getListingPageByOrder(order.id, order.tenantId))!,
+    published: true as const,
+  };
 }
 
 export async function backfillListingPages(tenantId: string) {
@@ -201,6 +290,25 @@ export type ListingPagePatch = {
   brandMode?: "branded" | "unbranded";
   published?: boolean;
   captions?: Array<{ id: string; caption: string }>;
+  brokerage?: string | null;
+  brokeragePhone?: string | null;
+  agentPhone?: string | null;
+  agentName?: string;
+  complianceRegion?: ComplianceRegion;
+  licenseDisplayName?: string | null;
+  licenseType?: BrokerLicenseType | null;
+  agencyLegalName?: string | null;
+  agencyLicenseType?: AgencyLicenseType | null;
+  listingStatus?: ListingStatus;
+  advertisingEndsAt?: string | null;
+  deedSignedAt?: string | null;
+  renew?: boolean;
+  mediaTags?: Array<{
+    id: string;
+    enhancementTag: import("@/lib/db/schema").EnhancementTag | null;
+    originalDisclosureAssetId?: string | null;
+    disclosurePublic?: boolean;
+  }>;
 };
 
 export async function updateListingPage(
@@ -230,8 +338,67 @@ export async function updateListingPage(
   }
   if (patch.leadCapture !== undefined) values.leadCapture = patch.leadCapture ? 1 : 0;
   if (patch.brandMode !== undefined) values.brandMode = patch.brandMode;
-  if (patch.published !== undefined) {
-    values.publishedAt = patch.published ? (page.publishedAt ?? updatedAt) : null;
+  if (patch.brokerage !== undefined) values.brokerage = patch.brokerage?.trim() || null;
+  if (patch.brokeragePhone !== undefined) {
+    values.brokeragePhone = patch.brokeragePhone?.trim() || null;
+  }
+  if (patch.agentPhone !== undefined) values.agentPhone = patch.agentPhone?.trim() || null;
+  if (patch.agentName !== undefined) values.agentName = patch.agentName.trim() || page.agentName;
+  if (patch.complianceRegion !== undefined) values.complianceRegion = patch.complianceRegion;
+  if (patch.licenseDisplayName !== undefined) {
+    values.licenseDisplayName = patch.licenseDisplayName?.trim() || null;
+  }
+  if (patch.licenseType !== undefined) values.licenseType = patch.licenseType;
+  if (patch.agencyLegalName !== undefined) {
+    values.agencyLegalName = patch.agencyLegalName?.trim() || null;
+  }
+  if (patch.agencyLicenseType !== undefined) {
+    values.agencyLicenseType = patch.agencyLicenseType;
+  }
+  if (patch.listingStatus !== undefined) values.listingStatus = patch.listingStatus;
+  if (patch.advertisingEndsAt !== undefined) {
+    values.advertisingEndsAt = patch.advertisingEndsAt?.trim() || null;
+  }
+  if (patch.deedSignedAt !== undefined) {
+    values.deedSignedAt = patch.deedSignedAt?.trim() || null;
+    if (patch.deedSignedAt?.trim()) {
+      values.publishedAt = null;
+    }
+  }
+  if (patch.renew) {
+    values.advertisingEndsAt = defaultAdvertisingEndsAt(updatedAt, null);
+    if (page.listingStatus === "sold") {
+      // Renew requires an explicit status change; do not auto-reactivate sold.
+    } else if (!page.publishedAt && !page.deedSignedAt) {
+      // leave publish decision to patch.published
+    }
+  }
+
+  const tentative = { ...page, ...values } as ListingPage;
+  const media = await mediaForPage(page);
+  const wantPublish = patch.published === true || (patch.published === undefined && !!page.publishedAt);
+
+  if (patch.published === false) {
+    values.publishedAt = null;
+  } else if (wantPublish && !tentative.deedSignedAt) {
+    const ready = assertListingPublishReady({
+      page: {
+        ...tentative,
+        advertisingEndsAt:
+          (values.advertisingEndsAt as string | null | undefined) ??
+          tentative.advertisingEndsAt ??
+          defaultAdvertisingEndsAt(updatedAt, null),
+      },
+      media,
+    });
+    if (!ready.ok) {
+      return { ok: false as const, error: ready.errors.join(" "), checklistErrors: ready.errors };
+    }
+    values.publishedAt = page.publishedAt ?? updatedAt;
+    values.alterationDisclaimer = ready.alterationDisclaimer ? 1 : 0;
+    if (!tentative.advertisingEndsAt && !values.advertisingEndsAt) {
+      values.advertisingEndsAt = defaultAdvertisingEndsAt(updatedAt, null);
+    }
   }
 
   const db = getDb();
@@ -241,6 +408,35 @@ export async function updateListingPage(
   if (patch.captions && page.galleryId) {
     await updateMediaCaptions(tenantId, page.galleryId, patch.captions);
   }
+  if (patch.mediaTags && page.galleryId) {
+    await updateMediaEnhancementTags(tenantId, page.galleryId, patch.mediaTags);
+  }
+
+  // Sync brokerage fields back to the order for share kit consistency.
+  const orderSync: Record<string, unknown> = { updatedAt };
+  let syncOrder = false;
+  if (patch.brokerage !== undefined) {
+    orderSync.brokerage = patch.brokerage?.trim() || null;
+    syncOrder = true;
+  }
+  if (patch.agentPhone !== undefined || patch.brokeragePhone !== undefined) {
+    orderSync.agentPhone =
+      (patch.agentPhone ?? patch.brokeragePhone)?.trim() || page.agentPhone;
+    syncOrder = true;
+  }
+  if (patch.agentName !== undefined) {
+    orderSync.agentName = patch.agentName.trim() || page.agentName;
+    syncOrder = true;
+  }
+  if (syncOrder) {
+    await qRun(
+      db
+        .update(schema.orders)
+        .set(orderSync)
+        .where(eq(schema.orders.id, page.orderId)),
+    );
+  }
+
   return { ok: true as const, page: (await getListingPage(pageId, tenantId))! };
 }
 
@@ -267,8 +463,10 @@ export async function listingPageLinks(page: ListingPage) {
 }
 
 export async function listingPageForPublic(tenantId: string, slug: string) {
-  const page = await getListingPageBySlug(tenantId, slug);
-  if (!page || !page.publishedAt) return null;
+  let page = await getListingPageBySlug(tenantId, slug);
+  if (!page) return null;
+  page = await unpublishListingIfExpired(page);
+  if (!listingIsPubliclyLive(page)) return null;
   const tenant = await getTenant(tenantId);
   return {
     page,

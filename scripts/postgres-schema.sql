@@ -145,6 +145,9 @@ CREATE TABLE IF NOT EXISTS galleries (
   currency TEXT NOT NULL DEFAULT 'CAD',
   unlocked_at TEXT,
   revoked_at TEXT,
+  expires_at TEXT,
+  license_accepted_at TEXT,
+  license_accepted_language TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -164,6 +167,9 @@ CREATE TABLE IF NOT EXISTS media_assets (
   path_web TEXT NOT NULL,
   path_proof TEXT NOT NULL,
   path_mls TEXT NOT NULL,
+  enhancement_tag TEXT,
+  original_disclosure_asset_id TEXT,
+  disclosure_public INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
 
@@ -228,6 +234,16 @@ CREATE TABLE IF NOT EXISTS listing_pages (
   sections_json TEXT NOT NULL DEFAULT '[]',
   open_house_json TEXT NOT NULL DEFAULT '[]',
   lead_capture INTEGER NOT NULL DEFAULT 1,
+  brokerage_phone TEXT,
+  listing_status TEXT NOT NULL DEFAULT 'active',
+  advertising_ends_at TEXT,
+  deed_signed_at TEXT,
+  compliance_region TEXT NOT NULL DEFAULT 'ca_other',
+  license_display_name TEXT,
+  license_type TEXT,
+  agency_legal_name TEXT,
+  agency_license_type TEXT,
+  alteration_disclaimer INTEGER NOT NULL DEFAULT 0,
   published_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -282,6 +298,17 @@ CREATE TABLE IF NOT EXISTS agent_login_tokens (
   token TEXT NOT NULL,
   expires_at TEXT NOT NULL,
   consumed_at TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS agent_otp_challenges (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  consumed_at TEXT,
+  attempts INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
 
@@ -358,6 +385,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS membership_invites_token_idx ON membership_inv
 CREATE INDEX IF NOT EXISTS billing_events_tenant_idx ON billing_events(tenant_id);
 CREATE INDEX IF NOT EXISTS reminder_sends_order_kind_idx ON reminder_sends(order_id, kind);
 CREATE UNIQUE INDEX IF NOT EXISTS agent_login_tokens_token_idx ON agent_login_tokens(token);
+CREATE INDEX IF NOT EXISTS agent_otp_challenges_email_idx ON agent_otp_challenges(tenant_id, email, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_user_idx ON referral_codes(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS referral_codes_code_idx ON referral_codes(code);
 CREATE INDEX IF NOT EXISTS referral_credits_referrer_idx ON referral_credits(referrer_user_id);

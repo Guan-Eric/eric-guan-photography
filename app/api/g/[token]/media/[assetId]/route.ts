@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  galleryAccessDeniedReason,
   galleryHasPaidAccess,
   getGalleryByToken,
   listMedia,
@@ -11,29 +12,55 @@ export const runtime = "nodejs";
 
 type Params = { token: string; assetId: string };
 
+const PAID_VARIANTS = new Set(["web", "mls", "full"]);
+
 export async function GET(
   request: Request,
   context: { params: Promise<Params> },
 ) {
   const { token, assetId } = await context.params;
   const gallery = await getGalleryByToken(token);
-  if (!gallery || gallery.revokedAt) {
-    return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
+  const denied = galleryAccessDeniedReason(gallery);
+  if (denied) {
+    const status = denied === "expired" || denied === "revoked" ? 410 : 404;
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          denied === "expired" || denied === "revoked"
+            ? "This gallery link has expired. Ask your photographer for a new link."
+            : "Not found.",
+        reason: denied,
+      },
+      { status },
+    );
   }
 
   const url = new URL(request.url);
   const variant = url.searchParams.get("v") ?? "proof";
-  const media = (await listMedia(gallery.id)).find((asset) => asset.id === assetId);
+  const media = (await listMedia(gallery!.id)).find((asset) => asset.id === assetId);
   if (!media) {
     return NextResponse.json({ ok: false, error: "Asset not found." }, { status: 404 });
   }
 
-  const unlocked = await galleryHasPaidAccess(gallery);
-  if ((variant === "full" || variant === "mls") && !unlocked) {
+  const unlocked = await galleryHasPaidAccess(gallery!);
+  if (PAID_VARIANTS.has(variant) && !unlocked) {
     return NextResponse.json(
       { ok: false, error: "Full downloads unlock after payment." },
       { status: 402 },
     );
+  }
+  if ((variant === "full" || variant === "mls") && !gallery!.licenseAcceptedAt) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Accept the Limited Marketing License before downloading.",
+      },
+      { status: 403 },
+    );
+  }
+  if (variant !== "proof" && !PAID_VARIANTS.has(variant)) {
+    return NextResponse.json({ ok: false, error: "Unknown variant." }, { status: 400 });
   }
 
   const relative =

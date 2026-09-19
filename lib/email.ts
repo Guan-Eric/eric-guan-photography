@@ -498,17 +498,19 @@ export function orderStatusEmail(options: {
   }
 
   if (status === "paid") {
-    return composeEmail(order.agentEmail, `Downloads unlocked — ${order.propertyAddress}`, {
-      preview: `Payment received. Full downloads are available for ${order.propertyAddress}.`,
+    return composeEmail(order.agentEmail, `Downloads ready — ${order.propertyAddress}`, {
+      preview: `Payment received. Your download link for ${order.propertyAddress} is ready.`,
       greeting: `Hi ${name},`,
       intro: [
-        "Thank you — payment is confirmed. Full-resolution and MLS downloads are now available on your gallery.",
+        "Thank you — payment is confirmed. Your full-resolution and MLS downloads are ready on a new gallery link below.",
+        "Your previous preview link no longer works. Use only this download link going forward.",
       ],
       cta: options.galleryUrl
         ? { label: "Download photos", url: options.galleryUrl }
         : undefined,
       secondaryLinks: [{ label: "Your listings", url: listingsUrl(tenant) }],
       outro: [
+        "You’ll be asked to accept the Limited Marketing License before downloading.",
         "If this listing went well, a short review or referral would mean a great deal.",
       ],
       signoffName: tenant.photographerName,
@@ -635,7 +637,7 @@ export function photographerOrderStatusEmail(options: {
         preview: `${order.agentName} paid for ${order.propertyAddress}. Downloads unlocked.`,
         greeting: `Hi ${name},`,
         intro: [
-          "Payment cleared and the gallery is unlocked for full downloads. The agent was emailed a confirmation.",
+          "Payment cleared. The agent was emailed a new download link — their previous preview URL no longer works.",
         ],
         details: baseDetails,
         cta: options.galleryUrl
@@ -883,18 +885,18 @@ export function studioInviteEmail(options: {
 export function agentPortalLoginEmail(options: {
   tenant: Tenant;
   agentEmail: string;
-  loginUrl: string;
+  code: string;
 }) {
   return composeEmail(
     options.agentEmail,
-    `Your ${options.tenant.studioName} listings login`,
+    `Your ${options.tenant.studioName} listings code`,
     {
-      preview: "Use this link to open your listings, galleries, and invoices.",
+      preview: "Enter this code to open your listings, galleries, and invoices.",
       greeting: "Hi there,",
       intro: [
-        `Here's a sign-in link for your listings with ${options.tenant.studioName}. It expires in one hour.`,
+        `Use this one-time code to sign in to your listings with ${options.tenant.studioName}. It expires in 10 minutes.`,
+        options.code,
       ],
-      cta: { label: "Open my listings", url: options.loginUrl },
       signoffName: options.tenant.photographerName,
       signoffLine: options.tenant.email,
     },

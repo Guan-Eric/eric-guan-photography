@@ -54,6 +54,8 @@ export function trialEndsAt(from = new Date()) {
 }
 
 export function hasActiveAccess(row: TenantRow) {
+  // Local next dev: never block uploads/delivery on expired trials or Stripe status.
+  if (process.env.NODE_ENV === "development") return true;
   if (row.subscriptionStatus === "active") return true;
   if (row.subscriptionStatus === "trialing") {
     if (!row.trialEndsAt) return true;

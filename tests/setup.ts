@@ -13,6 +13,7 @@ process.env.PLATFORM_NAME = "Studiofront";
 process.env.NEXT_PUBLIC_SITE_URL = "http://localhost:3000";
 process.env.CRON_SECRET = "test-cron-secret";
 process.env.ALLOW_GALLERY_STUB_UNLOCK = "1";
+process.env.ALLOW_PORTAL_DEV_BYPASS = "1";
 process.env.ADMIN_PASSWORD = "dev-admin-Test1!";
 
 delete process.env.STRIPE_SECRET_KEY;

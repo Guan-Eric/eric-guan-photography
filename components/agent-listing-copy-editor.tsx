@@ -3,6 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { ListingSection, OpenHouse } from "@/lib/listing-content";
+import {
+  AGENCY_LICENSE_TYPES,
+  BROKER_LICENSE_TYPES,
+  COMPLIANCE_REGIONS,
+  LISTING_STATUSES,
+  type AgencyLicenseType,
+  type BrokerLicenseType,
+  type ComplianceRegion,
+  type ListingStatus,
+} from "@/lib/db/schema";
+import {
+  AGENCY_LICENSE_LABELS,
+  BROKER_LICENSE_LABELS,
+} from "@/lib/listing-compliance";
 import { UnsavedChangesProvider, useUnsavedChanges } from "@/components/unsaved-changes";
 import { toastError, toastSuccess } from "@/lib/toast";
 
@@ -11,7 +25,28 @@ type CopyState = {
   description: string;
   sections: ListingSection[];
   openHouses: OpenHouse[];
+  brokerage: string;
+  brokeragePhone: string;
+  agentPhone: string;
+  complianceRegion: ComplianceRegion;
+  licenseDisplayName: string;
+  licenseType: BrokerLicenseType | "";
+  agencyLegalName: string;
+  agencyLicenseType: AgencyLicenseType | "";
+  listingStatus: ListingStatus;
+  advertisingEndsAt: string;
+  deedSignedAt: boolean;
 };
+
+function fromDateInput(value: string) {
+  if (!value.trim()) return null;
+  return new Date(`${value}T23:59:59.000Z`).toISOString();
+}
+
+function toDateInput(iso: string | null | undefined) {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
 
 function AgentListingCopyForm({
   pageId,
@@ -37,7 +72,7 @@ function AgentListingCopyForm({
     setState((current) => ({ ...current, ...next }));
   }
 
-  async function save() {
+  async function save(extra?: { renew?: boolean }) {
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -52,16 +87,36 @@ function AgentListingCopyForm({
             (section) => section.heading.trim() || section.body.trim(),
           ),
           openHouses: state.openHouses.filter((entry) => entry.date.trim()),
+          brokerage: state.brokerage,
+          brokeragePhone: state.brokeragePhone,
+          agentPhone: state.agentPhone,
+          complianceRegion: state.complianceRegion,
+          licenseDisplayName: state.licenseDisplayName || null,
+          licenseType: state.licenseType || null,
+          agencyLegalName: state.agencyLegalName || null,
+          agencyLicenseType: state.agencyLicenseType || null,
+          listingStatus: state.listingStatus,
+          advertisingEndsAt: fromDateInput(state.advertisingEndsAt),
+          deedSignedAt: state.deedSignedAt ? new Date().toISOString() : null,
+          renew: extra?.renew ?? false,
+          published: true,
         }),
       });
       const json = await response.json().catch(() => null);
       if (!json?.ok) {
-        setError(json?.error ?? "Could not save listing copy.");
-        toastError(json?.error ?? "Could not save listing copy.");
+        const message =
+          json?.checklistErrors?.join(" ") ??
+          json?.error ??
+          "Could not save listing copy.";
+        setError(message);
+        toastError(message);
         return;
       }
-      setNotice("Saved.");
-      toastSuccess("Listing copy saved.");
+      setNotice(extra?.renew ? "Advertising window renewed." : "Saved.");
+      toastSuccess(extra?.renew ? "Listing renewed." : "Listing copy saved.");
+      if (json.page?.advertisingEndsAt) {
+        patch({ advertisingEndsAt: toDateInput(json.page.advertisingEndsAt) });
+      }
       setSaved(current);
     } catch {
       setError("Network error.");
@@ -70,6 +125,8 @@ function AgentListingCopyForm({
       setBusy(false);
     }
   }
+
+  const isQc = state.complianceRegion === "ca_qc";
 
   return (
     <div className="studio-settings listing-editor">
@@ -91,7 +148,7 @@ function AgentListingCopyForm({
           type="button"
           className={`btn btn-solid${busy ? " is-busy" : ""}`}
           disabled={busy}
-          onClick={save}
+          onClick={() => save()}
         >
           {busy ? "Saving…" : "Save copy"}
         </button>
@@ -101,10 +158,156 @@ function AgentListingCopyForm({
       {notice ? <p className="form-success">{notice}</p> : null}
 
       <p className="field-hint">
-        Photos, page look, and the enquiry form are set by the photographer. Add
-        the words buyers see — optional, the page can go live with just the
-        address.
+        Brokerage name and phone are required before the property website can go
+        live. Photos and page look are set by the photographer.
       </p>
+
+      <section className="studio-section">
+        <h2>Broker identity and status</h2>
+        <label className="field">
+          <span>Region</span>
+          <select
+            value={state.complianceRegion}
+            onChange={(event) =>
+              patch({ complianceRegion: event.target.value as ComplianceRegion })
+            }
+          >
+            {COMPLIANCE_REGIONS.map((region) => (
+              <option key={region} value={region}>
+                {region === "ca_qc"
+                  ? "Quebec (OACIQ)"
+                  : region === "us_ca"
+                    ? "California"
+                    : "Canada (other)"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Brokerage / agency</span>
+          <input
+            value={state.brokerage}
+            onChange={(event) => patch({ brokerage: event.target.value })}
+          />
+        </label>
+        <label className="field">
+          <span>Brokerage phone</span>
+          <input
+            value={state.brokeragePhone}
+            onChange={(event) => patch({ brokeragePhone: event.target.value })}
+          />
+        </label>
+        <label className="field">
+          <span>Your phone</span>
+          <input
+            value={state.agentPhone}
+            onChange={(event) => patch({ agentPhone: event.target.value })}
+          />
+        </label>
+        {isQc ? (
+          <>
+            <label className="field">
+              <span>Name as on OACIQ licence</span>
+              <input
+                value={state.licenseDisplayName}
+                onChange={(event) =>
+                  patch({ licenseDisplayName: event.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Licence type</span>
+              <select
+                value={state.licenseType}
+                onChange={(event) =>
+                  patch({
+                    licenseType: event.target.value as BrokerLicenseType | "",
+                  })
+                }
+              >
+                <option value="">Select…</option>
+                {BROKER_LICENSE_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {BROKER_LICENSE_LABELS[type].fr}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Agency legal name</span>
+              <input
+                value={state.agencyLegalName}
+                onChange={(event) =>
+                  patch({ agencyLegalName: event.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Agency licence type</span>
+              <select
+                value={state.agencyLicenseType}
+                onChange={(event) =>
+                  patch({
+                    agencyLicenseType: event.target.value as AgencyLicenseType | "",
+                  })
+                }
+              >
+                <option value="">Select…</option>
+                {AGENCY_LICENSE_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {AGENCY_LICENSE_LABELS[type].fr}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : null}
+        <label className="field">
+          <span>Listing status</span>
+          <select
+            value={state.listingStatus}
+            onChange={(event) =>
+              patch({ listingStatus: event.target.value as ListingStatus })
+            }
+          >
+            {LISTING_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Brokerage contract end</span>
+          <input
+            type="date"
+            value={state.advertisingEndsAt}
+            onChange={(event) =>
+              patch({ advertisingEndsAt: event.target.value })
+            }
+          />
+        </label>
+        <label className="field-check">
+          <span>
+            <input
+              type="checkbox"
+              checked={state.deedSignedAt}
+              onChange={(event) =>
+                patch({ deedSignedAt: event.target.checked })
+              }
+            />
+            Deed signed — take page offline
+          </span>
+        </label>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          disabled={busy}
+          onClick={() => save({ renew: true })}
+        >
+          Renew advertising window (+12 months)
+        </button>
+      </section>
 
       <section className="studio-section">
         <h2>Copy</h2>
@@ -119,22 +322,17 @@ function AgentListingCopyForm({
         <label className="field">
           <span>Description</span>
           <textarea
-            rows={5}
+            rows={6}
             value={state.description}
-            placeholder="Two paragraphs on what makes this home worth a showing."
             onChange={(event) => patch({ description: event.target.value })}
           />
         </label>
       </section>
 
       <section className="studio-section">
-        <h2>Sections</h2>
-        <p className="field-hint">
-          Optional blocks under the photos — features, neighbourhood notes, school
-          catchment.
-        </p>
+        <h2>Extra sections</h2>
         {state.sections.map((section, index) => (
-          <div key={index} className="editor-block">
+          <div key={index} className="listing-section-row">
             <label className="field">
               <span>Heading</span>
               <input
@@ -169,7 +367,7 @@ function AgentListingCopyForm({
                 patch({ sections: state.sections.filter((_, i) => i !== index) })
               }
             >
-              Remove section
+              Remove
             </button>
           </div>
         ))}
@@ -178,7 +376,9 @@ function AgentListingCopyForm({
             type="button"
             className="btn btn-outline"
             onClick={() =>
-              patch({ sections: [...state.sections, { heading: "", body: "" }] })
+              patch({
+                sections: [...state.sections, { heading: "", body: "" }],
+              })
             }
           >
             Add section
@@ -189,7 +389,7 @@ function AgentListingCopyForm({
       <section className="studio-section">
         <h2>Open houses</h2>
         {state.openHouses.map((entry, index) => (
-          <div key={index} className="editor-block editor-block--row">
+          <div key={index} className="listing-section-row">
             <label className="field">
               <span>Date</span>
               <input
@@ -263,7 +463,7 @@ function AgentListingCopyForm({
           type="button"
           className={`btn btn-solid${busy ? " is-busy" : ""}`}
           disabled={busy}
-          onClick={save}
+          onClick={() => save()}
         >
           {busy ? "Saving…" : "Save copy"}
         </button>

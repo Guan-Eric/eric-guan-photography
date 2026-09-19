@@ -83,7 +83,7 @@ export default async function ConfirmationPage({
             </div>
             <p className="muted">
               Coming back later? Open <Link href="/portal">your listings</Link>{" "}
-              and we’ll email a sign-in link — no password.
+              and we’ll email a sign-in code — no password.
             </p>
           </div>
         </header>

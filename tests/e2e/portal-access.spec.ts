@@ -5,6 +5,7 @@ test.describe("Portal access scenarios", () => {
   test("@regression unauthenticated portal routes redirect to login", async ({ page }) => {
     await page.goto("/portal");
     await expect(page).toHaveURL(/\/portal\/login/);
+    await expect(page.getByRole("button", { name: /Email me a code/i })).toBeVisible();
   });
 
   test("@regression gallery footer links to portal login when agent not signed in", async ({ page }) => {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
-import { getGalleryByToken } from "@/lib/galleries";
+import { galleryAccessDeniedReason, getGalleryByToken } from "@/lib/galleries";
 import { getMediaLink } from "@/lib/media-links";
 import { openMediaStream } from "@/lib/media-storage";
 
@@ -12,12 +12,24 @@ type Params = { token: string; linkId: string };
 export async function GET(request: Request, context: { params: Promise<Params> }) {
   const { token, linkId } = await context.params;
   const gallery = await getGalleryByToken(token);
-  if (!gallery || gallery.revokedAt) {
-    return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
+  const denied = galleryAccessDeniedReason(gallery);
+  if (denied) {
+    const status = denied === "expired" || denied === "revoked" ? 410 : 404;
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          denied === "expired" || denied === "revoked"
+            ? "This gallery link has expired. Ask your photographer for a new link."
+            : "Not found.",
+        reason: denied,
+      },
+      { status },
+    );
   }
 
-  const link = await getMediaLink(linkId, gallery.tenantId);
-  if (!link || link.galleryId !== gallery.id || !link.storagePath) {
+  const link = await getMediaLink(linkId, gallery!.tenantId);
+  if (!link || link.galleryId !== gallery!.id || !link.storagePath) {
     return NextResponse.json({ ok: false, error: "Document not found." }, { status: 404 });
   }
 

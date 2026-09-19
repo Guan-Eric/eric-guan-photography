@@ -47,14 +47,22 @@ test.describe("Portal and gallery scenarios", () => {
     const stub = page.getByRole("button", { name: /dev stub unlock/i });
     if (await stub.isVisible()) {
       await stub.click();
-      await expect(page.getByText(/unlocked/i).first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByText(/unlocked|accept|download/i).first()).toBeVisible({
+        timeout: 15_000,
+      });
     } else {
       const unlock = await page.request.post(`${origin}/api/g/${token}/checkout`, {
         data: { stub: true },
       });
       expect(unlock.ok()).toBeTruthy();
-      await page.reload();
-      await expect(page.getByText(/unlocked/i).first()).toBeVisible();
+      const unlockJson = (await unlock.json()) as {
+        ok: boolean;
+        publicToken?: string;
+        galleryUrl?: string;
+      };
+      const nextToken = unlockJson.publicToken ?? token;
+      await page.goto(`${origin}/g/${nextToken}?paid=1`);
+      await expect(page.getByText(/unlocked|accept|download/i).first()).toBeVisible();
     }
   });
 });

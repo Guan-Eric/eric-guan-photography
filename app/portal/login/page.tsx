@@ -49,10 +49,10 @@ export default async function PortalLoginPage({
     <AuthShell line={`Listings and downloads from ${tenant.studioName}.`}>
       <div className="auth-form-intro">
         <h1>Agent portal</h1>
-        <p>We&apos;ll email a sign-in link. No password.</p>
+        <p>We&apos;ll email a 6-digit sign-in code. No password.</p>
       </div>
       {error === "expired" ? (
-        <p className="form-error">That sign-in link expired. Request a new one.</p>
+        <p className="form-error">That sign-in link expired. Request a new code instead.</p>
       ) : null}
       <PortalLoginForm next={next} />
     </AuthShell>

@@ -10,11 +10,6 @@ import {
   unlockGallery,
 } from "@/lib/galleries";
 import {
-  listingPagePublicUrl,
-  listingCopyUrl,
-  publishListingPage,
-} from "@/lib/listing-pages";
-import {
   notifyGalleryPaid,
   notifyOrderStatusChange,
 } from "@/lib/order-notify";
@@ -93,12 +88,14 @@ export async function POST(
     const result = await unlockGallery(gallery.id, {
       markOrderPaid: Boolean(body.markPaid),
     });
+    let listingUrl: string | null = null;
     if (result.ok && body.markPaid) {
-      await notifyGalleryPaid({
+      const paid = await notifyGalleryPaid({
         tenantId: order.tenantId,
         orderId,
         galleryToken: result.gallery.publicToken,
       });
+      listingUrl = paid.listingUrl ?? null;
     } else if (result.ok) {
       await notifyOrderStatusChange({
         tenantId: order.tenantId,
@@ -111,23 +108,13 @@ export async function POST(
         ),
       });
     }
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, listingUrl });
   }
 
   const result = await publishDelivery(orderId, order.tenantId);
   if (!result.ok) {
     return NextResponse.json(result, { status: 400 });
   }
-
-  const listing = await publishListingPage((await getOrder(orderId, order.tenantId))!);
-  const publicListingUrl =
-    listing.ok && listing.page
-      ? listingPagePublicUrl(listing.page, tenant.siteUrl)
-      : null;
-  const copyUrl =
-    listing.ok && listing.page
-      ? listingCopyUrl(listing.page, tenant.siteUrl)
-      : null;
 
   const brandedUrl = galleryPublicUrl(
     result.gallery.publicToken,
@@ -140,13 +127,12 @@ export async function POST(
     tenant.siteUrl,
   );
 
+  // Listing pages are created on payment, not on gallery publish.
   const emailResults = await notifyOrderStatusChange({
     tenantId: order.tenantId,
     order: { ...order, status: "delivered" },
     status: "delivered",
     galleryUrl: brandedUrl,
-    listingUrl: publicListingUrl ?? undefined,
-    listingCopyUrl: copyUrl ?? undefined,
   });
   const emailResult = emailResults[0] ?? null;
 
@@ -155,9 +141,9 @@ export async function POST(
     gallery: result.gallery,
     brandedUrl,
     unbrandedUrl,
-    listingUrl: publicListingUrl,
-    listingSkipped: Boolean(!listing.ok && "skipped" in listing && listing.skipped),
-    listingError: listing.ok ? null : listing.error,
+    listingUrl: null,
+    listingSkipped: false,
+    listingError: null,
     emailSent: Boolean(emailResult?.ok && !("stubbed" in emailResult && emailResult.stubbed)),
     emailStubbed: Boolean(emailResult && "stubbed" in emailResult && emailResult.stubbed),
     emailError:

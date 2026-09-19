@@ -198,10 +198,9 @@ Upload creates/extends gallery; storage quotas apply.
 1. Requires ≥1 photo  
 2. Gallery state: `proofing` (pay-first) or `unlocked` (net7 trust)  
 3. Order status → `delivered`  
-4. Listing page published if plan has property pages (Growth+)  
-5. Emails agent + photographer (gallery ready)  
+4. Emails agent + photographer (gallery ready)  
 
-Returns branded gallery URL, unbranded URL, optional listing URL.
+Returns branded gallery URL and unbranded URL. Listing / property pages are **not** created here.
 
 ### 2.6 Delivery step 3 — Share links
 
@@ -211,16 +210,16 @@ Returns branded gallery URL, unbranded URL, optional listing URL.
 | **Open gallery** | New tab |
 | **Open mail app** | `mailto:` with subject `Your photos — {address}` |
 | MLS copy | `/g/{token}?brand=off` |
-| Property page copy | `/p/{slug}` from last publish (if any) |
+| Property page copy | `/p/{slug}` after payment (if any) |
 
 ### 2.7 Delivery step 4 — Unlock
 
 | Control | What happens | API |
 |---|---|---|
-| **Mark paid & unlock** | Force unlock + mark paid | `POST …/delivery` `{ action: "unlock", markPaid: true }` |
+| **Mark paid & unlock** | Force unlock + mark paid + create listing page (Growth+) | `POST …/delivery` `{ action: "unlock", markPaid: true }` |
 | Disabled label **Already unlocked** | When already paid/unlocked | — |
 
-Emails: same as Stripe “paid” (agent + photographer).
+Emails: same as Stripe “paid” (agent + photographer), including listing links when created.
 
 ### 2.8 Share kit & reports (`<details>`)
 

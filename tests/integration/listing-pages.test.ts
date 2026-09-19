@@ -134,11 +134,18 @@ describe("listing pages", () => {
     expect((await getListingPage(byOrder!.id, tenant.id))?.leadCapture).toBeFalsy();
   });
 
-  it("publishes a listing page from a delivered-ready order", async () => {
+  it("publishes a listing page from a paid order", async () => {
     const tenant = await getTenant("eric-guan");
     const booked = await createBooking(tenant, bookingFixture(tenant));
     expect(booked.ok).toBe(true);
     if (!booked.ok) return;
+    const db = getDb();
+    await qRun(
+      db
+        .update(schema.orders)
+        .set({ status: "paid" })
+        .where(eq(schema.orders.id, booked.orderId)),
+    );
     const order = await getOrder(booked.orderId, tenant.id);
     const published = await publishListingPage(order!);
     expect(published.ok).toBe(true);
@@ -152,7 +159,7 @@ describe("listing pages", () => {
     expect(await listingPageLinks(published.page)).toEqual([]);
   });
 
-  it("skips Starter, collides slugs, backfills delivered orders, and patches captions", async () => {
+  it("skips unpaid orders, Starter, collides slugs, backfills paid orders, and patches captions", async () => {
     const tenant = await getTenant("eric-guan");
     const db = getDb();
     const row = await getTenantRow(tenant.id);
@@ -161,6 +168,17 @@ describe("listing pages", () => {
     const booked = await createBooking(tenant, bookingFixture(tenant));
     expect(booked.ok).toBe(true);
     if (!booked.ok) return;
+    const unpaid = await getOrder(booked.orderId, tenant.id);
+    const unpaidBlocked = await publishListingPage(unpaid!);
+    expect(unpaidBlocked.ok).toBe(false);
+    if (!unpaidBlocked.ok) expect(unpaidBlocked.skipped).toBe(true);
+
+    await qRun(
+      db
+        .update(schema.orders)
+        .set({ status: "paid" })
+        .where(eq(schema.orders.id, booked.orderId)),
+    );
     const order = await getOrder(booked.orderId, tenant.id);
 
     try {
@@ -188,6 +206,12 @@ describe("listing pages", () => {
     );
     expect(colliding.ok).toBe(true);
     if (colliding.ok) {
+      await qRun(
+        db
+          .update(schema.orders)
+          .set({ status: "paid" })
+          .where(eq(schema.orders.id, colliding.orderId)),
+      );
       const other = await getOrder(colliding.orderId, tenant.id);
       const second = await publishListingPage(other!);
       expect(second.ok).toBe(true);
@@ -201,7 +225,7 @@ describe("listing pages", () => {
     await qRun(
       db
         .update(schema.orders)
-        .set({ status: "delivered" })
+        .set({ status: "paid" })
         .where(eq(schema.orders.id, delivered.orderId)),
     );
     const now = new Date().toISOString();

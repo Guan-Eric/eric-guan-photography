@@ -100,10 +100,19 @@ export async function unpublishListingIfExpired(page: ListingPage) {
 }
 
 /**
- * Ensures a listing_pages row exists for the order. Publishes only when the
+ * Ensures a listing_pages row exists for a paid order. Publishes only when the
  * compliance checklist passes; otherwise leaves/creates a draft.
+ * Listing sites are created after payment — not on gallery publish.
  */
 export async function publishListingPage(order: Order) {
+  if (order.status !== "paid") {
+    return {
+      ok: false as const,
+      skipped: true as const,
+      error: "Listing pages are created after the order is paid.",
+    };
+  }
+
   const row = await getTenantRow(order.tenantId);
   if (!row) return { ok: false as const, error: "Studio not found." };
   const access = entitlements(row.plan);
@@ -234,7 +243,7 @@ export async function backfillListingPages(tenantId: string) {
   );
 
   for (const order of orders) {
-    if (order.status !== "delivered" && order.status !== "paid") continue;
+    if (order.status !== "paid") continue;
     const existing = await getListingPageByOrder(order.id, tenantId);
     if (existing) continue;
     const gallery = await getGalleryByOrderId(order.id, tenantId);

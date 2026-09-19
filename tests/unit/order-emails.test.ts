@@ -65,18 +65,34 @@ describe("order lifecycle emails", () => {
     expect(mail.text).toMatch(/Tue, Apr 1/);
   });
 
-  it("points agents at the listings portal", () => {
+  it("points agents at the listings portal after payment", () => {
+    const paid = orderLifecycleEmails({
+      tenant,
+      order,
+      status: "paid",
+      galleryUrl: "https://test.studiofront.ca/g/abc",
+      listingCopyUrl: "https://test.studiofront.ca/portal/listings/lp_1",
+      listingUrl: "https://test.studiofront.ca/p/12-main",
+    })[0];
+    expect(paid.text).toMatch(/Your listings/);
+    expect(paid.text).toMatch(/https:\/\/test\.studiofront\.ca\/portal/);
+    expect(paid.text).toMatch(/Add listing copy/);
+    expect(paid.text).toMatch(/\/portal\/listings\/lp_1/);
+    expect(paid.text).toMatch(/Listing page/);
+  });
+
+  it("does not attach listing links on gallery-ready email", () => {
     const delivered = orderLifecycleEmails({
       tenant,
       order,
       status: "delivered",
       galleryUrl: "https://test.studiofront.ca/g/abc",
       listingCopyUrl: "https://test.studiofront.ca/portal/listings/lp_1",
+      listingUrl: "https://test.studiofront.ca/p/12-main",
     })[0];
     expect(delivered.text).toMatch(/Your listings/);
-    expect(delivered.text).toMatch(/https:\/\/test\.studiofront\.ca\/portal/);
-    expect(delivered.text).toMatch(/Add listing copy/);
-    expect(delivered.text).toMatch(/\/portal\/listings\/lp_1/);
+    expect(delivered.text).not.toMatch(/Add listing copy/);
+    expect(delivered.text).not.toMatch(/\/p\/12-main/);
   });
 
   it("emails both parties on price change", () => {

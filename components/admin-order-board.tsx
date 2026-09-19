@@ -861,32 +861,26 @@ export function AdminOrderBoard({
             : order,
         ),
       );
-      if (resend) {
-        if (json.emailError) {
-          fail(`Could not resend email: ${json.emailError}`);
-        } else if (json.emailStubbed) {
-          ok("Email logged locally (no RESEND_API_KEY).");
-        } else if (json.emailSent) {
-          ok("Gallery email resent to the agent.");
-        } else {
-          ok("Resend requested.");
-        }
-        return;
-      }
-      if (json.listingSkipped) {
-        ok(
-          json.listingError
-            ? `Gallery published. Listing page skipped: ${json.listingError}`
-            : "Gallery published. Listing pages are not on this plan.",
+      if (json.emailError) {
+        fail(
+          resend
+            ? `Could not resend email: ${json.emailError}`
+            : `Gallery published, but email failed: ${json.emailError}`,
         );
-      } else if (json.emailError) {
-        fail(`Gallery published, but email failed: ${json.emailError}`);
       } else if (json.emailStubbed) {
-        ok("Gallery published. Email was logged locally (no RESEND_API_KEY).");
+        ok(
+          resend
+            ? "Email logged locally (no RESEND_API_KEY)."
+            : "Gallery published. Email was logged locally (no RESEND_API_KEY).",
+        );
       } else if (json.emailSent) {
-        ok("Gallery published and email sent to the agent.");
+        ok(
+          resend
+            ? "Gallery email resent to the agent."
+            : "Gallery published and email sent to the agent.",
+        );
       } else {
-        ok("Gallery published.");
+        ok(resend ? "Resend requested." : "Gallery published.");
       }
     } finally {
       setBusy(null);
@@ -942,6 +936,9 @@ export function AdminOrderBoard({
             ...current[orderId],
             branded: galleryUrl(json.gallery.publicToken, "branded"),
             unbranded: galleryUrl(json.gallery.publicToken, "unbranded"),
+            ...(typeof json.listingUrl === "string" && json.listingUrl
+              ? { listing: json.listingUrl }
+              : {}),
           },
         }));
       }
@@ -951,7 +948,9 @@ export function AdminOrderBoard({
         ),
       );
       ok(
-        "Marked paid. Agent was emailed a new download link — the old preview URL no longer works.",
+        json.listingUrl
+          ? "Marked paid. Agent was emailed a new download link — listing website is ready."
+          : "Marked paid. Agent was emailed a new download link — the old preview URL no longer works.",
       );
     } finally {
       setBusy(null);
@@ -1801,8 +1800,8 @@ export function AdminOrderBoard({
                           <div className="delivery-step-title">Unlock downloads</div>
                           <p className="muted">
                             {paid
-                              ? "Gallery is unlocked. The agent was emailed a new download link (the old preview URL no longer works)."
-                              : "Use this if they paid e-transfer or outside the app. Set the agreed price first. This emails a new download link and retires the preview URL."}
+                              ? "Gallery is unlocked. The agent was emailed a new download link (the old preview URL no longer works). The listing website is created at this step when your plan includes property pages."
+                              : "Use this if they paid e-transfer or outside the app. Set the agreed price first. This emails a new download link, retires the preview URL, and creates the listing website."}
                           </p>
                           <div className="delivery-step-actions">
                             <button

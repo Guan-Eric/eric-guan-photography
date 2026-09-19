@@ -474,19 +474,13 @@ export function orderStatusEmail(options: {
     const secondaryLinks: Array<{ label: string; url: string }> = [
       { label: "Your listings", url: listingsUrl(tenant) },
     ];
-    if (options.listingUrl) {
-      secondaryLinks.push({ label: "Listing page", url: options.listingUrl });
-    }
-    if (options.listingCopyUrl) {
-      secondaryLinks.push({ label: "Add listing copy", url: options.listingCopyUrl });
-    }
 
     return composeEmail(order.agentEmail, `Your photos are ready — ${order.propertyAddress}`, {
       preview: `Your gallery for ${order.propertyAddress} is ready to review.`,
       greeting: `Hi ${name},`,
       intro: [
         `Your gallery for ${order.propertyAddress} is ready. You can preview the images now; unlock full-resolution and MLS downloads from the gallery page.`,
-        "Add a headline and description for the listing page when you’re ready — that’s your copy, not the photographer’s.",
+        "After payment, a listing website for this property will be available in your listings.",
       ],
       cta: options.galleryUrl
         ? { label: "Open gallery", url: options.galleryUrl }
@@ -498,17 +492,30 @@ export function orderStatusEmail(options: {
   }
 
   if (status === "paid") {
+    const secondaryLinks: Array<{ label: string; url: string }> = [
+      { label: "Your listings", url: listingsUrl(tenant) },
+    ];
+    if (options.listingUrl) {
+      secondaryLinks.push({ label: "Listing page", url: options.listingUrl });
+    }
+    if (options.listingCopyUrl) {
+      secondaryLinks.push({ label: "Add listing copy", url: options.listingCopyUrl });
+    }
+
     return composeEmail(order.agentEmail, `Downloads ready — ${order.propertyAddress}`, {
       preview: `Payment received. Your download link for ${order.propertyAddress} is ready.`,
       greeting: `Hi ${name},`,
       intro: [
         "Thank you — payment is confirmed. Your full-resolution and MLS downloads are ready on a new gallery link below.",
         "Your previous preview link no longer works. Use only this download link going forward.",
+        options.listingUrl
+          ? "Your listing website is ready — add a headline and description when you’re ready (that’s your copy, not the photographer’s)."
+          : "Add listing copy from Your listings when a property page is available on this studio’s plan.",
       ],
       cta: options.galleryUrl
         ? { label: "Download photos", url: options.galleryUrl }
         : undefined,
-      secondaryLinks: [{ label: "Your listings", url: listingsUrl(tenant) }],
+      secondaryLinks,
       outro: [
         "You’ll be asked to accept the Limited Marketing License before downloading.",
         "If this listing went well, a short review or referral would mean a great deal.",

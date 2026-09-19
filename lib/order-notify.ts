@@ -73,7 +73,7 @@ export async function notifyGalleryPaid(options: {
   galleryToken?: string;
 }) {
   const order = await getOrder(options.orderId, options.tenantId);
-  if (!order) return [];
+  if (!order) return { results: [] as Awaited<ReturnType<typeof sendAll>>, listingUrl: null as string | null };
   const tenant = await getTenant(options.tenantId);
   const gallery =
     options.galleryToken != null
@@ -86,12 +86,30 @@ export async function notifyGalleryPaid(options: {
 
   await ensureReviewRequest(order.id, options.tenantId);
 
-  return notifyOrderStatusChange({
+  const paidOrder = { ...order, status: "paid" as const };
+  const { listingCopyUrl, listingPagePublicUrl, publishListingPage } = await import(
+    "@/lib/listing-pages"
+  );
+  const listing = await publishListingPage(paidOrder);
+  const listingUrl =
+    listing.ok && listing.page
+      ? listingPagePublicUrl(listing.page, tenant.siteUrl)
+      : null;
+  const copyUrl =
+    listing.ok && listing.page
+      ? listingCopyUrl(listing.page, tenant.siteUrl)
+      : null;
+
+  const results = await notifyOrderStatusChange({
     tenantId: options.tenantId,
-    order: { ...order, status: "paid" },
+    order: paidOrder,
     status: "paid",
     galleryUrl,
+    listingUrl: listingUrl ?? undefined,
+    listingCopyUrl: copyUrl ?? undefined,
   });
+
+  return { results, listingUrl };
 }
 
 export async function notifyOrderPriceChange(options: {

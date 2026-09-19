@@ -125,6 +125,7 @@ test.describe("Marketing product screenshots", () => {
     });
 
     let listingPath: string | null = null;
+    // Listing pages are created on payment / unlock, not on publish.
     if (deliverJson.listingUrl) {
       try {
         listingPath = new URL(deliverJson.listingUrl).pathname;

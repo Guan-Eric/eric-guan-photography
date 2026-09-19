@@ -3481,7 +3481,8 @@ span.status-select--locked {
 }
 
 .delivery-step.is-current,
-.delivery-step.is-done {
+.delivery-step.is-done,
+.delivery-step.is-available {
   opacity: 1;
 }
 

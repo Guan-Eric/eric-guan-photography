@@ -806,7 +806,17 @@ export function AdminOrderBoard({
     }
   }
 
-  async function publish(orderId: string) {
+  async function publish(orderId: string, resend = false) {
+    if (resend) {
+      const order = orders.find((row) => row.id === orderId);
+      const agent = order?.agentName?.trim() || "the agent";
+      const address = order?.propertyAddress?.trim() || "this shoot";
+      const confirmed = window.confirm(
+        `Resend the gallery-ready email to ${agent} for ${address}?\n\nThey already received a link when you published. Only resend if they lost it.`,
+      );
+      if (!confirmed) return;
+    }
+
     setBusy({ orderId, action: "publish" });
     setError(null);
     setNotice(null);
@@ -818,7 +828,7 @@ export function AdminOrderBoard({
       });
       const json = await response.json();
       if (!json.ok) {
-        fail(json.error ?? "Could not publish.");
+        fail(json.error ?? (resend ? "Could not resend email." : "Could not publish."));
         return;
       }
       setGalleries((current) =>
@@ -843,9 +853,26 @@ export function AdminOrderBoard({
       }));
       setOrders((current) =>
         current.map((order) =>
-          order.id === orderId ? { ...order, status: "delivered" } : order,
+          order.id === orderId
+            ? {
+                ...order,
+                status: order.status === "paid" ? "paid" : "delivered",
+              }
+            : order,
         ),
       );
+      if (resend) {
+        if (json.emailError) {
+          fail(`Could not resend email: ${json.emailError}`);
+        } else if (json.emailStubbed) {
+          ok("Email logged locally (no RESEND_API_KEY).");
+        } else if (json.emailSent) {
+          ok("Gallery email resent to the agent.");
+        } else {
+          ok("Resend requested.");
+        }
+        return;
+      }
       if (json.listingSkipped) {
         ok(
           json.listingError
@@ -867,6 +894,22 @@ export function AdminOrderBoard({
   }
 
   async function forceUnlock(orderId: string) {
+    const order = orders.find((row) => row.id === orderId);
+    const address = order?.propertyAddress?.trim() || "this shoot";
+    const confirmed = window.confirm(
+      [
+        `Mark paid and unlock downloads for ${address}?`,
+        "",
+        "This will:",
+        "• Mark the order as paid",
+        "• Email the agent a new download link",
+        "• Retire the current preview gallery URL (it will stop working)",
+        "",
+        "Only continue if they already paid outside the app (e-transfer, invoice, etc.).",
+      ].join("\n"),
+    );
+    if (!confirmed) return;
+
     setBusy({ orderId, action: "unlock" });
     setError(null);
     setNotice(null);
@@ -903,8 +946,8 @@ export function AdminOrderBoard({
         }));
       }
       setOrders((current) =>
-        current.map((order) =>
-          order.id === orderId ? { ...order, status: "paid" } : order,
+        current.map((row) =>
+          row.id === orderId ? { ...row, status: "paid" } : row,
         ),
       );
       ok(
@@ -1049,6 +1092,7 @@ export function AdminOrderBoard({
               const published =
                 order.status === "delivered" || order.status === "paid";
               const paid = order.status === "paid";
+              const canUnlock = Boolean(gallery) && !paid;
               const expanded = isExpanded(order.id);
               const preferred = parsePreferredSlotsJson(order.preferredSlotsJson);
               const selectedStart =
@@ -1639,16 +1683,18 @@ export function AdminOrderBoard({
                             ) : null}
                             <button
                               type="button"
-                              className={`btn btn-solid${pending("publish") ? " is-busy" : ""}`}
+                              className={`btn ${published ? "btn-outline" : "btn-solid"}${pending("publish") ? " is-busy" : ""}`}
                               disabled={
                                 orderLocked || !gallery || gallery.mediaCount === 0
                               }
-                              onClick={() => publish(order.id)}
+                              onClick={() => void publish(order.id, published)}
                             >
                               {pending("publish")
-                                ? "Publishing…"
+                                ? published
+                                  ? "Sending…"
+                                  : "Publishing…"
                                 : published
-                                  ? "Publish again"
+                                  ? "Resend email"
                                   : "Publish & email agent"}
                             </button>
                           </div>
@@ -1748,7 +1794,7 @@ export function AdminOrderBoard({
                       </li>
 
                       <li
-                        className={`delivery-step${phase === 4 ? " is-current" : ""}${paid ? " is-done" : ""}`}
+                        className={`delivery-step${phase === 4 ? " is-current" : ""}${paid ? " is-done" : ""}${canUnlock && phase !== 4 ? " is-available" : ""}`}
                       >
                         <span className="delivery-step-num">4</span>
                         <div className="delivery-step-body">
@@ -1762,8 +1808,8 @@ export function AdminOrderBoard({
                             <button
                               type="button"
                               className={`btn btn-outline${pending("unlock") ? " is-busy" : ""}`}
-                              disabled={orderLocked || !gallery || paid}
-                              onClick={() => forceUnlock(order.id)}
+                              disabled={orderLocked || !canUnlock}
+                              onClick={() => void forceUnlock(order.id)}
                             >
                               {pending("unlock")
                                 ? "Unlocking…"

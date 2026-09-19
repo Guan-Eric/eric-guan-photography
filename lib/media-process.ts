@@ -7,6 +7,17 @@ const MLS_LONG_EDGE = 2048;
 const WEB_LONG_EDGE = 1600;
 const PROOF_LONG_EDGE = 1200;
 
+/**
+ * CF Images `.text()` requires a fetchable font URL (ttf/otf/woff).
+ * Override with WATERMARK_FONT_URL if needed.
+ */
+function watermarkFontUrl() {
+  return (
+    process.env.WATERMARK_FONT_URL?.trim() ||
+    "https://cdn.jsdelivr.net/fontsource/fonts/inter@5.2.5/latin-700-normal.ttf"
+  );
+}
+
 export type ProcessedMedia = {
   assetId: string;
   originalName: string;
@@ -146,15 +157,19 @@ async function cfWatermarkProof(
     throw new Error("CF Images text watermark API unavailable.");
   }
 
+  const textOpts = {
+    color: "#FFFFFF",
+    size: fontSize,
+    font: { url: watermarkFontUrl() },
+  };
+
   // Prefer diagonal tiled text; fall back to a centered mark. Never return a
   // clean resize as a "proof" — that shipped unmarked galleries in production.
   try {
     const result = await images
       .input(toStream(resized.data))
       .draw(
-        images
-          .text(label, { color: "#FFFFFF", size: fontSize })
-          .transform({ rotate: -28 }),
+        images.text(label, textOpts).transform({ rotate: -28 }),
         { opacity: 0.42, repeat: true },
       )
       .output({ format: "image/jpeg", quality: 68 });
@@ -170,7 +185,7 @@ async function cfWatermarkProof(
   try {
     const result = await images
       .input(toStream(resized.data))
-      .draw(images.text(label, { color: "#FFFFFF", size: fontSize }), {
+      .draw(images.text(label, textOpts), {
         opacity: 0.5,
       })
       .output({ format: "image/jpeg", quality: 68 });

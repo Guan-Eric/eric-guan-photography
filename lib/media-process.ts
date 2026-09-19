@@ -146,20 +146,149 @@ async function cfWatermarkProof(
     throw new Error("CF Images text watermark API unavailable.");
   }
 
-  // Draw uses raster overlays or .text() — SVG bytes are not supported and used
-  // to fail silently, which shipped unwatermarked proofs in production.
-  const result = await images
-    .input(toStream(resized.data))
-    .draw(
-      images.text(label, {
-        color: "#FFFFFF",
-        size: fontSize,
-      }).transform({ rotate: -28 }),
-      { opacity: 0.42, repeat: true },
-    )
-    .output({ format: "image/jpeg", quality: 68 });
-  const data = Buffer.from(await result.response().arrayBuffer());
-  return { data, width, height };
+  // Prefer diagonal tiled text; fall back to a centered mark. Never return a
+  // clean resize as a "proof" — that shipped unmarked galleries in production.
+  try {
+    const result = await images
+      .input(toStream(resized.data))
+      .draw(
+        images
+          .text(label, { color: "#FFFFFF", size: fontSize })
+          .transform({ rotate: -28 }),
+        { opacity: 0.42, repeat: true },
+      )
+      .output({ format: "image/jpeg", quality: 68 });
+    const data = Buffer.from(await result.response().arrayBuffer());
+    return { data, width, height };
+  } catch (error) {
+    console.warn(
+      "[media] watermark tiled/rotate failed, trying centered text:",
+      error,
+    );
+  }
+
+  try {
+    const result = await images
+      .input(toStream(resized.data))
+      .draw(images.text(label, { color: "#FFFFFF", size: fontSize }), {
+        opacity: 0.5,
+      })
+      .output({ format: "image/jpeg", quality: 68 });
+    const data = Buffer.from(await result.response().arrayBuffer());
+    return { data, width, height };
+  } catch (error) {
+    console.warn("[media] watermark failed:", error);
+    throw error instanceof Error
+      ? error
+      : new Error("CF Images watermark failed.");
+  }
+}
+
+async function sharpWatermarkProof(input: Buffer, studioName: string) {
+  const sharp = (await import("sharp")).default;
+
+  async function resizeLongEdge(buf: Buffer, longEdge: number, quality = 82) {
+    const image = sharp(buf, { failOn: "none" }).rotate();
+    const meta = await image.metadata();
+    const width = meta.width ?? longEdge;
+    const height = meta.height ?? longEdge;
+    const landscape = width >= height;
+
+    return image
+      .resize({
+        width: landscape ? longEdge : undefined,
+        height: landscape ? undefined : longEdge,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({ quality })
+      .toBuffer({ resolveWithObject: true });
+  }
+
+  const resized = await resizeLongEdge(input, PROOF_LONG_EDGE, 70);
+  const { data, info } = resized;
+  const text = studioName.toUpperCase();
+  const fontSize = Math.max(
+    28,
+    Math.round(Math.min(info.width, info.height) * 0.045),
+  );
+
+  const svg = `
+    <svg width="${info.width}" height="${info.height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <style>
+          .w {
+            fill: rgba(255,255,255,0.42);
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: ${fontSize}px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+          }
+        </style>
+      </defs>
+      <g transform="rotate(-28 ${info.width / 2} ${info.height / 2})">
+        <text x="50%" y="46%" text-anchor="middle" class="w">${escapeXml(text)}</text>
+        <text x="50%" y="56%" text-anchor="middle" class="w">PROOF — NOT FOR MLS</text>
+      </g>
+    </svg>
+  `;
+
+  const proof = await sharp(data)
+    .composite([{ input: Buffer.from(svg), gravity: "center" }])
+    .jpeg({ quality: 68 })
+    .toBuffer({ resolveWithObject: true });
+
+  return {
+    data: proof.data,
+    width: proof.info.width,
+    height: proof.info.height,
+  };
+}
+
+/** Build a watermarked proof JPEG from an original (CF Images or sharp). */
+export async function buildProofBuffer(
+  buffer: Buffer,
+  studioName: string,
+): Promise<{ data: Buffer; width: number; height: number }> {
+  const preferSharp = process.env.MEDIA_PROCESS_WITH_SHARP === "1";
+  const images = preferSharp ? null : await getImagesBinding();
+  if (images) {
+    try {
+      const info = await images.info(toStream(buffer));
+      return await cfWatermarkProof(images, buffer, studioName, info);
+    } catch (error) {
+      if (await sharpAvailable()) {
+        console.warn(
+          "[media] CF watermark failed, falling back to sharp:",
+          error,
+        );
+        return sharpWatermarkProof(buffer, studioName);
+      }
+      throw error;
+    }
+  }
+  if (await sharpAvailable()) {
+    return sharpWatermarkProof(buffer, studioName);
+  }
+  throw new Error(
+    "Image processing is unavailable. On Cloudflare, enable the Images binding; locally, install sharp.",
+  );
+}
+
+/**
+ * Rewrite pathProof from pathOriginal for an existing asset.
+ * Does not change web/mls/original.
+ */
+export async function regenerateProofForAsset(options: {
+  pathOriginal: string;
+  pathProof: string;
+  studioName: string;
+}): Promise<{ bytes: number }> {
+  const { readMediaFile } = await import("@/lib/media-storage");
+  const original = await readMediaFile(options.pathOriginal);
+  const proof = await buildProofBuffer(original, options.studioName);
+  await writeMediaFile(options.pathProof, proof.data);
+  return { bytes: proof.data.byteLength };
 }
 
 async function processUploadWithCfImages(
@@ -241,41 +370,6 @@ async function processUploadWithSharp(options: {
       .toBuffer({ resolveWithObject: true });
   }
 
-  async function watermarkProof(input: Buffer, studioName: string) {
-    const resized = await resizeLongEdge(input, PROOF_LONG_EDGE, 70);
-    const { data, info } = resized;
-    const text = studioName.toUpperCase();
-    const fontSize = Math.max(
-      28,
-      Math.round(Math.min(info.width, info.height) * 0.045),
-    );
-
-    const svg = `
-    <svg width="${info.width}" height="${info.height}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <style>
-          .w {
-            fill: rgba(255,255,255,0.42);
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: ${fontSize}px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-          }
-        </style>
-      </defs>
-      <g transform="rotate(-28 ${info.width / 2} ${info.height / 2})">
-        <text x="50%" y="46%" text-anchor="middle" class="w">${escapeXml(text)}</text>
-        <text x="50%" y="56%" text-anchor="middle" class="w">PROOF — NOT FOR MLS</text>
-      </g>
-    </svg>
-  `;
-
-    return sharp(data)
-      .composite([{ input: Buffer.from(svg), gravity: "center" }])
-      .jpeg({ quality: 68 })
-      .toBuffer({ resolveWithObject: true });
-  }
-
   const originalMeta = await sharp(options.buffer, { failOn: "none" })
     .rotate()
     .metadata();
@@ -287,7 +381,7 @@ async function processUploadWithSharp(options: {
 
   const web = await resizeLongEdge(options.buffer, WEB_LONG_EDGE, 82);
   const mls = await resizeLongEdge(options.buffer, MLS_LONG_EDGE, 85);
-  const proof = await watermarkProof(options.buffer, options.studioName);
+  const proof = await sharpWatermarkProof(options.buffer, options.studioName);
 
   const pathOriginal = `${base}-original.jpg`;
   const pathWeb = `${base}-web.jpg`;

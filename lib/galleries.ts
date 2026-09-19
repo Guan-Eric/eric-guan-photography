@@ -2,7 +2,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import { getDb, qAll, qGet, qRun, schema } from "@/lib/db";
 import type { Gallery, GalleryState, MediaAsset, Order, TrustTier } from "@/lib/db/schema";
-import { processUpload } from "@/lib/media-process";
+import { processUpload, regenerateProofForAsset } from "@/lib/media-process";
 import { ensureGalleryDir } from "@/lib/media-storage";
 import { platformPublicUrl } from "@/lib/platform";
 import type { Tenant } from "@/lib/tenant-schema";
@@ -251,6 +251,55 @@ export async function addUploadsToGallery(options: {
   }
 
   return { gallery, created };
+}
+
+export async function regenerateGalleryProofs(
+  tenantId: string,
+  galleryIdValue: string,
+  studioName: string,
+) {
+  const gallery = await getGalleryById(galleryIdValue, tenantId);
+  if (!gallery) {
+    return { ok: false as const, error: "Gallery not found." };
+  }
+  const media = await listMedia(gallery.id);
+  if (media.length === 0) {
+    return { ok: false as const, error: "No photos to regenerate." };
+  }
+
+  let regenerated = 0;
+  const errors: string[] = [];
+  for (const asset of media) {
+    try {
+      await regenerateProofForAsset({
+        pathOriginal: asset.pathOriginal,
+        pathProof: asset.pathProof,
+        studioName,
+      });
+      regenerated += 1;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown watermark error.";
+      errors.push(`${asset.originalName}: ${message}`);
+      console.warn("[media] regenerate proof failed:", asset.id, error);
+    }
+  }
+
+  if (regenerated === 0) {
+    return {
+      ok: false as const,
+      error: errors[0] ?? "Could not regenerate watermarks.",
+      regenerated: 0,
+      failed: errors.length,
+    };
+  }
+
+  return {
+    ok: true as const,
+    regenerated,
+    failed: errors.length,
+    errors: errors.slice(0, 5),
+  };
 }
 
 export async function setGalleryBrandMode(

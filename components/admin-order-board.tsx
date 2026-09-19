@@ -219,7 +219,8 @@ export function AdminOrderBoard({
       | "saveAddress"
       | "upload"
       | "publish"
-      | "unlock";
+      | "unlock"
+      | "regenerateProofs";
   } | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -769,6 +770,39 @@ export function AdminOrderBoard({
       if (!orderedIds.includes(photo.id)) next.push(photo);
     }
     void savePhotoOrder(orderId, next);
+  }
+
+  async function regenerateProofs(orderId: string) {
+    setBusy({ orderId, action: "regenerateProofs" });
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(
+        `/api/admin/orders/${orderId}/photos/regenerate-proofs`,
+        { method: "POST" },
+      );
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        regenerated?: number;
+        failed?: number;
+      } | null;
+      if (!response.ok || !json?.ok) {
+        fail(json?.error ?? "Could not regenerate watermarks.");
+        return;
+      }
+      const count = json.regenerated ?? 0;
+      const failed = json.failed ?? 0;
+      ok(
+        failed > 0
+          ? `Regenerated watermarks on ${count} photo${count === 1 ? "" : "s"} (${failed} failed). Open Preview gallery to check.`
+          : `Regenerated watermarks on ${count} photo${count === 1 ? "" : "s"}. Open Preview gallery to check.`,
+      );
+    } catch {
+      fail("Network error regenerating watermarks.");
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function publish(orderId: string) {
@@ -1483,6 +1517,22 @@ export function AdminOrderBoard({
                                 >
                                   Preview gallery
                                 </a>
+                              ) : null}
+                              {gallery && gallery.mediaCount > 0 ? (
+                                <button
+                                  type="button"
+                                  className={`btn btn-outline${pending("regenerateProofs") ? " is-busy" : ""}`}
+                                  disabled={
+                                    orderLocked ||
+                                    pending("upload") ||
+                                    pending("regenerateProofs")
+                                  }
+                                  onClick={() => void regenerateProofs(order.id)}
+                                >
+                                  {pending("regenerateProofs")
+                                    ? "Regenerating…"
+                                    : "Regenerate watermarks"}
+                                </button>
                               ) : null}
                               {gallery && gallery.mediaCount > 0 ? (
                                 <>

@@ -16,6 +16,7 @@ import {
   type PreferredSlot,
 } from "@/lib/preferred-slots";
 import { AdminGettingStarted } from "@/components/admin-getting-started";
+import { DeliveryPhotoBrowser } from "@/components/delivery-photo-browser";
 import { OrderMediaLinks } from "@/components/order-media-links";
 import { toastError, toastSuccess } from "@/lib/toast";
 
@@ -118,14 +119,6 @@ function formatSlot(iso: string) {
 
 function slotOrdinal(index: number) {
   return index === 0 ? "1st" : index === 1 ? "2nd" : "3rd";
-}
-
-function moveItem<T>(list: T[], from: number, to: number) {
-  if (to < 0 || to >= list.length || from === to) return list;
-  const next = [...list];
-  const [item] = next.splice(from, 1);
-  next.splice(to, 0, item!);
-  return next;
 }
 
 function factLabel(value: string | null | undefined) {
@@ -233,7 +226,6 @@ export function AdminOrderBoard({
   const [links, setLinks] = useState<
     Record<string, { branded: string; unbranded: string; listing?: string }>
   >({});
-  const [fileNames, setFileNames] = useState<Record<string, string>>({});
   const [pendingShots, setPendingShots] = useState<Record<string, PendingShot[]>>(
     {},
   );
@@ -262,7 +254,6 @@ export function AdminOrderBoard({
   const [view, setView] = useState<BoardView>("grid");
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const uploadAbortRef = useRef<AbortController | null>(null);
-  const dragPhotoRef = useRef<{ orderId: string; id: string } | null>(null);
 
   function fail(message: string) {
     setError(message);
@@ -624,7 +615,6 @@ export function AdminOrderBoard({
 
       const input = fileRefs.current[orderId];
       if (input) input.value = "";
-      setFileNames((current) => ({ ...current, [orderId]: "" }));
       setUploadProgress((current) => ({ ...current, [orderId]: null }));
       ok(
         `Uploaded ${uploadedCount} photo${uploadedCount === 1 ? "" : "s"}.`,
@@ -641,7 +631,7 @@ export function AdminOrderBoard({
     }
   }
 
-  function queuePhotos(orderId: string, list: FileList | null) {
+  function queuePhotos(orderId: string, list: FileList | File[] | null) {
     const files = list ? Array.from(list) : [];
     if (files.length === 0) return;
     const added = files.map((file) => ({
@@ -649,71 +639,100 @@ export function AdminOrderBoard({
       file,
       preview: URL.createObjectURL(file),
     }));
+    setPendingShots((current) => ({
+      ...current,
+      [orderId]: [...(current[orderId] ?? []), ...added],
+    }));
+  }
+
+  function removeQueuedPhotos(orderId: string, keys: string[]) {
+    if (keys.length === 0) return;
+    const keySet = new Set(keys);
     setPendingShots((current) => {
-      const next = [...(current[orderId] ?? []), ...added];
-      return { ...current, [orderId]: next };
-    });
-    setFileNames((names) => {
-      const count = (pendingShots[orderId]?.length ?? 0) + added.length;
+      const existing = current[orderId] ?? [];
+      for (const shot of existing) {
+        if (keySet.has(shot.key)) URL.revokeObjectURL(shot.preview);
+      }
       return {
-        ...names,
-        [orderId]:
-          count === 1 ? added[0]!.file.name : `${count} files selected`,
+        ...current,
+        [orderId]: existing.filter((item) => !keySet.has(item.key)),
       };
     });
   }
 
-  function removeQueuedPhoto(orderId: string, key: string) {
+  function clearQueuedPhotos(orderId: string) {
     setPendingShots((current) => {
       const existing = current[orderId] ?? [];
-      const target = existing.find((item) => item.key === key);
-      if (target) URL.revokeObjectURL(target.preview);
-      const next = existing.filter((item) => item.key !== key);
-      setFileNames((names) => ({
-        ...names,
-        [orderId]:
-          next.length === 0
-            ? ""
-            : next.length === 1
-              ? next[0]!.file.name
-              : `${next.length} files selected`,
-      }));
+      for (const shot of existing) URL.revokeObjectURL(shot.preview);
+      return { ...current, [orderId]: [] };
+    });
+  }
+
+  function reorderQueuedPhotos(orderId: string, orderedKeys: string[]) {
+    setPendingShots((current) => {
+      const existing = current[orderId] ?? [];
+      const byKey = new Map(existing.map((shot) => [shot.key, shot]));
+      const next = orderedKeys
+        .map((key) => byKey.get(key))
+        .filter((shot): shot is PendingShot => Boolean(shot));
+      for (const shot of existing) {
+        if (!orderedKeys.includes(shot.key)) next.push(shot);
+      }
       return { ...current, [orderId]: next };
     });
   }
 
-  async function removeUploadedPhoto(orderId: string, assetId: string) {
-    if (!window.confirm("Remove this photo from the gallery?")) return;
-    try {
-      const response = await fetch(
-        `/api/admin/orders/${orderId}/photos/${assetId}`,
-        { method: "DELETE" },
-      );
-      const json = (await response.json().catch(() => null)) as {
-        ok?: boolean;
-        error?: string;
-      } | null;
-      if (!response.ok || !json?.ok) {
-        fail(json?.error ?? "Could not remove photo.");
-        return;
+  async function removeUploadedPhotos(orderId: string, assetIds: string[]) {
+    if (assetIds.length === 0) return;
+    const label =
+      assetIds.length === 1
+        ? "Remove this photo from the gallery?"
+        : `Remove ${assetIds.length} photos from the gallery?`;
+    if (!window.confirm(label)) return;
+
+    let removed = 0;
+    for (const assetId of assetIds) {
+      try {
+        const response = await fetch(
+          `/api/admin/orders/${orderId}/photos/${assetId}`,
+          { method: "DELETE" },
+        );
+        const json = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+        } | null;
+        if (!response.ok || !json?.ok) {
+          fail(json?.error ?? "Could not remove photo.");
+          break;
+        }
+        removed += 1;
+        setOrderPhotos((current) => ({
+          ...current,
+          [orderId]: (current[orderId] ?? []).filter(
+            (photo) => photo.id !== assetId,
+          ),
+        }));
+        setGalleries((current) =>
+          current.map((gallery) =>
+            gallery.orderId === orderId
+              ? {
+                  ...gallery,
+                  mediaCount: Math.max(0, gallery.mediaCount - 1),
+                }
+              : gallery,
+          ),
+        );
+      } catch {
+        fail("Network error removing photo.");
+        break;
       }
-      setOrderPhotos((current) => ({
-        ...current,
-        [orderId]: (current[orderId] ?? []).filter((photo) => photo.id !== assetId),
-      }));
-      setGalleries((current) =>
-        current.map((gallery) =>
-          gallery.orderId === orderId
-            ? {
-                ...gallery,
-                mediaCount: Math.max(0, gallery.mediaCount - 1),
-              }
-            : gallery,
-        ),
+    }
+    if (removed > 0) {
+      ok(
+        removed === 1
+          ? "Photo removed."
+          : `${removed} photos removed.`,
       );
-      ok("Photo removed.");
-    } catch {
-      fail("Network error removing photo.");
     }
   }
 
@@ -740,34 +759,16 @@ export function AdminOrderBoard({
     }
   }
 
-  function moveUploadedPhoto(orderId: string, assetId: string, direction: -1 | 1) {
+  function reorderUploadedPhotos(orderId: string, orderedIds: string[]) {
     const list = orderPhotos[orderId] ?? [];
-    const from = list.findIndex((photo) => photo.id === assetId);
-    if (from < 0) return;
-    const next = moveItem(list, from, from + direction);
-    if (next === list) return;
+    const byId = new Map(list.map((photo) => [photo.id, photo]));
+    const next = orderedIds
+      .map((id) => byId.get(id))
+      .filter((photo): photo is OrderPhoto => Boolean(photo));
+    for (const photo of list) {
+      if (!orderedIds.includes(photo.id)) next.push(photo);
+    }
     void savePhotoOrder(orderId, next);
-  }
-
-  function dropUploadedPhoto(orderId: string, targetId: string) {
-    const dragged = dragPhotoRef.current;
-    if (!dragged || dragged.orderId !== orderId || dragged.id === targetId) return;
-    const list = orderPhotos[orderId] ?? [];
-    const from = list.findIndex((photo) => photo.id === dragged.id);
-    const to = list.findIndex((photo) => photo.id === targetId);
-    if (from < 0 || to < 0) return;
-    const next = moveItem(list, from, to);
-    dragPhotoRef.current = null;
-    void savePhotoOrder(orderId, next);
-  }
-
-  function moveQueuedPhoto(orderId: string, key: string, direction: -1 | 1) {
-    setPendingShots((current) => {
-      const list = current[orderId] ?? [];
-      const from = list.findIndex((shot) => shot.key === key);
-      if (from < 0) return current;
-      return { ...current, [orderId]: moveItem(list, from, from + direction) };
-    });
   }
 
   async function publish(orderId: string) {
@@ -1358,7 +1359,7 @@ export function AdminOrderBoard({
                           <div className="delivery-step-title">Upload photos</div>
                           <p className="muted">
                             {gallery?.mediaCount
-                              ? `${gallery.mediaCount} photo${gallery.mediaCount === 1 ? "" : "s"} on this shoot. Drag to reorder the gallery, or add more files below.`
+                              ? `${gallery.mediaCount} photo${gallery.mediaCount === 1 ? "" : "s"} on this shoot. Select, drag to reorder, or add more below.`
                               : "Add edited JPEGs from this shoot."}
                           </p>
                           <div className="delivery-photo-panel is-gallery">
@@ -1368,86 +1369,22 @@ export function AdminOrderBoard({
                                 {orderPhotos[order.id]?.length ?? 0} uploaded
                               </span>
                             </div>
-                            {(orderPhotos[order.id] ?? []).length > 0 ? (
-                              <ul className="delivery-photo-grid">
-                                {(orderPhotos[order.id] ?? []).map((photo, index) => (
-                                  <li
-                                    key={photo.id}
-                                    className="delivery-photo-card"
-                                    draggable={!orderLocked && !pending("upload")}
-                                    onDragStart={() => {
-                                      dragPhotoRef.current = {
-                                        orderId: order.id,
-                                        id: photo.id,
-                                      };
-                                    }}
-                                    onDragOver={(event) => event.preventDefault()}
-                                    onDrop={(event) => {
-                                      event.preventDefault();
-                                      dropUploadedPhoto(order.id, photo.id);
-                                    }}
-                                  >
-                                    <span className="delivery-photo-index">
-                                      {index + 1}
-                                    </span>
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={`/api/admin/orders/${order.id}/photos/${photo.id}`}
-                                      alt={photo.originalName}
-                                    />
-                                    <span className="delivery-photo-name">
-                                      {photo.originalName}
-                                    </span>
-                                    <div className="delivery-photo-tools">
-                                      <button
-                                        type="button"
-                                        className="btn btn-outline"
-                                        disabled={
-                                          index === 0 ||
-                                          orderLocked ||
-                                          pending("upload")
-                                        }
-                                        onClick={() =>
-                                          moveUploadedPhoto(order.id, photo.id, -1)
-                                        }
-                                      >
-                                        ←
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-outline"
-                                        disabled={
-                                          index ===
-                                            (orderPhotos[order.id]?.length ?? 1) - 1 ||
-                                          orderLocked ||
-                                          pending("upload")
-                                        }
-                                        onClick={() =>
-                                          moveUploadedPhoto(order.id, photo.id, 1)
-                                        }
-                                      >
-                                        →
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-outline delivery-photo-remove"
-                                        disabled={orderLocked || pending("upload")}
-                                        onClick={() =>
-                                          void removeUploadedPhoto(order.id, photo.id)
-                                        }
-                                      >
-                                        Remove
-                                      </button>
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="delivery-photo-empty muted">
-                                Nothing in the gallery yet. Choose files below, then
-                                upload.
-                              </p>
-                            )}
+                            <DeliveryPhotoBrowser
+                              showIndex
+                              disabled={orderLocked || Boolean(pending("upload"))}
+                              emptyMessage="Nothing in the gallery yet. Choose files below, then upload."
+                              items={(orderPhotos[order.id] ?? []).map((photo) => ({
+                                id: photo.id,
+                                name: photo.originalName,
+                                src: `/api/admin/orders/${order.id}/photos/${photo.id}`,
+                              }))}
+                              onReorder={(ids) =>
+                                reorderUploadedPhotos(order.id, ids)
+                              }
+                              onRemove={(ids) =>
+                                void removeUploadedPhotos(order.id, ids)
+                              }
+                            />
                           </div>
                           <div className="delivery-photo-panel is-queue">
                             <div className="delivery-photo-panel-head">
@@ -1456,63 +1393,28 @@ export function AdminOrderBoard({
                                 {pendingShots[order.id]?.length ?? 0} selected
                               </span>
                             </div>
-                            {(pendingShots[order.id] ?? []).length > 0 ? (
-                              <ul className="delivery-photo-grid">
-                                {(pendingShots[order.id] ?? []).map((shot, index) => (
-                                  <li
-                                    key={shot.key}
-                                    className="delivery-photo-card is-queued"
-                                  >
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={shot.preview} alt={shot.file.name} />
-                                    <span className="delivery-photo-name">
-                                      {shot.file.name}
-                                    </span>
-                                    <div className="delivery-photo-tools">
-                                      <button
-                                        type="button"
-                                        className="btn btn-outline"
-                                        disabled={index === 0 || pending("upload")}
-                                        onClick={() =>
-                                          moveQueuedPhoto(order.id, shot.key, -1)
-                                        }
-                                      >
-                                        ←
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-outline"
-                                        disabled={
-                                          index ===
-                                            (pendingShots[order.id]?.length ?? 1) - 1 ||
-                                          pending("upload")
-                                        }
-                                        onClick={() =>
-                                          moveQueuedPhoto(order.id, shot.key, 1)
-                                        }
-                                      >
-                                        →
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-outline delivery-photo-remove"
-                                        disabled={pending("upload")}
-                                        onClick={() =>
-                                          removeQueuedPhoto(order.id, shot.key)
-                                        }
-                                      >
-                                        Remove
-                                      </button>
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="delivery-photo-empty muted">
-                                Choose files, then press Upload. They stay here until
-                                they finish processing.
-                              </p>
-                            )}
+                            <DeliveryPhotoBrowser
+                              acceptDrops
+                              queuedStyle
+                              disabled={Boolean(pending("upload"))}
+                              emptyMessage="Choose files, then press Upload. They stay here until they finish processing."
+                              clearAllLabel="Clear queue"
+                              items={(pendingShots[order.id] ?? []).map((shot) => ({
+                                id: shot.key,
+                                name: shot.file.name,
+                                src: shot.preview,
+                              }))}
+                              onReorder={(ids) =>
+                                reorderQueuedPhotos(order.id, ids)
+                              }
+                              onRemove={(ids) =>
+                                removeQueuedPhotos(order.id, ids)
+                              }
+                              onClearAll={() => clearQueuedPhotos(order.id)}
+                              onDropFiles={(files) =>
+                                queuePhotos(order.id, files)
+                              }
+                            />
                             {uploadProgress[order.id] ? (
                               <div
                                 className="delivery-upload-progress"

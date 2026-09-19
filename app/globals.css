@@ -3308,6 +3308,17 @@ span.status-select--locked {
   border-color: color-mix(in srgb, #c9842a 26%, var(--line));
 }
 
+.delivery-photo-browser {
+  outline: none;
+}
+
+.delivery-photo-browser.is-drop-target {
+  border-radius: 8px;
+  outline: 2px dashed color-mix(in srgb, #c9842a 70%, var(--line));
+  outline-offset: 2px;
+  background: color-mix(in srgb, #c9842a 12%, transparent);
+}
+
 .delivery-photo-panel-head {
   display: flex;
   justify-content: space-between;
@@ -3319,6 +3330,36 @@ span.status-select--locked {
 
 .delivery-photo-panel-head span {
   color: var(--ink-soft);
+}
+
+.delivery-photo-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 88%, var(--ink));
+  font-size: 0.82rem;
+}
+
+.delivery-photo-toolbar.is-idle {
+  background: transparent;
+  border-style: dashed;
+}
+
+.delivery-photo-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.delivery-photo-toolbar .btn {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.45rem;
 }
 
 .delivery-photo-empty {
@@ -3341,6 +3382,45 @@ span.status-select--locked {
   font-weight: 700;
   background: var(--accent);
   color: var(--paper);
+}
+
+.delivery-photo-check {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 2;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border-radius: 4px;
+  border: 1.5px solid color-mix(in srgb, var(--paper) 70%, var(--ink));
+  background: color-mix(in srgb, var(--ink) 35%, transparent);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  cursor: pointer;
+}
+
+.delivery-photo-card:hover .delivery-photo-check,
+.delivery-photo-card:focus-within .delivery-photo-check,
+.delivery-photo-card.is-selected .delivery-photo-check {
+  opacity: 1;
+}
+
+.delivery-photo-check.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.delivery-photo-check.is-on::after {
+  content: "";
+  position: absolute;
+  left: 0.28rem;
+  top: 0.08rem;
+  width: 0.28rem;
+  height: 0.55rem;
+  border: solid var(--paper);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .delivery-photo-tools {
@@ -3474,6 +3554,8 @@ span.status-select--locked {
   display: grid;
   gap: 0.35rem;
   min-width: 0;
+  cursor: pointer;
+  user-select: none;
 }
 
 .delivery-photo-card img {
@@ -3483,6 +3565,17 @@ span.status-select--locked {
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-deep) 80%, transparent);
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.delivery-photo-card.is-selected img {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.delivery-photo-card.is-drop-before img {
+  border-color: color-mix(in srgb, #c9842a 80%, var(--line));
+  box-shadow: -3px 0 0 0 color-mix(in srgb, #c9842a 85%, transparent);
 }
 
 .delivery-photo-card.is-queued img {

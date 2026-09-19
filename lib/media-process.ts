@@ -24,12 +24,17 @@ type ImageInfo = { width: number; height: number; format?: string };
 type ImagesBinding = {
   info: (stream: ReadableStream | ArrayBufferView) => Promise<ImageInfo>;
   input: (stream: ReadableStream | ArrayBufferView) => ImageTransformer;
+  /** Rasterize text into an overlay (Cloudflare Images binding). */
+  text: (
+    content: string,
+    options?: { color?: string; size?: number; font?: { url: string } },
+  ) => ImageTransformer;
 };
 
 type ImageTransformer = {
   transform: (options: Record<string, unknown>) => ImageTransformer;
   draw: (
-    overlay: ImageTransformer,
+    overlay: ImageTransformer | ReadableStream | ArrayBufferView,
     options?: Record<string, unknown>,
   ) => ImageTransformer;
   output: (options: {
@@ -135,29 +140,26 @@ async function cfWatermarkProof(
   const width = Math.max(1, Math.round(info.width * scale));
   const height = Math.max(1, Math.round(info.height * scale));
   const fontSize = Math.max(28, Math.round(Math.min(width, height) * 0.045));
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <g transform="rotate(-28 ${width / 2} ${height / 2})" fill="rgba(255,255,255,0.42)"
-     font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="700"
-     letter-spacing="0.08em" text-anchor="middle">
-    <text x="50%" y="46%">${escapeXml(studioName.toUpperCase())}</text>
-    <text x="50%" y="56%">PROOF — NOT FOR MLS</text>
-  </g>
-</svg>`;
+  const label = `${studioName.toUpperCase()}  ·  PROOF — NOT FOR MLS`;
 
-  try {
-    const result = await images
-      .input(toStream(resized.data))
-      .draw(images.input(toStream(Buffer.from(svg, "utf8"))), {
-        opacity: 1,
-      })
-      .output({ format: "image/jpeg", quality: 68 });
-    const data = Buffer.from(await result.response().arrayBuffer());
-    return { data, width, height };
-  } catch {
-    // Overlay may reject SVG on some accounts — keep a compressed proof frame.
-    return { data: resized.data, width, height };
+  if (typeof images.text !== "function") {
+    throw new Error("CF Images text watermark API unavailable.");
   }
+
+  // Draw uses raster overlays or .text() — SVG bytes are not supported and used
+  // to fail silently, which shipped unwatermarked proofs in production.
+  const result = await images
+    .input(toStream(resized.data))
+    .draw(
+      images.text(label, {
+        color: "#FFFFFF",
+        size: fontSize,
+      }).transform({ rotate: -28 }),
+      { opacity: 0.42, repeat: true },
+    )
+    .output({ format: "image/jpeg", quality: 68 });
+  const data = Buffer.from(await result.response().arrayBuffer());
+  return { data, width, height };
 }
 
 async function processUploadWithCfImages(

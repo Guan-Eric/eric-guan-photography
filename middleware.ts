@@ -72,8 +72,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.next(requestInit);
   }
 
-  if (hostname.endsWith(`.${root}`)) {
-    const slugHint = hostname.slice(0, -(root.length + 1)).split(".")[0] ?? "";
+  // Prefer PLATFORM_ROOT_DOMAIN ({slug}.studiofront.ca). Also accept
+  // {slug}.localhost so local browsers work when .env points at production.
+  const tenantRoot = hostname.endsWith(".localhost")
+    ? "localhost"
+    : hostname.endsWith(`.${root}`)
+      ? root
+      : null;
+  if (tenantRoot) {
+    const slugHint = hostname.slice(0, -(tenantRoot.length + 1)).split(".")[0] ?? "";
     if (slugHint) {
       requestHeaders.set("x-tenant-slug", slugHint);
     }

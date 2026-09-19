@@ -58,11 +58,21 @@ const emptyAccess = {
   meetingContact: "",
 };
 
-const AGENT_BOOK_TOUR: CoachStep[] = [
+type BookingStep = "service" | "details";
+
+const AGENT_BOOK_SERVICE_TOUR: CoachStep[] = [
   {
     selector: '[data-tour="book-package"]',
-    title: "Choose package & size",
-    body: "Pick the shoot package and enter square footage so the quote updates.",
+    title: "Choose a service",
+    body: "Browse every package with pricing and what’s included, then continue to booking details.",
+  },
+];
+
+const AGENT_BOOK_DETAILS_TOUR: CoachStep[] = [
+  {
+    selector: '[data-tour="book-size"]',
+    title: "Property size",
+    body: "Enter square footage so the quote updates for the service you picked.",
   },
   {
     selector: '[data-tour="book-property"]',
@@ -197,12 +207,16 @@ export function BookingForm({
     [packages],
   );
 
-  const [packageId, setPackageId] = useState(
+  const deepLinkedPackageId =
     defaultPackageId && bookable.some((pkg) => pkg.id === defaultPackageId)
       ? defaultPackageId
-      : bookable[0]?.id ?? "",
+      : "";
+
+  const [step, setStep] = useState<BookingStep>(
+    deepLinkedPackageId ? "details" : "service",
   );
-  const selectedPackage = bookable.find((pkg) => pkg.id === packageId) ?? bookable[0];
+  const [packageId, setPackageId] = useState(deepLinkedPackageId);
+  const selectedPackage = bookable.find((pkg) => pkg.id === packageId);
   const [squareFootage, setSquareFootage] = useState("1800");
   const [quote, setQuote] = useState<QuoteOk | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -342,6 +356,7 @@ export function BookingForm({
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (step !== "details") return;
     setTriedSubmit(true);
     setFormError(null);
 
@@ -421,6 +436,120 @@ export function BookingForm({
     }
   }
 
+  function continueToDetails() {
+    if (!packageId) {
+      setFieldErrors({ packageId: "Choose a service to continue." });
+      return;
+    }
+    clearFieldError("packageId");
+    setStep("details");
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector('[data-tour="book-selected-package"]')
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  if (step === "service") {
+    return (
+      <form
+        className="booking-form booking-form--service"
+        onSubmit={(event) => {
+          event.preventDefault();
+          continueToDetails();
+        }}
+        noValidate
+      >
+        <div className="booking-form-main">
+          {children}
+          <div className="booking-panel">
+            <section
+              className={`booking-step${fieldErrors.packageId ? " is-invalid" : ""}`}
+              data-tour="book-package"
+              data-field="packageId"
+            >
+              <h2>1. Choose a service</h2>
+              <p className="field-hint booking-service-intro">
+                Pick the package that fits the listing. You&rsquo;ll enter address,
+                times, and contact next.
+              </p>
+              {bookable.length === 0 ? (
+                <p className="form-error" role="alert">
+                  No online packages are available. Email{" "}
+                  <a href={`mailto:${email}`}>{email}</a> to book.
+                </p>
+              ) : (
+                <div
+                  className="booking-service-grid"
+                  role="radiogroup"
+                  aria-label="Services"
+                  aria-invalid={Boolean(fieldErrors.packageId)}
+                  aria-describedby={
+                    fieldErrors.packageId ? "err-packageId" : undefined
+                  }
+                >
+                  {bookable.map((pkg) => {
+                    const selected = packageId === pkg.id;
+                    return (
+                      <button
+                        key={pkg.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        className={`booking-service-card${
+                          selected ? " is-selected" : ""
+                        }${pkg.featured ? " is-featured" : ""}`}
+                        data-package-id={pkg.id}
+                        onClick={() => {
+                          setPackageId(pkg.id);
+                          clearFieldError("packageId");
+                        }}
+                      >
+                        <div className="booking-service-card-top">
+                          <h3>{pkg.name}</h3>
+                          <p className="price">{pkg.price}</p>
+                        </div>
+                        {pkg.summary ? (
+                          <p className="booking-service-summary">{pkg.summary}</p>
+                        ) : null}
+                        {pkg.includes.length ? (
+                          <ul
+                            className="package-includes"
+                            aria-label={`${pkg.name} includes`}
+                          >
+                            {pkg.includes.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {fieldErrors.packageId ? (
+                <span className="field-error" id="err-packageId">
+                  {fieldErrors.packageId}
+                </span>
+              ) : null}
+              <div className="booking-service-actions">
+                <button
+                  type="submit"
+                  className="btn btn-solid"
+                  disabled={!packageId || bookable.length === 0}
+                  data-tour="book-continue"
+                >
+                  Continue
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+        <CoachTour tourId="agent_book_v1" steps={AGENT_BOOK_SERVICE_TOUR} />
+      </form>
+    );
+  }
+
   return (
     <form className="booking-form" onSubmit={onSubmit} noValidate>
       <div className="booking-form-main">
@@ -430,37 +559,38 @@ export function BookingForm({
           required.
         </p>
 
-        <div className="booking-panel">
-      <section className="booking-step" data-tour="book-package">
-        <h2>1. Package &amp; size</h2>
-        <div className="form-grid">
-          <label
-            className={`field${fieldErrors.packageId ? " is-invalid" : ""}`}
-            data-field="packageId"
-          >
-            <FieldLabel required>Package</FieldLabel>
-            <select
-              value={packageId}
-              aria-invalid={Boolean(fieldErrors.packageId)}
-              aria-describedby={fieldErrors.packageId ? "err-packageId" : undefined}
-              onChange={(event) => {
-                setPackageId(event.target.value);
-                clearFieldError("packageId");
-              }}
-              required
-            >
-              {bookable.map((pkg) => (
-                <option key={pkg.id} value={pkg.id}>
-                  {pkg.name} ({pkg.price})
-                </option>
-              ))}
-            </select>
-            {fieldErrors.packageId ? (
-              <span className="field-error" id="err-packageId">
-                {fieldErrors.packageId}
-              </span>
+        <div
+          className="booking-selected-package"
+          data-tour="book-selected-package"
+        >
+          <div className="booking-selected-package-copy">
+            <p className="eyebrow">Selected service</p>
+            <p className="booking-selected-package-name">
+              {selectedPackage?.name ?? "Service"}
+              {selectedPackage?.price ? (
+                <span className="booking-selected-package-price">
+                  {" "}
+                  · {selectedPackage.price}
+                </span>
+              ) : null}
+            </p>
+            {selectedPackage?.summary ? (
+              <p className="field-hint">{selectedPackage.summary}</p>
             ) : null}
-          </label>
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => setStep("service")}
+          >
+            Change
+          </button>
+        </div>
+
+        <div className="booking-panel">
+      <section className="booking-step" data-tour="book-size">
+        <h2>1. Property size</h2>
+        <div className="form-grid">
           <label
             className={`field${fieldErrors.squareFootage ? " is-invalid" : ""}`}
             data-field="squareFootage"
@@ -489,9 +619,6 @@ export function BookingForm({
             ) : null}
           </label>
         </div>
-        {selectedPackage?.summary ? (
-          <p className="field-hint booking-package-summary">{selectedPackage.summary}</p>
-        ) : null}
         {selectedPackage?.includes.length ? (
           <ul className="booking-includes" aria-label={`${selectedPackage.name} includes`}>
             {selectedPackage.includes.map((item) => (
@@ -849,7 +976,7 @@ export function BookingForm({
         submitting={submitting}
         includes={selectedPackage?.includes ?? []}
       />
-      <CoachTour tourId="agent_book_v1" steps={AGENT_BOOK_TOUR} />
+      <CoachTour tourId="agent_book_v1" steps={AGENT_BOOK_DETAILS_TOUR} />
     </form>
   );
 }

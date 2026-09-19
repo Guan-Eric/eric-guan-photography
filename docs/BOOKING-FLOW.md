@@ -44,13 +44,17 @@ Agent pays → Stripe webhook → unlock → emails both
 | Page | [`app/book/page.tsx`](../app/book/page.tsx) → [`BookingForm`](../components/booking-form.tsx) |
 | First visit | Optional coach tour (`sf_tour_agent_book_v1` in `localStorage`) |
 
-### 1.2 Fill the form
+### 1.2 Choose a service, then fill details
+
+**Step 1 — Service cards** — Agent picks a bookable package from a card grid (name, price, summary, includes), then **Continue**. `?package={id}` skips to step 2.
+
+**Step 2 — Booking details** — Selected package shown with **Change** (returns to step 1; other fields kept).
 
 **Required**
 
 | UI field | Validation |
 |---|---|
-| Package | Must be bookable (`isBookablePackage`) |
+| Package | Must be bookable (`isBookablePackage`); chosen on step 1 |
 | Square footage | 400–20,000 |
 | Property address | Trimmed, ≥5 characters |
 | Postal / ZIP | Client length ≥3; server 6–10 |

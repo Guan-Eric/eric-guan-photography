@@ -249,15 +249,17 @@ Eyebrow *Pricing*. H1 *Straightforward packages, no surprises.* Cards for non-up
 
 ### B3. Book — `/book`
 
-Eyebrow *Book*. H1 *Request a shoot with a firm quote.* Optional coach tour for first-time agents.
+Eyebrow *Book*. H1 *Choose a service, then request a shoot.* Optional coach tour for first-time agents.
 
-Legend: required fields marked `*`.
+**Step 1 — Choose a service** — Full package cards (name, price, summary, includes). Select a card, then **Continue**. Deep link `?package={id}` skips to step 2 with that package selected.
 
-Desktop is two columns flush to the viewport gutters: title + form on the left, **sticky Shoot Summary** top-right. On small screens the summary sits under the required-fields legend, then the form card.
+**Step 2 — Booking details** — Compact selected-service bar with **Change** (returns to step 1; other fields kept). Legend: required fields marked `*`.
+
+Desktop is two columns flush to the viewport gutters: title + form on the left, **sticky Shoot Summary** top-right. On small screens the summary sits under the selected-service bar, then the form card. Summary and **Send request** appear only on step 2.
 
 **Shoot Summary** — heading *Shoot Summary*. Rows: package + `{priceLabel}`, `{bandLabel}` + sq ft, On site + minutes. **Total Quote** with large Syne `{priceLabel}`. *No credit card charged today. Gallery payment required upon delivery of previews.* Loading: *Calculating quote…* Retainer fallback emails the studio. **Send request** on this card (desktop); the left column repeats it on small screens.
 
-**1. Package & size** — Package select (`Name (price)`), Square footage (400–20,000, default 1800). Changing either updates `/api/quote` (and the sticky summary). Selected package **includes** list (and summary, if set) under the fields and on Shoot Summary.
+**1. Property size** — Square footage (400–20,000, default 1800). Changing package or sq ft updates `/api/quote` (and the sticky summary). Selected package **includes** under the field and on Shoot Summary.
 
 **2. Property** — Address autocomplete, Postal/ZIP (placeholder `H2X 1Y4`), City. Button **Add access details** / **Hide access details**. Access: Occupied or vacant; Access (Lockbox / Meet / Key / Other); Access notes; Pets (`None / dog crated upstairs`); Parking (`Street / driveway`); Who is meeting (`Name + phone`). If collapsed: *Optional for now — occupancy defaults to vacant with lockbox access.* Out-of-area postal shows the studio’s service-area message.
 

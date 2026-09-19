@@ -226,11 +226,20 @@ export async function openBookingPage(page: Page, slug: string) {
   await page.goto(bookingUrl, { waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/book/, { timeout: 30_000 });
   await expect(
-    page.getByLabel(/square footage/i),
-    `Booking form did not load at ${bookingUrl}`,
+    page.getByRole("heading", { name: /choose a service/i }),
+    `Booking service chooser did not load at ${bookingUrl}`,
   ).toBeVisible({ timeout: 45_000 });
   await clearUiOverlays(page);
   return { origin, bookingUrl };
+}
+
+/** Select the first bookable service card and advance to booking details. */
+export async function chooseServiceAndContinue(page: Page) {
+  const firstCard = page.locator(".booking-service-card").first();
+  await expect(firstCard).toBeVisible({ timeout: 30_000 });
+  await firstCard.click();
+  await page.getByRole("button", { name: /^continue$/i }).click();
+  await expect(page.getByLabel(/square footage/i)).toBeVisible({ timeout: 30_000 });
 }
 
 async function selectFirstPreferredTime(page: Page) {
@@ -246,6 +255,7 @@ export async function submitBookingForm(page: Page) {
 
 export async function createBooking(page: Page, slug: string, stamp: string) {
   const { origin } = await openBookingPage(page, slug);
+  await chooseServiceAndContinue(page);
   await page.getByLabel(/square footage/i).fill("1500");
 
   const addressField = page.getByRole("combobox", { name: /property address/i });

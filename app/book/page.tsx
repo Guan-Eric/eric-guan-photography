@@ -8,7 +8,7 @@ import { requireRequestTenant } from "@/lib/tenants";
 export const metadata: Metadata = {
   title: "Book a listing shoot",
   description:
-    "Get an instant quote from square footage, pick an open slot, and send access notes in one request.",
+    "Choose a photography package, get an instant quote from square footage, pick an open slot, and send access notes in one request.",
   alternates: { canonical: "/book" },
 };
 
@@ -42,10 +42,11 @@ export default async function BookPage({
             >
               <header className="booking-page-intro">
                 <p className="eyebrow">Book</p>
-                <h1>Request a shoot with a firm quote.</h1>
+                <h1>Choose a service, then request a shoot.</h1>
                 <p className="section-copy">
-                  Enter the size, pick a package, choose an open slot, and send access
-                  notes. I&rsquo;ll confirm shortly — no back-and-forth for the basics.
+                  Browse every package with pricing and what&rsquo;s included, then enter
+                  the property, preferred times, and your details. I&rsquo;ll confirm
+                  shortly — no back-and-forth for the basics.
                 </p>
               </header>
             </BookingForm>

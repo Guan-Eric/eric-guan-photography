@@ -49,8 +49,14 @@ export async function getTenantByHost(host: string | null): Promise<Tenant | nul
   }
 
   const root = (process.env.PLATFORM_ROOT_DOMAIN ?? "localhost").toLowerCase();
-  if (hostname.endsWith(`.${root}`)) {
-    const slug = hostname.slice(0, -(root.length + 1)).split(".")[0];
+  const tenantRoots = new Set<string>([root]);
+  // Local `{slug}.localhost` even when PLATFORM_ROOT_DOMAIN is production.
+  if (hostname.endsWith(".localhost")) tenantRoots.add("localhost");
+
+  for (const tenantRoot of tenantRoots) {
+    if (!hostname.endsWith(`.${tenantRoot}`)) continue;
+    const slug = hostname.slice(0, -(tenantRoot.length + 1)).split(".")[0];
+    if (!slug) continue;
     const bySlug = await getTenantRowBySlug(slug);
     if (bySlug) return tenantFromRow(bySlug);
   }

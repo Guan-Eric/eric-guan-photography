@@ -226,7 +226,7 @@ export async function openBookingPage(page: Page, slug: string) {
   await page.goto(bookingUrl, { waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/book/, { timeout: 30_000 });
   await expect(
-    page.getByRole("heading", { name: /choose a service/i }),
+    page.getByRole("heading", { name: /^1\.\s*choose a service$/i }),
     `Booking service chooser did not load at ${bookingUrl}`,
   ).toBeVisible({ timeout: 45_000 });
   await clearUiOverlays(page);

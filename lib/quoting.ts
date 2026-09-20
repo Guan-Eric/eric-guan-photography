@@ -1,3 +1,4 @@
+import { resolveSelectedAddOns, type SelectedAddOn } from "@/lib/addons";
 import { normalizeStudioCurrency } from "@/lib/currency";
 import type { Package, PriceBand, Tenant } from "@/lib/tenant-schema";
 
@@ -8,6 +9,7 @@ export function tenantCurrency(tenant: Tenant) {
 export type QuoteInput = {
   packageId: string;
   squareFootage: number;
+  addOnIds?: string[];
 };
 
 export type QuoteResult =
@@ -16,12 +18,14 @@ export type QuoteResult =
       packageId: string;
       packageName: string;
       priceCents: number;
+      basePriceCents: number;
       priceLabel: string;
       currency: string;
       durationMinutes: number;
       squareFootage: number;
       bandLabel: string;
       quoteLater?: boolean;
+      addOns: SelectedAddOn[];
     }
   | {
       ok: false;
@@ -58,6 +62,7 @@ export function priceBandsFor(pkg: Package): PriceBand[] | null {
 }
 
 export function isBookablePackage(pkg: Package) {
+  if (pkg.upsell) return false;
   if (pkg.durationMinutes == null) return false;
   if (pkg.quoteLater) return true;
   return priceBandsFor(pkg) != null;
@@ -80,7 +85,7 @@ function durationFor(pkg: Package, squareFootage: number) {
 
 export function quotePackage(tenant: Tenant, input: QuoteInput): QuoteResult {
   const pkg = tenant.packages.find((candidate) => candidate.id === input.packageId);
-  if (!pkg) {
+  if (!pkg || pkg.upsell) {
     return { ok: false, error: "Choose a package to continue." };
   }
 
@@ -92,23 +97,39 @@ export function quotePackage(tenant: Tenant, input: QuoteInput): QuoteResult {
     };
   }
 
+  const addOnsResolved = resolveSelectedAddOns(
+    tenant.packages,
+    pkg.id,
+    input.addOnIds,
+  );
+  if (!addOnsResolved.ok) {
+    return { ok: false, error: addOnsResolved.error };
+  }
+  const addOns = addOnsResolved.addOns;
+  const addOnsCents = addOns.reduce((sum, item) => sum + item.priceCents, 0);
+  const currency = tenantCurrency(tenant);
+
   if (pkg.quoteLater) {
     const durationMinutes = durationFor(pkg, squareFootage);
     if (durationMinutes == null) {
       return { ok: false, error: "This package cannot be booked online." };
     }
-    const currency = tenantCurrency(tenant);
     return {
       ok: true,
       packageId: pkg.id,
       packageName: pkg.name,
-      priceCents: 0,
-      priceLabel: "Quote after request",
+      priceCents: addOnsCents,
+      basePriceCents: 0,
+      priceLabel:
+        addOnsCents > 0
+          ? `Quote after request + ${formatMoney(addOnsCents, currency)} add-ons`
+          : "Quote after request",
       currency,
       durationMinutes,
       squareFootage,
       bandLabel: "Price confirmed after review",
       quoteLater: true,
+      addOns,
     };
   }
 
@@ -130,17 +151,19 @@ export function quotePackage(tenant: Tenant, input: QuoteInput): QuoteResult {
     return { ok: false, error: "This package cannot be booked online." };
   }
 
-  const currency = tenantCurrency(tenant);
+  const totalCents = band.priceCents + addOnsCents;
   return {
     ok: true,
     packageId: pkg.id,
     packageName: pkg.name,
-    priceCents: band.priceCents,
-    priceLabel: formatMoney(band.priceCents, currency),
+    priceCents: totalCents,
+    basePriceCents: band.priceCents,
+    priceLabel: formatMoney(totalCents, currency),
     currency,
     durationMinutes,
     squareFootage,
     bandLabel: band.label,
+    addOns,
   };
 }
 

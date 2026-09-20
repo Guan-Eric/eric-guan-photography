@@ -136,4 +136,43 @@ describe("quoting", () => {
     expect(noDuration.ok).toBe(false);
     if (!noDuration.ok) expect(noDuration.contactOnly).toBe(true);
   });
+
+  it("rolls add-on prices into the quote total", () => {
+    const tenant = {
+      ...ericGuan,
+      packages: [
+        ...ericGuan.packages,
+        {
+          id: "rush",
+          name: "Next-day delivery",
+          summary: "Faster turnaround",
+          price: "$75",
+          durationMinutes: null,
+          includes: [],
+          upsell: true,
+          priceCents: 7500,
+        },
+      ],
+    };
+    const quoted = quotePackage(tenant, {
+      packageId: "standard",
+      squareFootage: 1200,
+      addOnIds: ["rush"],
+    });
+    expect(quoted.ok).toBe(true);
+    if (quoted.ok) {
+      expect(quoted.basePriceCents).toBe(15000);
+      expect(quoted.priceCents).toBe(22500);
+      expect(quoted.addOns).toEqual([
+        { id: "rush", name: "Next-day delivery", priceCents: 7500 },
+      ]);
+    }
+
+    const bad = quotePackage(tenant, {
+      packageId: "standard",
+      squareFootage: 1200,
+      addOnIds: ["nope"],
+    });
+    expect(bad.ok).toBe(false);
+  });
 });

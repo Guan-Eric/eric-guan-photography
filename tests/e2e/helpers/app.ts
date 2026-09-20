@@ -258,6 +258,12 @@ export async function createBooking(page: Page, slug: string, stamp: string) {
   await chooseServiceAndContinue(page);
   await page.getByLabel(/square footage/i).fill("1500");
 
+  // Optional book-time add-ons — tick the first if the studio offers any.
+  const firstAddon = page.locator(".booking-addon-option input[type='checkbox']").first();
+  if (await firstAddon.isVisible().catch(() => false)) {
+    await firstAddon.check();
+  }
+
   const addressField = page.getByRole("combobox", { name: /property address/i });
   if (await addressField.isVisible().catch(() => false)) {
     await addressField.fill("456 E2E Avenue");

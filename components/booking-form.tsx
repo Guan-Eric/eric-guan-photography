@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { PreferredTimesPicker } from "@/components/preferred-times-picker";
 import { CoachTour, type CoachStep } from "@/components/coach-tour";
+import { addOnsForPackage } from "@/lib/addons";
 import type { PreferredSlot } from "@/lib/preferred-slots";
 import { isInServiceArea, normalizePostalCode, serviceAreaMessage } from "@/lib/service-area";
 import { isBookablePackage } from "@/lib/quoting";
@@ -13,17 +14,21 @@ import type { Package, ServiceAreaGate, Tenant } from "@/lib/tenant-schema";
 
 type Slot = { start: string; end: string; label: string };
 
+type QuoteAddOn = { id: string; name: string; priceCents: number };
+
 type QuoteOk = {
   ok: true;
   packageId: string;
   packageName: string;
   priceCents: number;
+  basePriceCents: number;
   priceLabel: string;
   currency: string;
   durationMinutes: number;
   squareFootage: number;
   bandLabel: string;
   quoteLater?: boolean;
+  addOns: QuoteAddOn[];
 };
 
 type Props = {
@@ -75,6 +80,11 @@ const AGENT_BOOK_DETAILS_TOUR: CoachStep[] = [
     body: "Enter square footage so the quote updates for the service you picked.",
   },
   {
+    selector: '[data-tour="book-addons"]',
+    title: "Optional add-ons",
+    body: "Add floor plans, rush delivery, or other extras that apply to this package.",
+  },
+  {
     selector: '[data-tour="book-property"]',
     title: "Property details",
     body: "Add the full address and postal/ZIP so the photographer can find the listing.",
@@ -96,6 +106,13 @@ const AGENT_BOOK_DETAILS_TOUR: CoachStep[] = [
   },
 ];
 
+function formatMoney(cents: number, currency: string) {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
 function FieldLabel({
   children,
   required,
@@ -145,8 +162,18 @@ function QuoteSummary({
           <ul className="booking-quote-rows">
             <li>
               <span>{quote.packageName}</span>
-              <span>{quote.priceLabel}</span>
+              <span>
+                {quote.quoteLater
+                  ? "Quote after request"
+                  : formatMoney(quote.basePriceCents, quote.currency)}
+              </span>
             </li>
+            {(quote.addOns ?? []).map((addon) => (
+              <li key={addon.id}>
+                <span>{addon.name}</span>
+                <span>{formatMoney(addon.priceCents, quote.currency)}</span>
+              </li>
+            ))}
             <li>
               <span>{quote.bandLabel}</span>
               <span>{quote.squareFootage.toLocaleString("en-CA")} sq ft</span>
@@ -217,6 +244,11 @@ export function BookingForm({
   );
   const [packageId, setPackageId] = useState(deepLinkedPackageId);
   const selectedPackage = bookable.find((pkg) => pkg.id === packageId);
+  const availableAddOns = useMemo(
+    () => (packageId ? addOnsForPackage(packages, packageId) : []),
+    [packages, packageId],
+  );
+  const [addOnIds, setAddOnIds] = useState<string[]>([]);
   const [squareFootage, setSquareFootage] = useState("1800");
   const [quote, setQuote] = useState<QuoteOk | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -293,12 +325,16 @@ export function BookingForm({
   }
 
   useEffect(() => {
+    setAddOnIds((current) =>
+      current.filter((id) => availableAddOns.some((addon) => addon.id === id)),
+    );
+  }, [availableAddOns]);
+
+  useEffect(() => {
     if (!packageId || !squareFootage) return;
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
-      setLoadingQuote(true);
-      setQuoteError(null);
       setSelectedSlots([]);
       clearFieldError("preferredSlots");
 
@@ -307,28 +343,53 @@ export function BookingForm({
           packageId,
           squareFootage: Number(squareFootage),
         };
-
-        const [quoteRes, slotsRes] = await Promise.all([
-          fetch("/api/quote", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: controller.signal,
-          }),
-          fetch("/api/availability", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: controller.signal,
-          }),
-        ]);
-
-        const quoteJson = await quoteRes.json();
+        const slotsRes = await fetch("/api/availability", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
         const slotsJson = await slotsRes.json();
+        setSlots(slotsJson.ok ? slotsJson.slots : []);
+        if (!slotsJson.ok) {
+          setQuoteError(slotsJson.error ?? null);
+        }
+      } catch (error) {
+        if ((error as Error).name === "AbortError") return;
+      }
+    }, 280);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [packageId, squareFootage]);
+
+  useEffect(() => {
+    if (!packageId || !squareFootage) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoadingQuote(true);
+      setQuoteError(null);
+
+      try {
+        const payload = {
+          packageId,
+          squareFootage: Number(squareFootage),
+          addOnIds,
+        };
+
+        const quoteRes = await fetch("/api/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+        const quoteJson = await quoteRes.json();
 
         if (!quoteJson.ok) {
           setQuote(null);
-          setSlots([]);
           setQuoteError(quoteJson.error ?? "Could not quote this package.");
           return;
         }
@@ -336,10 +397,6 @@ export function BookingForm({
         setQuote(quoteJson);
         clearFieldError("squareFootage");
         clearFieldError("packageId");
-        setSlots(slotsJson.ok ? slotsJson.slots : []);
-        if (!slotsJson.ok) {
-          setQuoteError(slotsJson.error ?? null);
-        }
       } catch (error) {
         if ((error as Error).name === "AbortError") return;
         setQuoteError("Could not load quote. Try again.");
@@ -352,7 +409,7 @@ export function BookingForm({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [packageId, squareFootage]);
+  }, [packageId, squareFootage, addOnIds]);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -385,6 +442,7 @@ export function BookingForm({
         body: JSON.stringify({
           packageId,
           squareFootage: Number(squareFootage),
+          addOnIds,
           propertyAddress,
           postalCode: normalizePostalCode(postalCode),
           city,
@@ -628,13 +686,49 @@ export function BookingForm({
         ) : null}
       </section>
 
+      {availableAddOns.length > 0 ? (
+        <section className="booking-step" data-tour="book-addons">
+          <h2>2. Add-ons</h2>
+          <p className="field-hint">Optional extras for this package.</p>
+          <div className="booking-addon-list">
+            {availableAddOns.map((addon) => {
+              const checked = addOnIds.includes(addon.id);
+              return (
+                <label key={addon.id} className="booking-addon-option field field-check">
+                  <span>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => {
+                        setAddOnIds((current) =>
+                          event.target.checked
+                            ? [...current, addon.id]
+                            : current.filter((id) => id !== addon.id),
+                        );
+                      }}
+                    />{" "}
+                    <strong>{addon.name}</strong>
+                    {addon.price ? (
+                      <span className="muted"> · {addon.price}</span>
+                    ) : null}
+                  </span>
+                  {addon.summary ? (
+                    <span className="field-hint booking-addon-summary">{addon.summary}</span>
+                  ) : null}
+                </label>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       <section
         className={`booking-step${
           fieldErrors.propertyAddress || fieldErrors.postalCode ? " is-invalid" : ""
         }`}
         data-tour="book-property"
       >
-        <h2>2. Property</h2>
+        <h2>{availableAddOns.length > 0 ? "3" : "2"}. Property</h2>
         <div className="form-grid">
           <label
             className={`field field-span${fieldErrors.propertyAddress ? " is-invalid" : ""}`}
@@ -849,7 +943,7 @@ export function BookingForm({
         data-tour="book-times"
       >
         <h2>
-          3. Preferred times{" "}
+          {availableAddOns.length > 0 ? "4" : "3"}. Preferred times{" "}
           <abbr className="required-marker" title="Required">
             *
           </abbr>
@@ -870,7 +964,7 @@ export function BookingForm({
       </section>
 
       <section className="booking-step" data-tour="book-contact">
-        <h2>4. Your details</h2>
+        <h2>{availableAddOns.length > 0 ? "5" : "4"}. Your details</h2>
         <div className="form-grid">
           <label
             className={`field${fieldErrors.agentName ? " is-invalid" : ""}`}

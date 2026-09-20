@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { addOnsForPackage, parseAddOnsJson } from "@/lib/addons";
 import { entitlements } from "@/lib/billing";
 import { galleryStubUnlockAllowed } from "@/lib/gallery-stub";
 import {
@@ -7,6 +8,7 @@ import {
   galleryPublicUrl,
   getGalleryByToken,
 } from "@/lib/galleries";
+import { getOrder } from "@/lib/orders";
 import { requestPublicOrigin } from "@/lib/platform";
 import {
   createGalleryCheckoutSession,
@@ -66,13 +68,23 @@ export async function POST(
   const cancelUrl = `${origin}/g/${token}?cancelled=1`;
 
   const row = await getTenantRow(gallery!.tenantId);
+  const order = await getOrder(gallery!.orderId, gallery!.tenantId);
+  const bookedAddOnIds = new Set(
+    parseAddOnsJson(order?.addOnsJson).map((item) => item.id),
+  );
   const addOns: Array<{ name: string; amountCents: number }> = [];
-  if (row && entitlements(row.plan).upsells && Array.isArray(body?.addOnIds)) {
+  if (
+    row &&
+    order &&
+    entitlements(row.plan).upsells &&
+    Array.isArray(body?.addOnIds)
+  ) {
     const tenant = await getTenant(gallery!.tenantId);
+    const available = addOnsForPackage(tenant.packages, order.packageId).filter(
+      (pkg) => !bookedAddOnIds.has(pkg.id),
+    );
     for (const addOnId of body.addOnIds as string[]) {
-      const pkg = tenant.packages.find(
-        (item) => item.id === addOnId && item.upsell && item.priceCents,
-      );
+      const pkg = available.find((item) => item.id === addOnId);
       if (pkg?.priceCents) addOns.push({ name: pkg.name, amountCents: pkg.priceCents });
     }
   }

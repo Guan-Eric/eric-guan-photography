@@ -44,6 +44,49 @@ describe("booking create", () => {
     expect(after.length).toBe(before.length + 1);
   });
 
+  it("persists selected add-ons and rolls them into priceCents", async () => {
+    const tenant = await getTenant("demo-studio");
+    const withAddOns = {
+      ...tenant,
+      packages: [
+        ...tenant.packages.filter((pkg) => !pkg.upsell),
+        {
+          id: "floor-plan",
+          name: "Floor plan",
+          summary: "2D plan",
+          price: "$75",
+          durationMinutes: null,
+          includes: ["Plan"],
+          upsell: true as const,
+          priceCents: 7500,
+        },
+      ],
+    };
+    const base = await createBooking(withAddOns, bookingFixture(withAddOns));
+    expect(base.ok).toBe(true);
+    if (!base.ok) return;
+    const baseOrder = await getOrder(base.orderId, withAddOns.id);
+    expect(baseOrder!.addOnsJson).toBe("[]");
+
+    const booked = await createBooking(
+      withAddOns,
+      bookingFixture(withAddOns, { addOnIds: ["floor-plan"] }),
+    );
+    expect(booked.ok).toBe(true);
+    if (!booked.ok) return;
+    const order = await getOrder(booked.orderId, withAddOns.id);
+    expect(order).toBeTruthy();
+    const addOns = JSON.parse(order!.addOnsJson) as Array<{
+      id: string;
+      name: string;
+      priceCents: number;
+    }>;
+    expect(addOns).toEqual([
+      { id: "floor-plan", name: "Floor plan", priceCents: 7500 },
+    ]);
+    expect(order!.priceCents).toBe(baseOrder!.priceCents + 7500);
+  });
+
   it("rejects out-of-area postal codes", async () => {
     const tenant = await getTenant("demo-studio");
     const result = await createBooking(

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
+import { parseAddOnsJson } from "@/lib/addons";
 import type { Order, OrderStatus } from "@/lib/db/schema";
 import {
   ORDER_STATUSES,
@@ -1431,6 +1432,20 @@ export function AdminOrderBoard({
                         {formatMoney(order.priceCents, order.currency)} ·{" "}
                         {order.squareFootage} sq ft · {order.durationMinutes} min
                       </p>
+                      {(() => {
+                        const addOns = parseAddOnsJson(order.addOnsJson);
+                        if (addOns.length === 0) return null;
+                        return (
+                          <ul className="order-fact-note" style={{ margin: "0.35rem 0 0", paddingLeft: "1.1rem" }}>
+                            {addOns.map((addon) => (
+                              <li key={addon.id}>
+                                {addon.name} ·{" "}
+                                {formatMoney(addon.priceCents, order.currency)}
+                              </li>
+                            ))}
+                          </ul>
+                        );
+                      })()}
                       {order.status !== "paid" ? (
                         <div className="admin-quote-price">
                           <label className="field">

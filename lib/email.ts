@@ -262,9 +262,19 @@ export function bookingConfirmationEmail(options: {
   priceLabel: string;
   slotLabel: string;
   confirmationUrl: string;
+  addOnsLabel?: string;
 }) {
   const { tenant } = options;
   const prepUrl = `${tenant.siteUrl.replace(/\/$/, "")}/prep`;
+  const details = [
+    { label: "Property", value: options.propertyAddress },
+    { label: "Package", value: options.packageName },
+    { label: "Quote", value: options.priceLabel },
+    { label: "Preferred times", value: options.slotLabel },
+  ];
+  if (options.addOnsLabel) {
+    details.splice(2, 0, { label: "Add-ons", value: options.addOnsLabel });
+  }
 
   return composeEmail(
     options.agentEmail,
@@ -275,12 +285,7 @@ export function bookingConfirmationEmail(options: {
       intro: [
         `Thank you for booking with ${tenant.studioName}. We've received your shoot request and will confirm one of your preferred times shortly.`,
       ],
-      details: [
-        { label: "Property", value: options.propertyAddress },
-        { label: "Package", value: options.packageName },
-        { label: "Quote", value: options.priceLabel },
-        { label: "Preferred times", value: options.slotLabel },
-      ],
+      details,
       cta: { label: "View request summary", url: options.confirmationUrl },
       secondaryLinks: [
         { label: "Seller prep checklist", url: prepUrl },
@@ -317,6 +322,7 @@ export function photographerNotifyEmail(options: {
   parkingNotes?: string | null;
   meetingContact?: string | null;
   notes?: string | null;
+  addOnsLabel?: string;
   adminUrl: string;
 }) {
   const details: DetailRow[] = [
@@ -341,6 +347,9 @@ export function photographerNotifyEmail(options: {
   if (options.squareFootage) {
     details.push({ label: "Size", value: `${options.squareFootage} sq ft` });
   }
+  if (options.addOnsLabel) {
+    details.push({ label: "Add-ons", value: options.addOnsLabel });
+  }
   details.push({ label: "Quote", value: options.priceLabel });
   details.push({ label: "Preferred times", value: options.slotLabel });
   if (options.occupancy) {
@@ -353,10 +362,7 @@ export function photographerNotifyEmail(options: {
     details.push({ label: "Access notes", value: options.accessNotes.trim() });
   }
   if (options.meetingContact?.trim()) {
-    details.push({
-      label: "Meeting contact",
-      value: options.meetingContact.trim(),
-    });
+    details.push({ label: "Meeting contact", value: options.meetingContact.trim() });
   }
   if (options.pets?.trim()) {
     details.push({ label: "Pets", value: options.pets.trim() });

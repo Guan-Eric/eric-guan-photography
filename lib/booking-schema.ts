@@ -4,6 +4,7 @@ import { MANUAL_ORDER_STATUSES } from "@/lib/db/schema";
 export const quoteRequestSchema = z.object({
   packageId: z.string().min(1),
   squareFootage: z.coerce.number().int().min(400).max(20000),
+  addOnIds: z.array(z.string().min(1).max(64)).max(10).optional(),
 });
 
 export const availabilityRequestSchema = z.object({
@@ -14,6 +15,7 @@ export const availabilityRequestSchema = z.object({
 export const bookingRequestSchema = z.object({
   packageId: z.string().min(1),
   squareFootage: z.coerce.number().int().min(400).max(20000),
+  addOnIds: z.array(z.string().min(1).max(64)).max(10).optional(),
   propertyAddress: z.string().trim().min(5).max(200),
   postalCode: z.string().trim().min(3).max(12),
   city: z.string().trim().max(80).optional(),

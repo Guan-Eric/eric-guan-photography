@@ -78,7 +78,7 @@ export type Package = {
   /** Bullets shown on the pricing page. */
   includes: string[];
   featured?: boolean;
-  /** When set, this package can be offered as an in-gallery upsell. */
+  /** When set, this package can be offered as an in-gallery / book-time add-on. */
   upsell?: boolean;
   /** Firm add-on / flat booking price in cents. */
   priceCents?: number;
@@ -89,6 +89,11 @@ export type Package = {
    * the property details. Requires `durationMinutes` for scheduling.
    */
   quoteLater?: boolean;
+  /**
+   * Shoot package ids this add-on applies to. Empty / omitted = all packages.
+   * Only meaningful when `upsell` is true.
+   */
+  applicablePackageIds?: string[];
 };
 
 export type ProcessStep = {

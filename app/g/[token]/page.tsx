@@ -15,6 +15,7 @@ import {
 import { suggestComplianceRegion } from "@/lib/listing-compliance";
 import { getListingPageByOrder } from "@/lib/listing-pages";
 import { listMediaLinksForGallery, visibleLinks } from "@/lib/media-links";
+import { addOnsForPackage, parseAddOnsJson } from "@/lib/addons";
 import { getOrder } from "@/lib/orders";
 import { getTenantRow } from "@/lib/tenant-store";
 import { getTenant } from "@/lib/tenants";
@@ -107,10 +108,14 @@ export default async function GalleryPage({
       ? `/api/g/${token}/doc/${link.id}${branded ? "" : "?brand=off"}`
       : null,
   }));
+  const order = await getOrder(gallery!.orderId, gallery!.tenantId);
+  const bookedAddOnIds = new Set(
+    parseAddOnsJson(order?.addOnsJson).map((item) => item.id),
+  );
   const upsells =
-    row && entitlements(row.plan).upsells
-      ? tenant.packages
-          .filter((pkg) => pkg.upsell && pkg.priceCents)
+    row && entitlements(row.plan).upsells && order
+      ? addOnsForPackage(tenant.packages, order.packageId)
+          .filter((pkg) => !bookedAddOnIds.has(pkg.id))
           .map((pkg) => ({
             id: pkg.id,
             name: pkg.name,
@@ -119,7 +124,6 @@ export default async function GalleryPage({
           }))
       : [];
 
-  const order = await getOrder(gallery!.orderId, gallery!.tenantId);
   const preferFrenchLicense =
     suggestComplianceRegion(order?.postalCode) === "ca_qc";
   const listingPage = order

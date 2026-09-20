@@ -47,6 +47,39 @@ describe("booking-schema", () => {
     expect(usZip.success).toBe(true);
   });
 
+  it("accepts optional addOnIds and rejects oversized lists", () => {
+    expect(
+      quoteRequestSchema.safeParse({
+        packageId: "standard",
+        squareFootage: 1500,
+        addOnIds: ["floor-plan", "twilight"],
+      }).success,
+    ).toBe(true);
+
+    expect(
+      bookingRequestSchema.safeParse({
+        packageId: "standard",
+        squareFootage: 1500,
+        propertyAddress: "123 Main Street",
+        postalCode: "H2X 1Y4",
+        preferredSlots: [slot],
+        agentName: "Alex Agent",
+        agentEmail: "alex@example.com",
+        occupancy: "vacant",
+        accessType: "lockbox",
+        addOnIds: ["floor-plan"],
+      }).success,
+    ).toBe(true);
+
+    expect(
+      quoteRequestSchema.safeParse({
+        packageId: "standard",
+        squareFootage: 1500,
+        addOnIds: Array.from({ length: 11 }, (_, i) => `addon-${i}`),
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects invalid booking fixtures", () => {
     expect(
       quoteRequestSchema.safeParse({

@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS orders (
   currency TEXT NOT NULL DEFAULT 'CAD',
   duration_minutes INTEGER NOT NULL,
   square_footage INTEGER NOT NULL,
+  add_ons_json TEXT NOT NULL DEFAULT '[]',
   property_address TEXT NOT NULL,
   postal_code TEXT NOT NULL,
   city TEXT,

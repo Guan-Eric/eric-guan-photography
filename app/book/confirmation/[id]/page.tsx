@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { parseAddOnsJson } from "@/lib/addons";
 import { orderStatusLabel } from "@/lib/db/schema";
 import { formatSlotInZone, parsePreferredSlotsJson } from "@/lib/preferred-slots";
 import { getOrderForPublic } from "@/lib/orders";
@@ -45,6 +46,7 @@ export default async function ConfirmationPage({
   const row = await getTenantRow(order.tenantId);
   const timeZone = row?.timezone ?? "America/Toronto";
   const preferredSlots = parsePreferredSlotsJson(order.preferredSlotsJson);
+  const addOns = parseAddOnsJson(order.addOnsJson);
   const slotLines =
     preferredSlots.length > 0
       ? preferredSlots.map((slot, index) => {
@@ -116,6 +118,19 @@ export default async function ConfirmationPage({
                     {order.durationMinutes} min · {order.squareFootage} sq ft
                   </dd>
                 </div>
+                {addOns.length > 0 ? (
+                  <div>
+                    <dt>Add-ons</dt>
+                    <dd>
+                      {addOns.map((addon) => (
+                        <div key={addon.id}>
+                          {addon.name} ·{" "}
+                          {formatMoney(addon.priceCents, order.currency)}
+                        </div>
+                      ))}
+                    </dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt>Preferred times</dt>
                   <dd>

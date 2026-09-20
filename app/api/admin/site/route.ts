@@ -11,13 +11,12 @@ import {
 import type {
   GalleryImage,
   ImageAsset,
-  Package,
-  PriceBand,
   ServiceAreaGate,
   WeekdayKey,
   WeeklySchedule,
 } from "@/lib/tenant-schema";
 import { WEEKDAY_KEYS } from "@/lib/tenant-schema";
+import { parsePackages } from "@/lib/parse-packages";
 import {
   parseTenantConfig,
   getTenantRow,
@@ -69,57 +68,6 @@ function parseGallery(value: unknown): GalleryImage[] {
     });
   }
   return images;
-}
-
-function parseBands(value: unknown): PriceBand[] | undefined {
-  if (!Array.isArray(value) || value.length === 0) return undefined;
-  const bands = value
-    .map((item) => {
-      if (!item || typeof item !== "object") return null;
-      const row = item as Record<string, unknown>;
-      const priceCents = asNumber(row.priceCents, null);
-      const maxSqft = asNumber(row.maxSqft, null);
-      if (priceCents == null || maxSqft == null) return null;
-      return {
-        maxSqft,
-        priceCents,
-        label: asString(row.label) || `${maxSqft} sq ft`,
-      };
-    })
-    .filter((item): item is PriceBand => item != null);
-  return bands.length > 0 ? bands : undefined;
-}
-
-function parsePackages(value: unknown, existing: Package[]): Package[] {
-  if (!Array.isArray(value)) return existing;
-  const parsed: Package[] = [];
-  value.forEach((item, index) => {
-    if (!item || typeof item !== "object") return;
-    const row = item as Record<string, unknown>;
-    const name = asString(row.name).trim();
-    if (!name) return;
-    const durationRaw = asNumber(row.durationMinutes, null);
-    const includes = Array.isArray(row.includes)
-      ? row.includes.map((line) => String(line).trim()).filter(Boolean)
-      : [];
-    const cents = asNumber(row.priceCents, null);
-    const durationMinutes = durationRaw && durationRaw > 0 ? durationRaw : null;
-    const quoteLater = Boolean(row.quoteLater) && durationMinutes != null;
-    parsed.push({
-      id: asString(row.id).trim() || `pkg_${index + 1}`,
-      name,
-      summary: asString(row.summary),
-      price: asString(row.price) || (quoteLater ? "Quote after request" : ""),
-      durationMinutes,
-      includes,
-      featured: Boolean(row.featured),
-      upsell: Boolean(row.upsell),
-      quoteLater: quoteLater || undefined,
-      priceCents: quoteLater ? undefined : cents ?? undefined,
-      priceBands: quoteLater ? [] : parseBands(row.priceBands),
-    });
-  });
-  return parsed;
 }
 
 function parseSchedule(

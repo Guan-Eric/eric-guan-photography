@@ -147,6 +147,23 @@ describe("order lifecycle emails", () => {
     expect(mail.text).toMatch(/Focus on kitchen/);
   });
 
+  it("includes add-ons on photographer notify when provided", () => {
+    const mail = photographerNotifyEmail({
+      tenant,
+      orderId: "ord_1",
+      agentName: "Alex Agent",
+      agentEmail: "agent@example.com",
+      propertyAddress: "12 Main St",
+      packageName: "Standard",
+      priceLabel: "$275",
+      slotLabel: "Tue 10:00",
+      addOnsLabel: "Floor plan ($75), Twilight ($125)",
+      adminUrl: "https://test.studiofront.ca/admin",
+    });
+    expect(mail.text).toMatch(/Add-ons/);
+    expect(mail.text).toMatch(/Floor plan/);
+  });
+
   it("does not set studio Reply-To on password reset", () => {
     const mail = passwordResetEmail({
       to: "photo@example.com",

@@ -119,6 +119,7 @@ function ensureSchema(db: import("better-sqlite3").Database) {
       currency TEXT NOT NULL DEFAULT 'CAD',
       duration_minutes INTEGER NOT NULL,
       square_footage INTEGER NOT NULL,
+      add_ons_json TEXT NOT NULL DEFAULT '[]',
       property_address TEXT NOT NULL,
       postal_code TEXT NOT NULL,
       city TEXT,
@@ -425,6 +426,11 @@ function ensureSchema(db: import("better-sqlite3").Database) {
   if (!columns.some((column) => column.name === "preferred_slots_json")) {
     db.exec(
       `ALTER TABLE orders ADD COLUMN preferred_slots_json TEXT NOT NULL DEFAULT '[]'`,
+    );
+  }
+  if (!columns.some((column) => column.name === "add_ons_json")) {
+    db.exec(
+      `ALTER TABLE orders ADD COLUMN add_ons_json TEXT NOT NULL DEFAULT '[]'`,
     );
   }
 

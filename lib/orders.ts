@@ -35,9 +35,22 @@ import {
 import { parsePreferredSlotsJson } from "@/lib/preferred-slots";
 import type { Tenant } from "@/lib/tenant-schema";
 
+function moneyLabel(cents: number, currency: string) {
+  try {
+    return new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: currency.toUpperCase() || "CAD",
+      maximumFractionDigits: 0,
+    }).format(cents / 100);
+  } catch {
+    return `$${(cents / 100).toFixed(0)} ${currency}`;
+  }
+}
+
 export type BookingInput = {
   packageId: string;
   squareFootage: number;
+  addOnIds?: string[];
   propertyAddress: string;
   postalCode: string;
   city?: string;
@@ -78,6 +91,7 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
   const quote = quotePackage(tenant, {
     packageId: input.packageId,
     squareFootage: input.squareFootage,
+    addOnIds: input.addOnIds,
   });
   if (!quote.ok) {
     return { ok: false as const, error: quote.error, contactOnly: quote.contactOnly };
@@ -130,6 +144,7 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
     currency: quote.currency,
     durationMinutes: quote.durationMinutes,
     squareFootage: quote.squareFootage,
+    addOnsJson: JSON.stringify(quote.addOns),
     propertyAddress: input.propertyAddress.trim(),
     postalCode: formatPostalCode(postal),
     city: input.city?.trim() || null,
@@ -170,6 +185,12 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
   const confirmationUrl = `${siteBase}/book/confirmation/${id}?token=${publicToken}`;
   const adminUrl = `${siteBase}/admin`;
   const slotLabel = input.preferredSlots.map((slot) => slot.label).join(" · ");
+  const addOnsLabel =
+    quote.addOns.length > 0
+      ? quote.addOns
+          .map((addon) => `${addon.name} (${moneyLabel(addon.priceCents, quote.currency)})`)
+          .join(", ")
+      : undefined;
 
   await sendEmail(
     bookingConfirmationEmail({
@@ -181,6 +202,7 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
       priceLabel: quote.priceLabel,
       slotLabel,
       confirmationUrl,
+      addOnsLabel,
     }),
   );
 
@@ -204,6 +226,7 @@ export async function createBooking(tenant: Tenant, input: BookingInput) {
       accessNotes: orderRow.accessNotes,
       pets: orderRow.pets,
       parkingNotes: orderRow.parkingNotes,
+      addOnsLabel,
       meetingContact: orderRow.meetingContact,
       notes: orderRow.notes,
       adminUrl,

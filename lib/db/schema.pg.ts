@@ -177,6 +177,7 @@ export const orders = pgTable("orders", {
   currency: text("currency").notNull().default("CAD"),
   durationMinutes: integer("duration_minutes").notNull(),
   squareFootage: integer("square_footage").notNull(),
+  addOnsJson: text("add_ons_json").notNull().default("[]"),
 
   propertyAddress: text("property_address").notNull(),
   postalCode: text("postal_code").notNull(),

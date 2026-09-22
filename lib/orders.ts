@@ -380,6 +380,7 @@ export async function updateOrderSchedule(
   orderId: string,
   slot: { start: string; end: string },
   tenantId?: string,
+  options?: { skipCalendarSync?: boolean },
 ) {
   const existing = await getOrder(orderId, tenantId);
   if (!existing) return { ok: false as const, error: "Order not found." };
@@ -413,9 +414,11 @@ export async function updateOrderSchedule(
   if (latest.status !== "requested" && latest.status !== "cancelled") {
     await ensureAppointmentForOrder(latest);
   }
-  void syncOrderToCalendar(latest).catch((error) => {
-    console.warn("[calendar] schedule sync failed:", error);
-  });
+  if (!options?.skipCalendarSync) {
+    void syncOrderToCalendar(latest).catch((error) => {
+      console.warn("[calendar] schedule sync failed:", error);
+    });
+  }
 
   return { ok: true as const, order: latest };
 }

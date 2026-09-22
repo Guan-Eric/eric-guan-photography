@@ -284,6 +284,24 @@ export async function listGoogleEvents(options: {
   return { ok: true as const, events };
 }
 
+export async function findEventByOrderId(options: {
+  accessToken: string;
+  calendarId: string;
+  orderId: string;
+}): Promise<string | null> {
+  const params = new URLSearchParams({
+    privateExtendedProperty: `orderId=${options.orderId}`,
+    showDeleted: "false",
+    maxResults: "1",
+  });
+  const result = await calendarJson<{ items?: Array<{ id?: string }> }>(
+    options.accessToken,
+    `https://www.googleapis.com/calendar/v3/calendars/${calendarPath(options.calendarId)}/events?${params}`,
+  );
+  if (!result.ok) return null;
+  return result.data.items?.[0]?.id ?? null;
+}
+
 export async function upsertGoogleEvent(options: {
   accessToken: string;
   calendarId: string;
@@ -291,10 +309,20 @@ export async function upsertGoogleEvent(options: {
   input: GoogleCalendarEventInput;
 }) {
   const body = JSON.stringify(studiofrontEventBody(options.input));
-  if (options.eventId) {
+
+  let effectiveEventId = options.eventId;
+  if (!effectiveEventId) {
+    effectiveEventId = await findEventByOrderId({
+      accessToken: options.accessToken,
+      calendarId: options.calendarId,
+      orderId: options.input.orderId,
+    });
+  }
+
+  if (effectiveEventId) {
     const patched = await calendarJson<{ id?: string }>(
       options.accessToken,
-      `https://www.googleapis.com/calendar/v3/calendars/${calendarPath(options.calendarId)}/events/${encodeURIComponent(options.eventId)}`,
+      `https://www.googleapis.com/calendar/v3/calendars/${calendarPath(options.calendarId)}/events/${encodeURIComponent(effectiveEventId)}`,
       { method: "PATCH", body },
     );
     if (patched.ok && patched.data.id) {

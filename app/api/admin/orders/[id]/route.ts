@@ -124,6 +124,7 @@ export async function PATCH(
         end: parsed.data.preferredEnd,
       },
       order.tenantId,
+      { skipCalendarSync: parsed.data.status != null },
     );
     if (!scheduled.ok) {
       return NextResponse.json(scheduled, { status: 400 });

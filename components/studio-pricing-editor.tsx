@@ -4,7 +4,8 @@ import { useState } from "react";
 import { normalizeStudioCurrency } from "@/lib/currency";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { useUnsavedChanges } from "@/components/unsaved-changes";
-import type { Package, PriceBand, Tenant } from "@/lib/tenant-schema";
+import { MAX_SERVICE_CATEGORIES } from "@/lib/service-categories";
+import type { Package, PriceBand, ServiceCategory, Tenant } from "@/lib/tenant-schema";
 
 type PricingMode = "set_price" | "quote_later" | "email_only";
 
@@ -61,15 +62,56 @@ export function StudioPricingEditor({
 }) {
   const currency = normalizeStudioCurrency(tenant.seo.currency);
   const [packages, setPackages] = useState<Package[]>(tenant.packages);
+  const [categories, setCategories] = useState<ServiceCategory[]>(
+    tenant.serviceCategories ?? [],
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const current = JSON.stringify(packages);
+  const current = JSON.stringify({ packages, categories });
   const [saved, setSaved] = useState(current);
   useUnsavedChanges(current !== saved);
 
   const shootPackages = packages.filter((pkg) => !pkg.upsell);
+
+  function addCategory() {
+    setCategories((list) => [
+      ...list,
+      { id: `cat_${Math.random().toString(36).slice(2, 10)}`, name: "" },
+    ]);
+  }
+
+  function updateCategory(index: number, patch: Partial<ServiceCategory>) {
+    setCategories((list) =>
+      list.map((category, i) => (i === index ? { ...category, ...patch } : category)),
+    );
+  }
+
+  function moveCategory(index: number, delta: -1 | 1) {
+    setCategories((list) => {
+      const target = index + delta;
+      if (target < 0 || target >= list.length) return list;
+      const next = [...list];
+      [next[index], next[target]] = [next[target]!, next[index]!];
+      return next;
+    });
+  }
+
+  function removeCategory(index: number) {
+    const category = categories[index];
+    if (!category) return;
+    const count = packages.filter((pkg) => pkg.categoryId === category.id).length;
+    const label = category.name.trim() || "this category";
+    const suffix = count > 0 ? ` ${count} service${count === 1 ? "" : "s"} will become uncategorized.` : "";
+    if (!window.confirm(`Remove “${label}”?${suffix}`)) return;
+    setCategories((list) => list.filter((_, i) => i !== index));
+    setPackages((list) =>
+      list.map((pkg) =>
+        pkg.categoryId === category.id ? { ...pkg, categoryId: undefined } : pkg,
+      ),
+    );
+  }
 
   function update(index: number, patch: Partial<Package>) {
     setPackages((current) =>
@@ -159,7 +201,11 @@ export function StudioPricingEditor({
       const response = await fetch("/api/admin/site", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section: "pricing", packages }),
+        body: JSON.stringify({
+          section: "pricing",
+          packages,
+          serviceCategories: categories,
+        }),
       });
       const json = await response.json();
       if (!json.ok) {
@@ -194,6 +240,92 @@ export function StudioPricingEditor({
           View on site
         </a>
       </div>
+
+      <section className="studio-section">
+        <div className="studio-editor-row">
+          <h2>Categories</h2>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={addCategory}
+            disabled={categories.length >= MAX_SERVICE_CATEGORIES}
+          >
+            Add category
+          </button>
+        </div>
+        <p className="studio-section-lede">
+          Group services into sections like Packages, Photography, Video, or Floor
+          Plans. Agents see them in this order on your booking and pricing pages.
+        </p>
+        {categories.length === 0 ? (
+          <p className="studio-empty-inline">
+            No categories yet — every service shows in one list.
+          </p>
+        ) : (
+          <ol className="studio-category-list">
+            {categories.map((category, index) => {
+              const count = packages.filter((pkg) => pkg.categoryId === category.id).length;
+              return (
+                <li key={category.id} className="studio-category-row">
+                  <div className="form-grid">
+                    <label className="field">
+                      <span>Name</span>
+                      <input
+                        value={category.name}
+                        onChange={(event) => updateCategory(index, { name: event.target.value })}
+                        placeholder="Photography"
+                        maxLength={60}
+                        required
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Description (optional)</span>
+                      <input
+                        value={category.description ?? ""}
+                        onChange={(event) =>
+                          updateCategory(index, { description: event.target.value })
+                        }
+                        placeholder="HDR interiors and exteriors"
+                        maxLength={200}
+                      />
+                    </label>
+                  </div>
+                  <div className="studio-category-actions">
+                    <span className="muted">
+                      {count} service{count === 1 ? "" : "s"}
+                    </span>
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={() => moveCategory(index, -1)}
+                      disabled={index === 0}
+                      aria-label={`Move ${category.name || "category"} up`}
+                    >
+                      Up
+                    </button>
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={() => moveCategory(index, 1)}
+                      disabled={index === categories.length - 1}
+                      aria-label={`Move ${category.name || "category"} down`}
+                    >
+                      Down
+                    </button>
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={() => removeCategory(index)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </section>
 
       <div className="studio-editor-list">
         {packages.map((pkg, index) => {
@@ -349,6 +481,24 @@ export function StudioPricingEditor({
                       onChange={(event) => update(index, { summary: event.target.value })}
                     />
                   </label>
+                  {categories.length > 0 ? (
+                    <label className="field">
+                      <span>Category</span>
+                      <select
+                        value={pkg.categoryId ?? ""}
+                        onChange={(event) =>
+                          update(index, { categoryId: event.target.value || undefined })
+                        }
+                      >
+                        <option value="">Uncategorized (Other services)</option>
+                        {categories.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name || "Untitled category"}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
                   <label className="field">
                     <span>Display price on pricing page</span>
                     <input
@@ -527,6 +677,7 @@ export function StudioPricingEditor({
                                 priceBands: [],
                                 priceCents: pkg.priceCents ?? 7500,
                                 applicablePackageIds: pkg.applicablePackageIds ?? [],
+                                categoryId: undefined,
                               });
                             } else {
                               update(index, {

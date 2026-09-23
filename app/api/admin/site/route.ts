@@ -17,6 +17,7 @@ import type {
 } from "@/lib/tenant-schema";
 import { WEEKDAY_KEYS } from "@/lib/tenant-schema";
 import { parsePackages } from "@/lib/parse-packages";
+import { parseServiceCategories } from "@/lib/service-categories";
 import {
   parseTenantConfig,
   getTenantRow,
@@ -177,8 +178,17 @@ export async function PATCH(request: Request) {
   }
 
   if (section === "pricing") {
+    const serviceCategories = parseServiceCategories(
+      body?.serviceCategories,
+      current.serviceCategories,
+    );
     await updateTenantConfig(session.activeTenantId, {
-      packages: parsePackages(body?.packages, current.packages),
+      serviceCategories,
+      packages: parsePackages(
+        body?.packages,
+        current.packages,
+        new Set(serviceCategories.map((category) => category.id)),
+      ),
     });
     return NextResponse.json({ ok: true });
   }

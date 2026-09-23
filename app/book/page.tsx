@@ -33,6 +33,7 @@ export default async function BookPage({
           <div className="page-inner page-inner--booking">
             <BookingForm
               packages={tenant.packages}
+              categories={tenant.serviceCategories}
               defaultPackageId={params.package}
               email={tenant.email}
               defaultCity={defaultCity}

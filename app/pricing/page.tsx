@@ -5,6 +5,7 @@ import { PlatformPricing } from "@/components/platform-pricing";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { platformName } from "@/lib/platform";
+import { groupPackagesByCategory } from "@/lib/service-categories";
 import { getRequestTenant } from "@/lib/tenants";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,12 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PricingPage() {
   const tenant = await getRequestTenant();
   if (!tenant) return <PlatformPricing />;
+
+  const serviceGroups = groupPackagesByCategory(
+    tenant.packages.filter((pkg) => !pkg.upsell),
+    tenant.serviceCategories,
+  );
+  const showGroupHeadings = serviceGroups.some((group) => group.category);
 
   const faqs = [
     {
@@ -106,10 +113,30 @@ export default async function PricingPage() {
 
         <section className="page-section">
           <div className="page-inner">
+            <div className="service-category-stack">
+            {serviceGroups.map((group) => (
+            <section
+              key={group.category?.id ?? "other"}
+              className="service-category"
+              aria-labelledby={
+                showGroupHeadings ? `pricing-cat-${group.category?.id ?? "other"}` : undefined
+              }
+            >
+            {showGroupHeadings ? (
+              <div className="service-category-head">
+                <h2
+                  className="service-category-title"
+                  id={`pricing-cat-${group.category?.id ?? "other"}`}
+                >
+                  {group.category?.name ?? "Other services"}
+                </h2>
+                {group.category?.description ? (
+                  <p className="service-category-desc">{group.category.description}</p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="package-grid">
-              {tenant.packages
-                .filter((pkg) => !pkg.upsell)
-                .map((pkg) => (
+              {group.packages.map((pkg) => (
                 <article
                   key={pkg.id}
                   className={`package-card${pkg.featured ? " is-featured" : ""}`}
@@ -140,6 +167,9 @@ export default async function PricingPage() {
                   )}
                 </article>
               ))}
+            </div>
+            </section>
+            ))}
             </div>
           </div>
         </section>

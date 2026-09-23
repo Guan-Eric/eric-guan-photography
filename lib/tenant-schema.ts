@@ -94,6 +94,15 @@ export type Package = {
    * Only meaningful when `upsell` is true.
    */
   applicablePackageIds?: string[];
+  /** `ServiceCategory.id` this shoot package is listed under. Omitted = uncategorized. */
+  categoryId?: string;
+};
+
+/** Photographer-defined grouping for services on the booking and pricing pages. */
+export type ServiceCategory = {
+  id: string;
+  name: string;
+  description?: string;
 };
 
 export type ProcessStep = {
@@ -167,6 +176,8 @@ export type Tenant = {
   hero: ImageAsset;
   gallery: GalleryImage[];
   packages: Package[];
+  /** Display order is array order. */
+  serviceCategories?: ServiceCategory[];
   process: ProcessStep[];
   serviceAreas: ServiceArea[];
   serviceAreaGate?: ServiceAreaGate;

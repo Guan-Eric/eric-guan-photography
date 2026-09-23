@@ -1575,6 +1575,7 @@ button {
 }
 
 .booking-service-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -1608,8 +1609,48 @@ button {
 
 .booking-service-card.is-selected {
   border-color: var(--accent);
-  box-shadow: var(--shadow-soft);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    var(--shadow-soft);
   transform: translateY(-1px);
+}
+
+.booking-service-card.is-selected h3,
+.booking-service-card.is-selected .price {
+  color: var(--accent);
+}
+
+.booking-service-check {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 0.2s var(--ease),
+    transform 0.2s var(--ease);
+}
+
+.booking-service-check svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.booking-service-card.is-selected .booking-service-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.booking-service-card.is-selected .booking-service-card-top {
+  padding-right: 1.75rem;
 }
 
 .booking-service-card-top {
@@ -1701,6 +1742,24 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   gap: 0.35rem;
+  cursor: pointer;
+  transition:
+    border-color 0.2s var(--ease),
+    background-color 0.2s var(--ease);
+}
+
+.booking-addon-option input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.booking-addon-option:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.booking-addon-option:has(input:checked) strong {
+  color: var(--accent);
 }
 
 .booking-addon-summary {

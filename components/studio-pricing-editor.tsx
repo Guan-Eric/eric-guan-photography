@@ -119,6 +119,25 @@ export function StudioPricingEditor({
     );
   }
 
+  /** Nearest index in `delta` direction with the same kind (package vs add-on). */
+  function neighborOfSameKind(list: Package[], index: number, delta: -1 | 1) {
+    const isAddon = Boolean(list[index]?.upsell);
+    for (let i = index + delta; i >= 0 && i < list.length; i += delta) {
+      if (Boolean(list[i]!.upsell) === isAddon) return i;
+    }
+    return -1;
+  }
+
+  function movePackage(index: number, delta: -1 | 1) {
+    setPackages((list) => {
+      const target = neighborOfSameKind(list, index, delta);
+      if (target < 0) return list;
+      const next = [...list];
+      [next[index], next[target]] = [next[target]!, next[index]!];
+      return next;
+    });
+  }
+
   function removePackage(index: number) {
     const pkg = packages[index];
     if (!pkg) return;
@@ -342,13 +361,33 @@ export function StudioPricingEditor({
                     </span>
                   ) : null}
                 </h2>
-                <button
-                  type="button"
-                  className="text-link"
-                  onClick={() => removePackage(index)}
-                >
-                  Remove
-                </button>
+                <div className="studio-category-actions">
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => movePackage(index, -1)}
+                    disabled={neighborOfSameKind(packages, index, -1) < 0}
+                    aria-label={`Move ${pkg.name || (isAddon ? "add-on" : "package")} up`}
+                  >
+                    Up
+                  </button>
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => movePackage(index, 1)}
+                    disabled={neighborOfSameKind(packages, index, 1) < 0}
+                    aria-label={`Move ${pkg.name || (isAddon ? "add-on" : "package")} down`}
+                  >
+                    Down
+                  </button>
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => removePackage(index)}
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
 
               {isAddon ? (

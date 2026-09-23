@@ -2,8 +2,32 @@ import { describe, expect, it } from "vitest";
 import {
   proofWatermarkLabel,
   renderWatermarkPng,
+  watermarkBadgeLayout,
+  watermarkBadgePng,
   watermarkFontUrl,
 } from "@/lib/watermark-overlay";
+
+describe("watermarkBadgePng", () => {
+  it("decodes to a PNG with alpha", async () => {
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(watermarkBadgePng()).metadata();
+    expect(meta.format).toBe("png");
+    expect(meta.hasAlpha).toBe(true);
+    expect((meta.width ?? 0) > (meta.height ?? 0)).toBe(true);
+  });
+});
+
+describe("watermarkBadgeLayout", () => {
+  it("scales with the image and clamps to 150-300px wide", () => {
+    expect(watermarkBadgeLayout(1200, 800).width).toBe(264);
+    expect(watermarkBadgeLayout(4000, 3000).width).toBe(300);
+    expect(watermarkBadgeLayout(500, 400).width).toBe(150);
+  });
+
+  it("never covers more than half a tiny image", () => {
+    expect(watermarkBadgeLayout(200, 150).width).toBe(100);
+  });
+});
 
 describe("proofWatermarkLabel", () => {
   it("uppercases and strips punctuation CF Images latin subsets may lack", () => {

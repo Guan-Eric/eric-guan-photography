@@ -1,4 +1,26 @@
 import { deflateSync } from "node:zlib";
+import {
+  WATERMARK_BADGE_HEIGHT,
+  WATERMARK_BADGE_PNG_BASE64,
+  WATERMARK_BADGE_WIDTH,
+} from "@/lib/watermark-badge";
+
+/** Studiofront logo + wordmark pill stamped bottom-right on proofs. */
+export function watermarkBadgePng() {
+  return Buffer.from(WATERMARK_BADGE_PNG_BASE64, "base64");
+}
+
+/** Badge size and inset for a proof of the given pixel size. */
+export function watermarkBadgeLayout(width: number, height: number) {
+  const badgeWidth = Math.round(
+    Math.min(300, Math.max(150, width * 0.22), width * 0.5),
+  );
+  const badgeHeight = Math.round(
+    (badgeWidth * WATERMARK_BADGE_HEIGHT) / WATERMARK_BADGE_WIDTH,
+  );
+  const margin = Math.max(10, Math.round(Math.min(width, height) * 0.025));
+  return { width: badgeWidth, height: badgeHeight, margin };
+}
 
 /**
  * CF Images `.text({ font: { url } })` fetches that URL as a draw overlay.

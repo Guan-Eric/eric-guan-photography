@@ -3,6 +3,8 @@ import { writeMediaFile } from "@/lib/media-storage";
 import {
   proofWatermarkLabel,
   renderWatermarkPng,
+  watermarkBadgeLayout,
+  watermarkBadgePng,
   watermarkFontUrl,
 } from "@/lib/watermark-overlay";
 
@@ -130,17 +132,42 @@ async function cfResize(
   return { data, width: meta.width, height: meta.height };
 }
 
+type BadgeLayout = ReturnType<typeof watermarkBadgeLayout>;
+
+/**
+ * `overlay` is a factory because a stream or transformer can't be reused
+ * after a failed attempt. Retries without the corner badge so a badge
+ * failure never costs the proof.
+ */
 async function cfDrawJpeg(
   images: ImagesBinding,
   input: Buffer,
-  overlay: ImageTransformer | ReadableStream | ArrayBufferView,
+  overlay: () => ImageTransformer | ReadableStream | ArrayBufferView,
   options: Record<string, unknown>,
+  badge?: BadgeLayout,
 ) {
-  const result = await images
-    .input(toStream(input))
-    .draw(overlay, options)
-    .output({ format: "image/jpeg", quality: 68 });
-  return Buffer.from(await result.response().arrayBuffer());
+  async function run(withBadge: boolean) {
+    let pipeline = images.input(toStream(input)).draw(overlay(), options);
+    if (withBadge && badge) {
+      pipeline = pipeline.draw(toStream(watermarkBadgePng()), {
+        bottom: badge.margin,
+        right: badge.margin,
+        width: badge.width,
+        height: badge.height,
+        opacity: 0.9,
+      });
+    }
+    const result = await pipeline.output({ format: "image/jpeg", quality: 68 });
+    return Buffer.from(await result.response().arrayBuffer());
+  }
+
+  if (!badge) return run(false);
+  try {
+    return await run(true);
+  } catch (error) {
+    console.warn("[media] watermark badge failed, drawing without it:", error);
+    return run(false);
+  }
 }
 
 async function cfWatermarkProof(
@@ -159,6 +186,7 @@ async function cfWatermarkProof(
   const height = Math.max(1, Math.round(info.height * scale));
   const fontSize = Math.max(28, Math.round(Math.min(width, height) * 0.045));
   const label = proofWatermarkLabel(studioName);
+  const badge = watermarkBadgeLayout(width, height);
 
   // Prefer CF `.text()` (real type). If the font URL fetch 500s — jsDelivr on
   // Cloudflare commonly returns IMAGES_TRANSFORM_ERROR 9410 — draw a PNG
@@ -175,8 +203,9 @@ async function cfWatermarkProof(
       const data = await cfDrawJpeg(
         images,
         resized.data,
-        images.text(label, withFont).transform({ rotate: -28 }),
+        () => images.text(label, withFont).transform({ rotate: -28 }),
         { opacity: 0.42, repeat: true },
+        badge,
       );
       return { data, width, height };
     } catch (error) {
@@ -190,8 +219,9 @@ async function cfWatermarkProof(
       const data = await cfDrawJpeg(
         images,
         resized.data,
-        images.text(label, withFont),
+        () => images.text(label, withFont),
         { opacity: 0.5 },
+        badge,
       );
       return { data, width, height };
     } catch (error) {
@@ -205,8 +235,9 @@ async function cfWatermarkProof(
       const data = await cfDrawJpeg(
         images,
         resized.data,
-        images.text(label, noFont),
+        () => images.text(label, noFont),
         { opacity: 0.5 },
+        badge,
       );
       return { data, width, height };
     } catch (error) {
@@ -219,10 +250,13 @@ async function cfWatermarkProof(
 
   try {
     const overlay = renderWatermarkPng(label);
-    const data = await cfDrawJpeg(images, resized.data, toStream(overlay), {
-      opacity: 0.42,
-      repeat: true,
-    });
+    const data = await cfDrawJpeg(
+      images,
+      resized.data,
+      () => toStream(overlay),
+      { opacity: 0.42, repeat: true },
+      badge,
+    );
     return { data, width, height };
   } catch (error) {
     console.warn("[media] watermark PNG overlay failed:", error);
@@ -281,8 +315,21 @@ async function sharpWatermarkProof(input: Buffer, studioName: string) {
     </svg>
   `;
 
+  const layout = watermarkBadgeLayout(info.width, info.height);
+  const badge = await sharp(watermarkBadgePng())
+    .resize({ width: layout.width, height: layout.height, fit: "fill" })
+    .png()
+    .toBuffer();
+
   const proof = await sharp(data)
-    .composite([{ input: Buffer.from(svg), gravity: "center" }])
+    .composite([
+      { input: Buffer.from(svg), gravity: "center" },
+      {
+        input: badge,
+        top: Math.max(0, info.height - layout.margin - layout.height),
+        left: Math.max(0, info.width - layout.margin - layout.width),
+      },
+    ])
     .jpeg({ quality: 68 })
     .toBuffer({ resolveWithObject: true });
 

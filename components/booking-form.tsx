@@ -593,6 +593,17 @@ export function BookingForm({
                           clearFieldError("packageId");
                         }}
                       >
+                        <span className="booking-service-check" aria-hidden="true">
+                          <svg viewBox="0 0 16 16" fill="none">
+                            <path
+                              d="M3.5 8.5l3 3 6-7"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
                         <div className="booking-service-card-top">
                           <h3>{pkg.name}</h3>
                           <p className="price">{pkg.price}</p>

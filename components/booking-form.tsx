@@ -10,7 +10,8 @@ import type { PreferredSlot } from "@/lib/preferred-slots";
 import { isInServiceArea, normalizePostalCode, serviceAreaMessage } from "@/lib/service-area";
 import { isBookablePackage } from "@/lib/quoting";
 import { toastError, toastSuccess } from "@/lib/toast";
-import type { Package, ServiceAreaGate, Tenant } from "@/lib/tenant-schema";
+import { groupPackagesByCategory } from "@/lib/service-categories";
+import type { Package, ServiceAreaGate, ServiceCategory, Tenant } from "@/lib/tenant-schema";
 
 type Slot = { start: string; end: string; label: string };
 
@@ -33,6 +34,7 @@ type QuoteOk = {
 
 type Props = {
   packages: Package[];
+  categories?: ServiceCategory[];
   defaultPackageId?: string;
   email: string;
   defaultCity?: string;
@@ -220,6 +222,7 @@ function QuoteSummary({
 
 export function BookingForm({
   packages,
+  categories,
   defaultPackageId,
   email,
   defaultCity = "",
@@ -233,6 +236,11 @@ export function BookingForm({
     () => packages.filter(isBookablePackage),
     [packages],
   );
+  const serviceGroups = useMemo(
+    () => groupPackagesByCategory(bookable, categories),
+    [bookable, categories],
+  );
+  const showGroupHeadings = serviceGroups.some((group) => group.category);
 
   const deepLinkedPackageId =
     defaultPackageId && bookable.some((pkg) => pkg.id === defaultPackageId)
@@ -538,7 +546,7 @@ export function BookingForm({
                 </p>
               ) : (
                 <div
-                  className="booking-service-grid"
+                  className="booking-service-groups"
                   role="radiogroup"
                   aria-label="Services"
                   aria-invalid={Boolean(fieldErrors.packageId)}
@@ -546,7 +554,29 @@ export function BookingForm({
                     fieldErrors.packageId ? "err-packageId" : undefined
                   }
                 >
-                  {bookable.map((pkg) => {
+                  {serviceGroups.map((group) => {
+                    const headingId = `svc-cat-${group.category?.id ?? "other"}`;
+                    return (
+                  <div
+                    key={group.category?.id ?? "other"}
+                    className="service-category"
+                    role={showGroupHeadings ? "group" : undefined}
+                    aria-labelledby={showGroupHeadings ? headingId : undefined}
+                  >
+                  {showGroupHeadings ? (
+                    <div className="service-category-head">
+                      <h3 className="service-category-title" id={headingId}>
+                        {group.category?.name ?? "Other services"}
+                      </h3>
+                      {group.category?.description ? (
+                        <p className="service-category-desc">
+                          {group.category.description}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div className="booking-service-grid">
+                  {group.packages.map((pkg) => {
                     const selected = packageId === pkg.id;
                     return (
                       <button
@@ -581,6 +611,10 @@ export function BookingForm({
                           </ul>
                         ) : null}
                       </button>
+                    );
+                  })}
+                  </div>
+                  </div>
                     );
                   })}
                 </div>

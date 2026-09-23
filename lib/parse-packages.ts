@@ -28,8 +28,15 @@ function parseBands(value: unknown): PriceBand[] | undefined {
   return bands.length > 0 ? bands : undefined;
 }
 
-/** Parse admin pricing editor payload into Package rows. */
-export function parsePackages(value: unknown, existing: Package[]): Package[] {
+/**
+ * Parse admin pricing editor payload into Package rows. `categoryIds` limits
+ * which `categoryId` values survive; add-ons are never categorized.
+ */
+export function parsePackages(
+  value: unknown,
+  existing: Package[],
+  categoryIds: ReadonlySet<string> = new Set(),
+): Package[] {
   if (!Array.isArray(value)) return existing;
   const draft: Array<{
     id: string;
@@ -43,6 +50,7 @@ export function parsePackages(value: unknown, existing: Package[]): Package[] {
     quoteLater?: boolean;
     priceCents?: number;
     priceBands?: PriceBand[];
+    categoryId?: string;
     applicableRaw: string[];
   }> = [];
 
@@ -62,6 +70,7 @@ export function parsePackages(value: unknown, existing: Package[]): Package[] {
     const applicableRaw = Array.isArray(row.applicablePackageIds)
       ? row.applicablePackageIds.map((id) => String(id).trim()).filter(Boolean)
       : [];
+    const categoryId = asString(row.categoryId).trim();
     draft.push({
       id: asString(row.id).trim() || `pkg_${index + 1}`,
       name,
@@ -74,6 +83,7 @@ export function parsePackages(value: unknown, existing: Package[]): Package[] {
       quoteLater: quoteLater || undefined,
       priceCents: quoteLater ? undefined : cents ?? undefined,
       priceBands: quoteLater || upsell ? [] : parseBands(row.priceBands),
+      categoryId: !upsell && categoryIds.has(categoryId) ? categoryId : undefined,
       applicableRaw,
     });
   });

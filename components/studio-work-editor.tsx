@@ -67,6 +67,16 @@ export function StudioWorkEditor({
     );
   }
 
+  function moveImage(index: number, delta: -1 | 1) {
+    setGallery((list) => {
+      const target = index + delta;
+      if (target < 0 || target >= list.length) return list;
+      const next = [...list];
+      [next[index], next[target]] = [next[target]!, next[index]!];
+      return next;
+    });
+  }
+
   async function uploadOne(file: File) {
     const form = new FormData();
     form.append("file", file);
@@ -405,15 +415,35 @@ export function StudioWorkEditor({
                       Wide frame
                     </span>
                   </label>
-                  <button
-                    type="button"
-                    className="text-link"
-                    onClick={() =>
-                      setGallery((current) => current.filter((_, i) => i !== index))
-                    }
-                  >
-                    Remove
-                  </button>
+                  <div className="studio-category-actions">
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={() => moveImage(index, -1)}
+                      disabled={index === 0}
+                      aria-label={`Move photo ${index + 1} up`}
+                    >
+                      Up
+                    </button>
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={() => moveImage(index, 1)}
+                      disabled={index === gallery.length - 1}
+                      aria-label={`Move photo ${index + 1} down`}
+                    >
+                      Down
+                    </button>
+                    <button
+                      type="button"
+                      className="text-link"
+                      onClick={() =>
+                        setGallery((current) => current.filter((_, i) => i !== index))
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

@@ -26,7 +26,7 @@ export default function TermsPage() {
           <div className="page-header-inner">
             <p className="eyebrow">Legal</p>
             <h1>Terms of Service</h1>
-            <p className="section-copy">Last updated: September 19, 2026</p>
+            <p className="section-copy">Last updated: September 23, 2026</p>
             <p className="section-copy">
               <Link className="text-link" href="/fr/terms">
                 Français
@@ -96,6 +96,15 @@ export default function TermsPage() {
               redistribution right, and it does not include resale, transfer to
               another brokerage or listing agent, or reuse after the listing
               expires or is reassigned, unless the studio agrees otherwise.
+            </p>
+
+            <h2>Portfolio and promotional use</h2>
+            <p>
+              Unless the studio and agent agree otherwise in writing, the studio
+              may use delivered images in its portfolio, website, and promotional
+              materials. Studios should publish portfolio images only after the
+              listing closes, and without the property&rsquo;s street address or
+              identifiable people.
             </p>
 
             <h2>MLS and distribution indemnification</h2>

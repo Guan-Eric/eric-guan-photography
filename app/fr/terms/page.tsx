@@ -26,7 +26,7 @@ export default function TermsPageFr() {
           <div className="page-header-inner">
             <p className="eyebrow">Juridique</p>
             <h1>Conditions d’utilisation</h1>
-            <p className="section-copy">Dernière mise à jour : 19 septembre 2026</p>
+            <p className="section-copy">Dernière mise à jour : 23 septembre 2026</p>
             <p className="section-copy">
               <Link className="text-link" href="/terms">
                 English
@@ -97,6 +97,16 @@ export default function TermsPageFr() {
               propriété. Ce n’est pas un droit de redistribution MLS perpétuel,
               ni une autorisation de revente, de transfert ou de réutilisation
               après l’expiration ou le changement de courtier.
+            </p>
+
+            <h2>Utilisation dans le portfolio et à des fins promotionnelles</h2>
+            <p>
+              Sauf entente écrite contraire entre le studio et le courtier, le
+              studio peut utiliser les images livrées dans son portfolio, sur
+              son site web et dans ses documents promotionnels. Les studios
+              devraient publier ces images seulement après la clôture de
+              l’inscription, sans l’adresse civique de la propriété ni de
+              personnes identifiables.
             </p>
 
             <h2>MLS et indemnisation</h2>

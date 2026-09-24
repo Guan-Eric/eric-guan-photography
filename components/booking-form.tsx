@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { PreferredTimesPicker } from "@/components/preferred-times-picker";
@@ -16,6 +17,19 @@ import type { Package, ServiceAreaGate, ServiceCategory, Tenant } from "@/lib/te
 type Slot = { start: string; end: string; label: string };
 
 type QuoteAddOn = { id: string; name: string; priceCents: number };
+
+function PortfolioUseNotice() {
+  return (
+    <p className="field-hint booking-portfolio-notice">
+      By sending this request, you agree the photographer may use these images in
+      their portfolio after the listing closes, without the address. See{" "}
+      <Link className="text-link" href="/terms">
+        Terms
+      </Link>
+      .
+    </p>
+  );
+}
 
 type QuoteOk = {
   ok: true;
@@ -208,6 +222,7 @@ function QuoteSummary({
           <a href={`mailto:${email}`}>{email}</a> instead.
         </p>
       ) : null}
+      <PortfolioUseNotice />
       <button
         className={`btn btn-solid booking-quote-submit${submitting ? " is-busy" : ""}`}
         type="submit"
@@ -1088,6 +1103,7 @@ export function BookingForm({
           </p>
         ) : null}
 
+        <PortfolioUseNotice />
         <button
           className={`btn btn-solid${submitting ? " is-busy" : ""}`}
           type="submit"

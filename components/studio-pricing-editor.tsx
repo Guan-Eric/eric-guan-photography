@@ -5,6 +5,10 @@ import { normalizeStudioCurrency } from "@/lib/currency";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { MAX_SERVICE_CATEGORIES } from "@/lib/service-categories";
+import {
+  DEFAULT_PRICING_LEDE,
+  PRICING_LEDE_MAX_LENGTH,
+} from "@/lib/studio-defaults";
 import type { Package, PriceBand, ServiceCategory, Tenant } from "@/lib/tenant-schema";
 
 type PricingMode = "set_price" | "quote_later" | "email_only";
@@ -65,11 +69,14 @@ export function StudioPricingEditor({
   const [categories, setCategories] = useState<ServiceCategory[]>(
     tenant.serviceCategories ?? [],
   );
+  const [pricingLede, setPricingLede] = useState(
+    tenant.pricingLede?.trim() || DEFAULT_PRICING_LEDE,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const current = JSON.stringify({ packages, categories });
+  const current = JSON.stringify({ packages, categories, pricingLede });
   const [saved, setSaved] = useState(current);
   useUnsavedChanges(current !== saved);
 
@@ -224,6 +231,7 @@ export function StudioPricingEditor({
           section: "pricing",
           packages,
           serviceCategories: categories,
+          pricingLede,
         }),
       });
       const json = await response.json();
@@ -259,6 +267,25 @@ export function StudioPricingEditor({
           View on site
         </a>
       </div>
+
+      <section className="studio-section">
+        <h2>Pricing page intro</h2>
+        <p className="studio-section-lede">
+          Shown under the headline on your public pricing page. Use{" "}
+          <code>{"{turnaround}"}</code> to insert the delivery promise from{" "}
+          <a href="/admin/booking">Booking</a>.
+        </p>
+        <label className="field">
+          <span className="sr-only">Pricing page intro</span>
+          <textarea
+            rows={3}
+            value={pricingLede}
+            maxLength={PRICING_LEDE_MAX_LENGTH}
+            onChange={(event) => setPricingLede(event.target.value)}
+            required
+          />
+        </label>
+      </section>
 
       <section className="studio-section">
         <div className="studio-editor-row">

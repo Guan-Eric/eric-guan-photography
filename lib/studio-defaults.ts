@@ -7,6 +7,19 @@ import { PREMIUM_LISTING_BANDS, STANDARD_LISTING_BANDS } from "@/lib/quoting";
 import { defaultWeeklySchedule } from "@/lib/schedule";
 import type { Tenant } from "@/lib/tenant-schema";
 
+export const DEFAULT_PRICING_LEDE =
+  "Every package includes editing, MLS-sized and full-resolution downloads, and {turnaround} delivery. Larger or higher-end homes are quoted on square footage.";
+
+export const PRICING_LEDE_MAX_LENGTH = 500;
+
+/** Pricing page intro with `{turnaround}` filled from the tenant. */
+export function resolvePricingLede(
+  tenant: Pick<Tenant, "turnaround" | "pricingLede">,
+) {
+  const raw = tenant.pricingLede?.trim() || DEFAULT_PRICING_LEDE;
+  return raw.replaceAll("{turnaround}", tenant.turnaround || "24–48 hours");
+}
+
 const PLACEHOLDER_HERO = {
   src: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=2400&q=80",
   alt: "Bright modern home exterior",
@@ -138,6 +151,7 @@ export function buildStudioConfig(options: {
     },
     schedule: defaultWeeklySchedule(),
     turnaround: "24–48 hours",
+    pricingLede: DEFAULT_PRICING_LEDE,
     seo: {
       description: `${options.studioName} — real estate photography for agents. MLS-ready galleries delivered in 24–48 hours.`,
       currency,

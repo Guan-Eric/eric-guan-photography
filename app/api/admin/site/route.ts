@@ -19,6 +19,10 @@ import { WEEKDAY_KEYS } from "@/lib/tenant-schema";
 import { parsePackages } from "@/lib/parse-packages";
 import { parseServiceCategories } from "@/lib/service-categories";
 import {
+  DEFAULT_PRICING_LEDE,
+  PRICING_LEDE_MAX_LENGTH,
+} from "@/lib/studio-defaults";
+import {
   parseTenantConfig,
   getTenantRow,
   updateTenantConfig,
@@ -182,6 +186,10 @@ export async function PATCH(request: Request) {
       body?.serviceCategories,
       current.serviceCategories,
     );
+    const pricingLede =
+      asString(body?.pricingLede, current.pricingLede ?? DEFAULT_PRICING_LEDE)
+        .trim()
+        .slice(0, PRICING_LEDE_MAX_LENGTH) || DEFAULT_PRICING_LEDE;
     await updateTenantConfig(session.activeTenantId, {
       serviceCategories,
       packages: parsePackages(
@@ -189,6 +197,7 @@ export async function PATCH(request: Request) {
         current.packages,
         new Set(serviceCategories.map((category) => category.id)),
       ),
+      pricingLede,
     });
     return NextResponse.json({ ok: true });
   }

@@ -193,6 +193,9 @@ export const ericGuan: Tenant = {
 
   turnaround: "24–48 hours",
 
+  pricingLede:
+    "Every package includes editing, MLS-sized and full-resolution downloads, and {turnaround} delivery. Larger or higher-end homes are quoted on square footage.",
+
   seo: {
     description:
       "Real estate photography for agents in Montréal. Clean interiors, bright exteriors, MLS-ready galleries delivered in 24–48 hours.",

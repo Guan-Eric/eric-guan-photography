@@ -187,6 +187,13 @@ export type Tenant = {
   /** Turnaround promise, e.g. "24–48 hours". Reused across copy and email. */
   turnaround: string;
 
+  /**
+   * Intro under the pricing page headline. May include `{turnaround}`,
+   * which is replaced with `turnaround` when rendered. When absent, the
+   * platform default copy is used.
+   */
+  pricingLede?: string;
+
   seo: {
     /** Falls back to a generated string when absent. */
     title?: string;

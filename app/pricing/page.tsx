@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { platformName } from "@/lib/platform";
 import { groupPackagesByCategory } from "@/lib/service-categories";
+import { resolvePricingLede } from "@/lib/studio-defaults";
 import { getRequestTenant } from "@/lib/tenants";
 
 export const dynamic = "force-dynamic";
@@ -103,11 +104,7 @@ export default async function PricingPage() {
           <div className="page-header-inner">
             <p className="eyebrow">Pricing</p>
             <h1>Straightforward packages, no surprises.</h1>
-            <p className="section-copy">
-              Every package includes editing, MLS-sized and full-resolution
-              downloads, and {tenant.turnaround} delivery. Larger or
-              higher-end homes are quoted on square footage.
-            </p>
+            <p className="section-copy">{resolvePricingLede(tenant)}</p>
           </div>
         </header>
 

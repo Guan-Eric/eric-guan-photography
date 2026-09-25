@@ -36,16 +36,20 @@ html {
   overflow-x: clip;
 }
 
+:root {
+  --page-bg:
+    radial-gradient(1200px 700px at 12% -10%, rgba(63, 122, 105, 0.18), transparent 55%),
+    radial-gradient(900px 600px at 100% 8%, rgba(23, 26, 23, 0.08), transparent 50%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+}
+
 body {
   margin: 0;
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 1.05rem;
   line-height: 1.55;
-  background:
-    radial-gradient(1200px 700px at 12% -10%, rgba(63, 122, 105, 0.18), transparent 55%),
-    radial-gradient(900px 600px at 100% 8%, rgba(23, 26, 23, 0.08), transparent 50%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+  background: var(--page-bg);
   background-attachment: fixed;
   min-height: 100dvh;
   overflow-x: clip;
@@ -3281,16 +3285,12 @@ span.status-select--locked {
     position: sticky;
     top: 0;
     z-index: 20;
-    margin-left: -0.35rem;
-    margin-right: -0.35rem;
-    padding: 0.85rem 0.35rem 1rem;
-    background: color-mix(in srgb, var(--bg) 92%, transparent);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid transparent;
-  }
-
-  .admin-toolbar:has(+ *) {
-    border-bottom-color: var(--line);
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+    padding: 0.85rem 0.75rem;
+    /* Same fixed gradient as body: reads as transparent but hides content scrolling under it. */
+    background: var(--page-bg);
+    background-attachment: fixed;
   }
 }
 

@@ -76,12 +76,13 @@ describe("quotas", () => {
     const reset = await assertUploadRateLimit(tenant.id, 2);
     expect(reset.ok).toBe(true);
 
+    const maxUploads = Number(process.env.UPLOAD_RATE_LIMIT ?? "600");
     await qRun(
       db
         .update(schema.uploadRateLimits)
         .set({
           windowStartedAt: new Date().toISOString(),
-          uploadCount: 60,
+          uploadCount: maxUploads,
         })
         .where(eq(schema.uploadRateLimits.id, existing!.id)),
     );

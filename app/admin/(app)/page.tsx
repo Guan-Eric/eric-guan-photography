@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { AdminOrderBoard } from "@/components/admin-order-board";
 import { getPhotographerSession } from "@/lib/auth";
 import { lifetimeOfferStatus } from "@/lib/billing";
@@ -21,7 +22,8 @@ export default async function AdminPage({
   searchParams: Promise<{ welcome?: string; plan?: string }>;
 }) {
   const session = await getPhotographerSession();
-  if (!session?.activeTenantId) return null;
+  if (!session) redirect("/login");
+  if (!session.activeTenantId) redirect("/onboarding");
 
   const query = await searchParams;
   const tenant = await getTenant(session.activeTenantId);

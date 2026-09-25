@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { ShootDayBoard } from "@/components/shoot-day-board";
 import { getPhotographerSession } from "@/lib/auth";
 import { getOrder, listTodayAppointments } from "@/lib/orders";
@@ -15,7 +16,8 @@ export const metadata: Metadata = {
 
 export default async function AdminTodayPage() {
   const session = await getPhotographerSession();
-  if (!session?.activeTenantId) return null;
+  if (!session) redirect("/login");
+  if (!session.activeTenantId) redirect("/onboarding");
 
   const tenantId = session.activeTenantId;
   const tenant = await getTenant(tenantId);

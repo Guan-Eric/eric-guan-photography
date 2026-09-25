@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { ListingsIndex } from "@/components/listings-index";
 import { getPhotographerSession } from "@/lib/auth";
 import { entitlements } from "@/lib/billing";
-import { backfillListingPages, listListingPages } from "@/lib/listing-pages";
+import { listingPublicState } from "@/lib/listing-compliance";
+import {
+  backfillListingPages,
+  listListingPages,
+  listingPageMedia,
+} from "@/lib/listing-pages";
 import { publicStudioUrl } from "@/lib/platform";
 import { getTenantRow } from "@/lib/tenant-store";
 import { getTenant } from "@/lib/tenants";
@@ -17,7 +24,8 @@ export const metadata: Metadata = {
 
 export default async function AdminListingsPage() {
   const session = await getPhotographerSession();
-  if (!session?.activeTenantId) return null;
+  if (!session) redirect("/login");
+  if (!session.activeTenantId) redirect("/onboarding");
 
   const tenant = await getTenant(session.activeTenantId);
   const row = await getTenantRow(session.activeTenantId);
@@ -29,6 +37,14 @@ export default async function AdminListingsPage() {
     domain: tenant.domain,
     siteUrl: tenant.siteUrl,
   });
+
+  const rows = await Promise.all(
+    pages.map(async (page) => {
+      const media = await listingPageMedia(page);
+      const { state, checklistErrors } = listingPublicState(page, media);
+      return { page, state, checklistErrors };
+    }),
+  );
 
   return (
     <div className="studio-settings">
@@ -51,7 +67,7 @@ export default async function AdminListingsPage() {
         </p>
       ) : null}
 
-      {pages.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="studio-empty">
           <h2>No property pages yet</h2>
           <p>
@@ -64,32 +80,7 @@ export default async function AdminListingsPage() {
           </Link>
         </div>
       ) : (
-        <ul className="listing-index">
-          {pages.map((page) => (
-            <li key={page.id}>
-              <div>
-                <strong>{page.title}</strong>
-                <span className="muted">
-                  {page.propertyAddress} · {page.publishedAt ? "Published" : "Draft"} ·{" "}
-                  {page.theme}
-                </span>
-              </div>
-              <div className="listing-index-actions">
-                <Link className="btn btn-outline" href={`/admin/listings/${page.id}`}>
-                  Edit
-                </Link>
-                <a
-                  className="text-link"
-                  href={`${siteUrl.replace(/\/$/, "")}/p/${page.slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  View
-                </a>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <ListingsIndex rows={rows} siteUrl={siteUrl} />
       )}
     </div>
   );

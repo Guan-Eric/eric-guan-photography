@@ -1,23 +1,13 @@
-import Link from "next/link";
+import { StatusPage } from "@/components/status-page";
 
 export function GalleryLinkExpired() {
   return (
-    <main className="delivery-shell" id="main">
-      <div className="delivery-main">
-        <header className="delivery-intro">
-          <p className="eyebrow">Link expired</p>
-          <h1>This gallery link is no longer active</h1>
-          <p className="lede">
-            Ask your photographer for a fresh link. Preview and download links expire after 14
-            days, and the preview link stops working after payment unlocks a new download URL.
-          </p>
-          <p>
-            <Link className="btn btn-outline" href="/portal">
-              Agent portal
-            </Link>
-          </p>
-        </header>
-      </div>
-    </main>
+    <StatusPage
+      shell="delivery"
+      eyebrow="Link expired"
+      title="This gallery link is no longer active"
+      body="Ask your photographer for a fresh link. Preview and download links expire after 14 days, and the preview link stops working after payment unlocks a new download URL."
+      actions={[{ href: "/portal", label: "Agent portal", variant: "outline" }]}
+    />
   );
 }

@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { ListingPageEditor } from "@/components/listing-page-editor";
 import { getPhotographerSession } from "@/lib/auth";
 import type { ComplianceRegion, ListingStatus } from "@/lib/db/schema";
+import {
+  listingPublicState,
+  listingStateLabel,
+} from "@/lib/listing-compliance";
 import { getListingPage, listingPageMedia } from "@/lib/listing-pages";
 import { listingTheme } from "@/lib/listing-themes";
 import { publicStudioUrl } from "@/lib/platform";
@@ -30,6 +34,7 @@ export default async function EditListingPage({
 
   const tenant = await getTenant(session.activeTenantId);
   const media = await listingPageMedia(page);
+  const { state, checklistErrors } = listingPublicState(page, media);
   const siteUrl = publicStudioUrl({
     slug: tenant.slug,
     domain: tenant.domain,
@@ -39,7 +44,12 @@ export default async function EditListingPage({
   return (
     <ListingPageEditor
       pageId={page.id}
+      orderId={page.orderId}
       publicUrl={`${siteUrl.replace(/\/$/, "")}/p/${page.slug}`}
+      previewUrl={`/admin/listings/${page.id}/preview`}
+      listingState={state}
+      listingStateLabel={listingStateLabel(state)}
+      checklistErrors={checklistErrors}
       propertyAddress={page.propertyAddress}
       initial={{
         theme: listingTheme(page.theme),

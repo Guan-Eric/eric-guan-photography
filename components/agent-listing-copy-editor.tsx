@@ -51,11 +51,17 @@ function toDateInput(iso: string | null | undefined) {
 function AgentListingCopyForm({
   pageId,
   publicUrl,
+  listingLive = false,
+  listingStateLabel = "Draft",
+  checklistErrors = [],
   propertyAddress,
   initial,
 }: {
   pageId: string;
   publicUrl: string;
+  listingLive?: boolean;
+  listingStateLabel?: string;
+  checklistErrors?: string[];
   propertyAddress: string;
   initial: CopyState;
 }) {
@@ -139,9 +145,20 @@ function AgentListingCopyForm({
               Back to your listings
             </Link>
             {" · "}
-            <a className="text-link" href={publicUrl} target="_blank" rel="noreferrer">
-              View listing page
-            </a>
+            <span className={`listing-state-badge is-${listingLive ? "live" : "draft"}`}>
+              {listingStateLabel}
+            </span>
+            {" · "}
+            {listingLive ? (
+              <a className="text-link" href={publicUrl} target="_blank" rel="noreferrer">
+                View listing page
+              </a>
+            ) : (
+              <span>
+                Not public yet
+                {checklistErrors[0] ? ` — ${checklistErrors[0]}` : ""}
+              </span>
+            )}
           </p>
         </div>
         <button
@@ -475,6 +492,9 @@ function AgentListingCopyForm({
 export function AgentListingCopyEditor(props: {
   pageId: string;
   publicUrl: string;
+  listingLive?: boolean;
+  listingStateLabel?: string;
+  checklistErrors?: string[];
   propertyAddress: string;
   initial: CopyState;
 }) {

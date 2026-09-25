@@ -107,6 +107,12 @@ export async function POST(
       token: result.gallery.publicToken,
       uploaded: result.created.length,
       state: result.gallery.state,
+      photos: result.created.map((asset) => ({
+        id: asset.id,
+        originalName: asset.originalName,
+        roomLabel: asset.roomLabel,
+      })),
+      assetId: result.created[0]?.id ?? null,
     });
   } catch (error) {
     const message =

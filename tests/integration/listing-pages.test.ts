@@ -119,7 +119,9 @@ describe("listing pages", () => {
       `/portal/listings/${fetched!.id}`,
     );
     expect(await getListingPage(byOrder!.id, "demo-studio")).toBeNull();
-    expect(await listingPageForPublic(tenant.id, slug)).toBeTruthy();
+    const publicLive = await listingPageForPublic(tenant.id, slug);
+    expect(publicLive.state).toBe("live");
+    expect(publicLive.page).toBeTruthy();
 
     // Agent-owned fields (copy / open houses) must not clear photographer-owned enquiry.
     await updateListingPage(byOrder!.id, tenant.id, {
@@ -289,7 +291,9 @@ describe("listing pages", () => {
       published: false,
     });
     expect(patched.ok).toBe(true);
-    expect(await listingPageForPublic(tenant.id, page!.slug)).toBeNull();
+    const publicDraft = await listingPageForPublic(tenant.id, page!.slug);
+    expect(publicDraft.state).not.toBe("live");
+    expect(publicDraft.page?.slug).toBe(page!.slug);
     expect((await updateListingPage("missing", tenant.id, { title: "x" })).ok).toBe(false);
 
     await backfillListingPages(tenant.id);

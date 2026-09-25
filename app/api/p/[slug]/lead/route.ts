@@ -31,7 +31,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
 
   const { slug } = await context.params;
   const data = await listingPageForPublic(tenant.id, slug);
-  if (!data || data.page.leadCapture !== 1) {
+  if (data.state !== "live" || !data.page || data.page.leadCapture !== 1) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
 

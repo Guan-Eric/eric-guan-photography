@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { StatusPage } from "@/components/status-page";
 import { ReviewForm } from "@/components/review-form";
 import { getOrder } from "@/lib/orders";
 import { getReviewRequestByToken } from "@/lib/reviews";
@@ -19,7 +19,15 @@ export default async function PublicReviewPage({
 }) {
   const { token } = await params;
   const request = await getReviewRequestByToken(token);
-  if (!request) notFound();
+  if (!request) {
+    return (
+      <StatusPage
+        eyebrow="Review"
+        title="This review link is invalid or has expired"
+        body="Ask your photographer for a fresh review link if you’d still like to leave feedback."
+      />
+    );
+  }
   const order = await getOrder(request.orderId, request.tenantId);
   return (
     <main className="page-section" id="main">

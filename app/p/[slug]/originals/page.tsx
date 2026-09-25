@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { StatusPage } from "@/components/status-page";
 import { enhancementLabel } from "@/lib/listing-compliance";
+import { listingCopy, type ListingLocale } from "@/lib/listing-i18n";
 import { listingPageForPublic } from "@/lib/listing-pages";
 import { requireRequestTenant } from "@/lib/tenants";
 
@@ -30,10 +32,52 @@ export default async function ListingOriginalsPage({
   const tenant = await requireRequestTenant();
   const { slug } = await params;
   const data = await listingPageForPublic(tenant.id, slug);
-  if (!data) notFound();
+  if (data.state === "missing" || !data.page) notFound();
+
+  const locale: ListingLocale = data.page.complianceRegion === "ca_qc" ? "fr" : "en";
+  const copy = listingCopy[locale];
+
+  if (data.state !== "live") {
+    if (data.state === "waiting_on_agent") {
+      return (
+        <StatusPage
+          eyebrow={copy.statusWaitingEyebrow}
+          title={copy.statusWaitingTitle}
+          body={copy.statusWaitingBody}
+          details={data.checklistErrors}
+          actions={[{ href: "/portal", label: copy.statusPortalCta }]}
+        />
+      );
+    }
+    if (data.state === "sold") {
+      return (
+        <StatusPage
+          eyebrow={copy.statusSoldEyebrow}
+          title={copy.statusSoldTitle}
+          body={copy.statusSoldBody}
+        />
+      );
+    }
+    if (data.state === "ended") {
+      return (
+        <StatusPage
+          eyebrow={copy.statusEndedEyebrow}
+          title={copy.statusEndedTitle}
+          body={copy.statusEndedBody}
+        />
+      );
+    }
+    return (
+      <StatusPage
+        eyebrow={copy.statusDraftEyebrow}
+        title={copy.statusDraftTitle}
+        body={copy.statusDraftBody}
+      />
+    );
+  }
 
   const { page, media } = data;
-  const lang = page.complianceRegion === "ca_qc" ? "fr" : "en";
+  const lang = locale;
   const disclosed = media.filter((asset) => asset.disclosurePublic === 1);
   const altered = media.filter((asset) => asset.enhancementTag);
 

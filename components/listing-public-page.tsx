@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ListingLeadForm } from "@/components/listing-lead-form";
 import { ListingDomainCta } from "@/components/listing-domain-cta";
 import { MediaEmbeds } from "@/components/media-embeds";
+import { StatusPage } from "@/components/status-page";
 import { customDomainsEnabled } from "@/lib/custom-domain";
 import { TIME_ZONE } from "@/lib/availability";
 import {
@@ -11,7 +12,10 @@ import {
   parseOpenHouses,
   parseSections,
 } from "@/lib/listing-content";
-import { enhancementLabel } from "@/lib/listing-compliance";
+import {
+  enhancementLabel,
+  type ListingPublicState,
+} from "@/lib/listing-compliance";
 import {
   agencyLicenseLabel,
   brokerLicenseLabel,
@@ -22,20 +26,81 @@ import {
 import { listingPageForPublic } from "@/lib/listing-pages";
 import { getListingDomainForPage } from "@/lib/domain-billing";
 import { listingTheme, listingThemeStyle } from "@/lib/listing-themes";
+import type { ListingPage, MediaAsset, MediaLink } from "@/lib/db/schema";
+import type { Tenant } from "@/lib/tenant-schema";
 import { requireRequestTenant } from "@/lib/tenants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Params = { slug: string };
-type Search = { brand?: string };
+type ListingMedia = Pick<
+  MediaAsset,
+  | "id"
+  | "roomLabel"
+  | "width"
+  | "height"
+  | "enhancementTag"
+  | "originalDisclosureAssetId"
+  | "disclosurePublic"
+>;
+
+function listingStatusPage(
+  state: ListingPublicState,
+  locale: ListingLocale,
+  checklistErrors: string[],
+) {
+  const copy = listingCopy[locale];
+  if (state === "waiting_on_agent") {
+    return (
+      <StatusPage
+        eyebrow={copy.statusWaitingEyebrow}
+        title={copy.statusWaitingTitle}
+        body={copy.statusWaitingBody}
+        details={checklistErrors}
+        actions={[{ href: "/portal", label: copy.statusPortalCta }]}
+      />
+    );
+  }
+  if (state === "draft") {
+    return (
+      <StatusPage
+        eyebrow={copy.statusDraftEyebrow}
+        title={copy.statusDraftTitle}
+        body={copy.statusDraftBody}
+        actions={[{ href: "/portal", label: copy.statusPortalCta }]}
+      />
+    );
+  }
+  if (state === "sold") {
+    return (
+      <StatusPage
+        eyebrow={copy.statusSoldEyebrow}
+        title={copy.statusSoldTitle}
+        body={copy.statusSoldBody}
+      />
+    );
+  }
+  if (state === "ended") {
+    return (
+      <StatusPage
+        eyebrow={copy.statusEndedEyebrow}
+        title={copy.statusEndedTitle}
+        body={copy.statusEndedBody}
+        actions={[{ href: "/portal", label: copy.statusPortalCta }]}
+      />
+    );
+  }
+  return null;
+}
 
 export async function generateListingMetadata(
   slug: string,
 ): Promise<Metadata> {
   const tenant = await requireRequestTenant();
   const data = await listingPageForPublic(tenant.id, slug);
-  if (!data) return { title: "Listing", robots: { index: false, follow: false } };
+  if (data.state !== "live" || !data.page) {
+    return { title: "Listing", robots: { index: false, follow: false } };
+  }
   return {
     title: data.page.title,
     description:
@@ -55,12 +120,64 @@ export async function ListingPublicPage({
 }) {
   const tenant = await requireRequestTenant();
   const data = await listingPageForPublic(tenant.id, slug);
-  if (!data) notFound();
+  if (data.state === "missing" || !data.page || !data.tenant) notFound();
 
+  if (data.state !== "live") {
+    return listingStatusPage(data.state, locale, data.checklistErrors);
+  }
+
+  const listingDomain = await getListingDomainForPage(tenant.id, data.page.id);
+  return (
+    <ListingPublicView
+      slug={slug}
+      brandOff={brandOff}
+      locale={locale}
+      page={data.page}
+      tenant={data.tenant}
+      media={data.media}
+      links={data.links}
+      listingDomain={listingDomain}
+      mediaSrc={(assetId) => `/api/p/${slug}/media/${assetId}`}
+      originalSrc={(assetId) => `/api/p/${slug}/original/${assetId}`}
+      originalsHref={`/p/${slug}/originals`}
+      docHref={(linkId) => `/api/p/${slug}/doc/${linkId}`}
+    />
+  );
+}
+
+export function ListingPublicView({
+  slug,
+  brandOff,
+  locale,
+  page,
+  tenant,
+  media,
+  links,
+  listingDomain,
+  mediaSrc,
+  originalSrc,
+  originalsHref,
+  docHref,
+  preview,
+  previewChecklist,
+}: {
+  slug: string;
+  brandOff: boolean;
+  locale: ListingLocale;
+  page: ListingPage;
+  tenant: Tenant;
+  media: ListingMedia[];
+  links: MediaLink[];
+  listingDomain?: Awaited<ReturnType<typeof getListingDomainForPage>>;
+  mediaSrc: (assetId: string) => string;
+  originalSrc?: (assetId: string) => string;
+  originalsHref?: string | null;
+  docHref?: (linkId: string) => string | null;
+  preview?: boolean;
+  previewChecklist?: string[];
+}) {
   const copy = listingCopy[locale];
-  const branded = !brandOff && data.page.brandMode !== "unbranded";
-  const { page, media, links } = data;
-  const listingDomain = await getListingDomainForPage(tenant.id, page.id);
+  const branded = !brandOff && page.brandMode !== "unbranded";
   const theme = listingTheme(page.theme);
   const sections = parseSections(page.sectionsJson);
   const openHouses = parseOpenHouses(page.openHouseJson);
@@ -82,7 +199,8 @@ export async function ListingPublicPage({
     provider: link.provider,
     url: link.url,
     title: link.title,
-    docHref: link.storagePath ? `/api/p/${slug}/doc/${link.id}` : null,
+    docHref:
+      link.storagePath && docHref && !preview ? docHref(link.id) : null,
   }));
 
   const mapSrc =
@@ -90,7 +208,7 @@ export async function ListingPublicPage({
       ? `https://www.openstreetmap.org/export/embed.html?bbox=${Number(page.mapLng) - 0.01}%2C${Number(page.mapLat) - 0.01}%2C${Number(page.mapLng) + 0.01}%2C${Number(page.mapLat) + 0.01}&layer=mapnik&marker=${page.mapLat}%2C${page.mapLng}`
       : null;
 
-  function assetCaption(asset: (typeof media)[number]) {
+  function assetCaption(asset: ListingMedia) {
     const tag = enhancementLabel(asset.enhancementTag, locale);
     const parts: string[] = [];
     if (asset.roomLabel) parts.push(asset.roomLabel);
@@ -98,12 +216,12 @@ export async function ListingPublicPage({
     return parts.join(" · ");
   }
 
-  function originalHref(asset: (typeof media)[number]) {
-    if (!asset.enhancementTag) return null;
-    if (asset.originalDisclosureAssetId) {
-      return `/api/p/${slug}/original/${asset.originalDisclosureAssetId}`;
+  function originalHref(asset: ListingMedia) {
+    if (preview || !asset.enhancementTag) return null;
+    if (asset.originalDisclosureAssetId && originalSrc) {
+      return originalSrc(asset.originalDisclosureAssetId);
     }
-    if (hasPublicOriginals) return `/p/${slug}/originals`;
+    if (hasPublicOriginals && originalsHref) return originalsHref;
     return null;
   }
 
@@ -114,11 +232,25 @@ export async function ListingPublicPage({
       lang={locale}
       style={listingThemeStyle(theme)}
     >
-      <p className="listing-lang-switch">
-        <Link className="text-link" href={copy.langSwitchHref(slug)}>
-          {copy.langSwitch}
-        </Link>
-      </p>
+      {preview ? (
+        <p className="listing-preview-banner" role="status">
+          <strong>Preview — not public yet.</strong>
+          {previewChecklist && previewChecklist.length > 0 ? (
+            <>
+              {" "}
+              Still needed: {previewChecklist.join(" · ")}
+            </>
+          ) : (
+            " Publish when you are ready."
+          )}
+        </p>
+      ) : (
+        <p className="listing-lang-switch">
+          <Link className="text-link" href={copy.langSwitchHref(slug)}>
+            {copy.langSwitch}
+          </Link>
+        </p>
+      )}
 
       {statusText ? (
         <p className="listing-status-banner" role="status">
@@ -129,8 +261,8 @@ export async function ListingPublicPage({
       {showAlteration ? (
         <p className="listing-alteration-banner" role="note">
           {copy.alterationBanner}{" "}
-          {hasPublicOriginals ? (
-            <Link className="text-link" href={`/p/${slug}/originals`}>
+          {!preview && hasPublicOriginals && originalsHref ? (
+            <Link className="text-link" href={originalsHref}>
               {copy.viewAllOriginals}
             </Link>
           ) : null}
@@ -142,7 +274,7 @@ export async function ListingPublicPage({
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             className="listing-hero-image"
-            src={`/api/p/${slug}/media/${hero.id}`}
+            src={mediaSrc(hero.id)}
             alt={hero.roomLabel || page.propertyAddress}
             width={hero.width}
             height={hero.height}
@@ -182,7 +314,7 @@ export async function ListingPublicPage({
             <figure key={asset.id} className="delivery-item">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/api/p/${slug}/media/${asset.id}`}
+                src={mediaSrc(asset.id)}
                 alt={asset.roomLabel || page.propertyAddress}
                 width={asset.width}
                 height={asset.height}
@@ -263,11 +395,15 @@ export async function ListingPublicPage({
         </section>
       ) : null}
 
-      {branded && customDomainsEnabled() && listingDomain && !listingDomain.paidUntil ? (
+      {!preview &&
+      branded &&
+      customDomainsEnabled() &&
+      listingDomain &&
+      !listingDomain.paidUntil ? (
         <ListingDomainCta slug={slug} />
       ) : null}
 
-      {branded && page.leadCapture === 1 ? (
+      {!preview && branded && page.leadCapture === 1 ? (
         <ListingLeadForm slug={slug} agentName={page.agentName} />
       ) : null}
 

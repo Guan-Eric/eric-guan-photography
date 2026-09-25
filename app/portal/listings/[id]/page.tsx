@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { AgentListingCopyEditor } from "@/components/agent-listing-copy-editor";
+import { StatusPage } from "@/components/status-page";
 import { getAgentSession } from "@/lib/agent-auth";
 import { parseOpenHouses, parseSections } from "@/lib/listing-content";
-import { getListingPageForAgent } from "@/lib/listing-pages";
+import {
+  listingPublicState,
+  listingStateLabel,
+} from "@/lib/listing-compliance";
+import {
+  getListingPageForAgent,
+  listingPageMedia,
+} from "@/lib/listing-pages";
 import { publicStudioUrl } from "@/lib/platform";
 import { getRequestTenant } from "@/lib/tenants";
 import { getTenantRow } from "@/lib/tenant-store";
@@ -30,7 +38,19 @@ export default async function AgentListingCopyPage({
   }
 
   const page = await getListingPageForAgent(id, tenant.id, session.email);
-  if (!page) notFound();
+  if (!page) {
+    return (
+      <StatusPage
+        eyebrow="Not available"
+        title="This listing isn’t on your account"
+        body="Sign in with the email used to book the shoot, or ask your photographer to share the correct link."
+        actions={[
+          { href: "/portal", label: "Back to listings", variant: "outline" },
+          { href: "/portal/login", label: "Sign in again", variant: "solid" },
+        ]}
+      />
+    );
+  }
 
   const row = await getTenantRow(tenant.id);
   const siteUrl = publicStudioUrl({
@@ -39,13 +59,19 @@ export default async function AgentListingCopyPage({
     siteUrl: tenant.siteUrl,
     domainStatus: row?.domainStatus,
   });
+  const media = await listingPageMedia(page);
+  const { state, checklistErrors } = listingPublicState(page, media);
+  const publicUrl = `${siteUrl.replace(/\/$/, "")}/p/${page.slug}`;
 
   return (
     <main className="page-section" id="main">
       <div className="page-inner">
         <AgentListingCopyEditor
           pageId={page.id}
-          publicUrl={`${siteUrl.replace(/\/$/, "")}/p/${page.slug}`}
+          publicUrl={publicUrl}
+          listingLive={state === "live"}
+          listingStateLabel={listingStateLabel(state)}
+          checklistErrors={checklistErrors}
           propertyAddress={page.propertyAddress}
           initial={{
             headline: page.headline ?? "",

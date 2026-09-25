@@ -14,8 +14,9 @@ export default async function ListingOg({
   const tenant = await getRequestTenant();
   const { slug } = await params;
   const data = tenant ? await listingPageForPublic(tenant.id, slug) : null;
-  const title = data?.page.title ?? "Listing";
-  const studio = data?.tenant.studioName ?? "";
+  const live = data?.state === "live" ? data : null;
+  const title = live?.page?.title ?? "Listing";
+  const studio = live?.tenant?.studioName ?? "";
 
   return new ImageResponse(
     (

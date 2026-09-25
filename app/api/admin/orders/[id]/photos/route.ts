@@ -6,6 +6,8 @@ import {
   listMedia,
   reorderGalleryMedia,
 } from "@/lib/galleries";
+import { listingPublicState } from "@/lib/listing-compliance";
+import { getListingPageByOrder, listingPageMedia } from "@/lib/listing-pages";
 import { getOrder } from "@/lib/orders";
 
 export const runtime = "nodejs";
@@ -28,13 +30,32 @@ export async function GET(
   }
 
   const gallery = await getGalleryByOrderId(orderId, order.tenantId);
+  const listing = await getListingPageByOrder(orderId, order.tenantId);
+  let listingPayload: {
+    id: string;
+    slug: string;
+    live: boolean;
+    state: string;
+  } | null = null;
+  if (listing) {
+    const media = await listingPageMedia(listing);
+    const { state } = listingPublicState(listing, media);
+    listingPayload = {
+      id: listing.id,
+      slug: listing.slug,
+      live: state === "live",
+      state,
+    };
+  }
+
   if (!gallery) {
-    return NextResponse.json({ ok: true, photos: [] });
+    return NextResponse.json({ ok: true, photos: [], listing: listingPayload });
   }
 
   const media = await listMedia(gallery.id);
   return NextResponse.json({
     ok: true,
+    listing: listingPayload,
     photos: media.map((asset) => ({
       id: asset.id,
       originalName: asset.originalName,

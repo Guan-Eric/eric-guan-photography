@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { StudioScheduleEditor } from "@/components/studio-schedule-editor";
 import { getPhotographerSession } from "@/lib/auth";
 import { listOrders } from "@/lib/orders";
@@ -16,7 +17,8 @@ export const metadata: Metadata = {
 
 export default async function AdminSchedulePage() {
   const session = await getPhotographerSession();
-  if (!session?.activeTenantId) return null;
+  if (!session) redirect("/login");
+  if (!session.activeTenantId) redirect("/onboarding");
 
   const tenant = await getTenant(session.activeTenantId);
   const row = await getTenantRow(session.activeTenantId);

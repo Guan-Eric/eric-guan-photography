@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { ReviewsAdmin } from "@/components/reviews-admin";
 import { getPhotographerSession } from "@/lib/auth";
 import { listTestimonials } from "@/lib/reviews";
@@ -13,7 +14,8 @@ export const metadata: Metadata = {
 
 export default async function AdminReviewsPage() {
   const session = await getPhotographerSession();
-  if (!session?.activeTenantId) return null;
+  if (!session) redirect("/login");
+  if (!session.activeTenantId) redirect("/onboarding");
   const items = await listTestimonials(session.activeTenantId, false);
   return <ReviewsAdmin items={items} />;
 }

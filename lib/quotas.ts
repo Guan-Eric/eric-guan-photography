@@ -6,7 +6,7 @@ import { getTenantRow } from "@/lib/tenant-store";
 const id = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 
 const WINDOW_MS = 60 * 60 * 1000;
-const MAX_UPLOADS_PER_WINDOW = Number(process.env.UPLOAD_RATE_LIMIT ?? "60");
+const MAX_UPLOADS_PER_WINDOW = Number(process.env.UPLOAD_RATE_LIMIT ?? "600");
 
 const hits = new Map<string, number[]>();
 

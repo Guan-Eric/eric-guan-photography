@@ -25,6 +25,8 @@ import {
   listingThemeStyle,
 } from "@/lib/listing-themes";
 import { ListingDomainEditor } from "@/components/listing-domain-editor";
+import { SortablePhotoGrid } from "@/components/sortable-photo-grid";
+import { StickySaveBar } from "@/components/sticky-save-bar";
 import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { toastError, toastSuccess } from "@/lib/toast";
 
@@ -70,12 +72,22 @@ function fromDateInput(value: string) {
 
 export function ListingPageEditor({
   pageId,
+  orderId,
   publicUrl,
+  previewUrl,
+  listingState,
+  listingStateLabel,
+  checklistErrors = [],
   initial,
   propertyAddress,
 }: {
   pageId: string;
+  orderId?: string | null;
   publicUrl: string;
+  previewUrl: string;
+  listingState: "live" | "waiting_on_agent" | "draft" | "sold" | "ended" | "missing";
+  listingStateLabel: string;
+  checklistErrors?: string[];
   initial: EditorState;
   propertyAddress: string;
 }) {
@@ -83,26 +95,63 @@ export function ListingPageEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [activePhotoId, setActivePhotoId] = useState<string | null>(
+    initial.photos[0]?.id ?? null,
+  );
 
   const current = JSON.stringify(state);
   const [saved, setSaved] = useState(current);
   useUnsavedChanges(current !== saved);
 
   function patch(next: Partial<EditorState>) {
-    setState((current) => ({ ...current, ...next }));
+    setState((currentState) => ({ ...currentState, ...next }));
   }
 
   function patchPhoto(id: string, next: Partial<PhotoState>) {
-    setState((current) => ({
-      ...current,
-      photos: current.photos.map((photo) =>
+    setState((currentState) => ({
+      ...currentState,
+      photos: currentState.photos.map((photo) =>
         photo.id === id ? { ...photo, ...next } : photo,
       ),
       captions:
         next.caption !== undefined
-          ? { ...current.captions, [id]: next.caption }
-          : current.captions,
+          ? { ...currentState.captions, [id]: next.caption }
+          : currentState.captions,
     }));
+  }
+
+  async function savePhotoOrder(ids: string[]) {
+    if (!orderId) return;
+    const previous = state.photos;
+    const byId = new Map(previous.map((photo) => [photo.id, photo]));
+    const next = ids
+      .map((id) => byId.get(id))
+      .filter((photo): photo is PhotoState => Boolean(photo));
+    for (const photo of previous) {
+      if (!ids.includes(photo.id)) next.push(photo);
+    }
+    patch({ photos: next });
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/photos`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: next.map((photo) => photo.id) }),
+      });
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (!response.ok || !json?.ok) {
+        patch({ photos: previous });
+        const message = json?.error ?? "Could not save photo order.";
+        setError(message);
+        toastError(message);
+      }
+    } catch {
+      patch({ photos: previous });
+      setError("Network error saving photo order.");
+      toastError("Network error saving photo order.");
+    }
   }
 
   async function save(extra?: { renew?: boolean }) {
@@ -178,6 +227,10 @@ export function ListingPageEditor({
 
   const hero = state.heroAssetId || state.photos[0]?.id || null;
   const isQc = state.complianceRegion === "ca_qc";
+  const activePhoto =
+    state.photos.find((photo) => photo.id === activePhotoId) ??
+    state.photos[0] ??
+    null;
 
   return (
     <div className="studio-settings listing-editor">
@@ -186,8 +239,17 @@ export function ListingPageEditor({
           <p className="eyebrow">Listing page</p>
           <h1>{propertyAddress}</h1>
           <p className="muted">
-            <a className="text-link" href={publicUrl} target="_blank" rel="noreferrer">
-              View listing page
+            <span className={`listing-state-badge is-${listingState}`}>
+              {listingStateLabel}
+            </span>
+            {" · "}
+            <a
+              className="text-link"
+              href={listingState === "live" ? publicUrl : previewUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {listingState === "live" ? "View listing page" : "Preview"}
             </a>
           </p>
         </div>
@@ -198,6 +260,28 @@ export function ListingPageEditor({
 
       {error ? <p className="form-error">{error}</p> : null}
       {notice ? <p className="form-success">{notice}</p> : null}
+
+      {listingState !== "live" ? (
+        <div className="listing-status-panel">
+          <h2>{listingStateLabel}</h2>
+          <p className="muted">
+            {listingState === "waiting_on_agent"
+              ? "The public page stays private until these items are finished (often by the agent in their portal)."
+              : listingState === "sold"
+                ? "Deed signed — the public page is taken down."
+                : listingState === "ended"
+                  ? "The advertising window has ended."
+                  : "This page is not published yet."}
+          </p>
+          {checklistErrors.length > 0 ? (
+            <ul>
+              {checklistErrors.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       <p className="field-hint">
         Brokerage identity and advertising window are required before publish.
@@ -385,101 +469,114 @@ export function ListingPageEditor({
       <section className="studio-section">
         <h2>Photos</h2>
         <p className="field-hint">
-          Tag virtually staged / AI / digitally altered images. For California,
-          link each altered photo to its unaltered counterpart and mark that
-          counterpart public.
+          Drag to reorder{orderId ? " (saves immediately)" : ""}. Click a photo
+          to set it as the hero, then edit caption and enhancement tags below.
         </p>
         {state.photos.length === 0 ? (
           <p className="field-hint">Upload photos on the order first.</p>
         ) : (
-          <div className="hero-pick">
-            {state.photos.map((photo) => {
-              const selected = hero === photo.id;
-              return (
-                <div key={photo.id} className="hero-pick-item">
-                  <button
-                    type="button"
-                    className={selected ? "is-current" : undefined}
-                    aria-pressed={selected}
-                    onClick={() => patch({ heroAssetId: photo.id })}
+          <>
+            <SortablePhotoGrid
+              showIndex
+              items={state.photos.map((photo) => ({
+                id: photo.id,
+                src: `/api/admin/listings/${pageId}/media/${photo.id}`,
+                label:
+                  hero === photo.id
+                    ? `${photo.caption || "Photo"} · Hero`
+                    : photo.caption || undefined,
+              }))}
+              onReorder={(ids) => void savePhotoOrder(ids)}
+              onActivate={(id) => {
+                setActivePhotoId(id);
+                patch({ heroAssetId: id });
+              }}
+              onSelect={(ids) => {
+                if (ids.length === 1) {
+                  setActivePhotoId(ids[0]!);
+                  patch({ heroAssetId: ids[0]! });
+                }
+              }}
+            />
+            {activePhoto ? (
+              <div className="listing-photo-details">
+                <p className="eyebrow">Selected photo</p>
+                <label className="field">
+                  <span>Caption</span>
+                  <input
+                    value={activePhoto.caption}
+                    maxLength={80}
+                    placeholder="Caption (optional)"
+                    onChange={(event) =>
+                      patchPhoto(activePhoto.id, { caption: event.target.value })
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>Enhancement</span>
+                  <select
+                    value={activePhoto.enhancementTag ?? ""}
+                    onChange={(event) =>
+                      patchPhoto(activePhoto.id, {
+                        enhancementTag:
+                          (event.target.value as EnhancementTag) || null,
+                      })
+                    }
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/api/admin/listings/${pageId}/media/${photo.id}`}
-                      alt=""
-                      loading="lazy"
-                    />
-                  </button>
+                    <option value="">None (routine edit)</option>
+                    {ENHANCEMENT_TAGS.map((tag) => (
+                      <option key={tag} value={tag}>
+                        {ENHANCEMENT_TAG_LABELS[tag].en}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {activePhoto.enhancementTag ? (
                   <label className="field">
-                    <span className="visually-hidden">Caption</span>
-                    <input
-                      value={photo.caption}
-                      maxLength={80}
-                      placeholder="Caption (optional)"
-                      onChange={(event) =>
-                        patchPhoto(photo.id, { caption: event.target.value })
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Enhancement</span>
+                    <span>Unaltered counterpart</span>
                     <select
-                      value={photo.enhancementTag ?? ""}
+                      value={activePhoto.originalDisclosureAssetId}
                       onChange={(event) =>
-                        patchPhoto(photo.id, {
-                          enhancementTag:
-                            (event.target.value as EnhancementTag) || null,
+                        patchPhoto(activePhoto.id, {
+                          originalDisclosureAssetId: event.target.value,
                         })
                       }
                     >
-                      <option value="">None (routine edit)</option>
-                      {ENHANCEMENT_TAGS.map((tag) => (
-                        <option key={tag} value={tag}>
-                          {ENHANCEMENT_TAG_LABELS[tag].en}
-                        </option>
-                      ))}
+                      <option value="">Select…</option>
+                      {state.photos
+                        .filter((row) => row.id !== activePhoto.id)
+                        .map((row) => (
+                          <option key={row.id} value={row.id}>
+                            {row.caption || row.id}
+                          </option>
+                        ))}
                     </select>
                   </label>
-                  {photo.enhancementTag ? (
-                    <label className="field">
-                      <span>Unaltered counterpart</span>
-                      <select
-                        value={photo.originalDisclosureAssetId}
-                        onChange={(event) =>
-                          patchPhoto(photo.id, {
-                            originalDisclosureAssetId: event.target.value,
-                          })
-                        }
-                      >
-                        <option value="">Select…</option>
-                        {state.photos
-                          .filter((row) => row.id !== photo.id)
-                          .map((row) => (
-                            <option key={row.id} value={row.id}>
-                              {row.caption || row.id}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                  ) : null}
-                  <label className="field-check">
-                    <span>
-                      <input
-                        type="checkbox"
-                        checked={photo.disclosurePublic}
-                        onChange={(event) =>
-                          patchPhoto(photo.id, {
-                            disclosurePublic: event.target.checked,
-                          })
-                        }
-                      />
-                      Public unaltered original
-                    </span>
-                  </label>
-                </div>
-              );
-            })}
-          </div>
+                ) : null}
+                <label className="field-check">
+                  <span>
+                    <input
+                      type="checkbox"
+                      checked={activePhoto.disclosurePublic}
+                      onChange={(event) =>
+                        patchPhoto(activePhoto.id, {
+                          disclosurePublic: event.target.checked,
+                        })
+                      }
+                    />
+                    Public unaltered original
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => patch({ heroAssetId: activePhoto.id })}
+                >
+                  {hero === activePhoto.id ? "Current hero" : "Set as hero"}
+                </button>
+              </div>
+            ) : null}
+          </>
         )}
       </section>
 
@@ -517,10 +614,14 @@ export function ListingPageEditor({
             Show the enquiry form (emails the listing agent)
           </span>
         </label>
-        <button type="button" className={`btn btn-solid${busy ? " is-busy" : ""}`} disabled={busy} onClick={() => save()}>
-          {busy ? "Saving…" : "Save page"}
-        </button>
       </section>
+
+      <StickySaveBar
+        dirty={current !== saved}
+        busy={busy}
+        label="Save page"
+        onSave={() => void save()}
+      />
 
       <ListingDomainEditor pageId={pageId} />
     </div>

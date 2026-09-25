@@ -219,6 +219,69 @@ export function listingIsPubliclyLive(page: ListingPage, now = new Date()) {
   return true;
 }
 
+export type ListingPublicState =
+  | "live"
+  | "waiting_on_agent"
+  | "draft"
+  | "sold"
+  | "ended"
+  | "missing";
+
+export type ListingPublicStateResult = {
+  state: ListingPublicState;
+  checklistErrors: string[];
+};
+
+/**
+ * Single source of truth for why a listing page is or isn't publicly visible.
+ * Pass media when available so compliance checklist errors are accurate.
+ */
+export function listingPublicState(
+  page: ListingPage | null | undefined,
+  media: PublishReadyInput["media"] = [],
+  now = new Date(),
+): ListingPublicStateResult {
+  if (!page) return { state: "missing", checklistErrors: [] };
+
+  if (page.deedSignedAt) {
+    return { state: "sold", checklistErrors: [] };
+  }
+  if (
+    page.advertisingEndsAt &&
+    new Date(page.advertisingEndsAt).getTime() < now.getTime()
+  ) {
+    return { state: "ended", checklistErrors: [] };
+  }
+
+  const ready = assertListingPublishReady({ page, media });
+  const checklistErrors = ready.ok ? [] : ready.errors;
+
+  if (page.publishedAt) {
+    return { state: "live", checklistErrors: [] };
+  }
+  if (checklistErrors.length > 0) {
+    return { state: "waiting_on_agent", checklistErrors };
+  }
+  return { state: "draft", checklistErrors: [] };
+}
+
+export function listingStateLabel(state: ListingPublicState) {
+  switch (state) {
+    case "live":
+      return "Live";
+    case "waiting_on_agent":
+      return "Waiting on agent";
+    case "draft":
+      return "Draft";
+    case "sold":
+      return "Sold";
+    case "ended":
+      return "Ended";
+    case "missing":
+      return "Not found";
+  }
+}
+
 export function enhancementLabel(tag: EnhancementTag | null | undefined, lang: "en" | "fr") {
   if (!tag) return null;
   return ENHANCEMENT_TAG_LABELS[tag]?.[lang] ?? null;

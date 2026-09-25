@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BlogIndex } from "@/components/blog-index";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
+import { platformPublicUrl } from "@/lib/platform";
 import { getRequestTenant } from "@/lib/tenants";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,8 @@ export const metadata: Metadata = {
 
 export default async function BlogIndexPage() {
   const tenant = await getRequestTenant();
-  if (tenant) notFound();
+  if (tenant) {
+    redirect(`${platformPublicUrl().replace(/\/$/, "")}/blog`);
+  }
   return <BlogIndex />;
 }

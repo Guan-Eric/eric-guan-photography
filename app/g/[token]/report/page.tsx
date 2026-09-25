@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { GalleryLinkExpired } from "@/components/gallery-link-expired";
+import { StatusPage } from "@/components/status-page";
 import { entitlements } from "@/lib/billing";
 import { getGalleryByToken } from "@/lib/galleries";
 import { galleryReport } from "@/lib/gallery-analytics";
@@ -20,9 +21,34 @@ export default async function GalleryReportPage({
 }) {
   const { token } = await params;
   const gallery = await getGalleryByToken(token);
-  if (!gallery || gallery.revokedAt) notFound();
+  if (!gallery) {
+    return (
+      <StatusPage
+        shell="delivery"
+        eyebrow="Not found"
+        title="This report isn’t available"
+        body="The gallery link may be mistyped, or the gallery was removed."
+        actions={[{ href: "/admin", label: "Back to studio", variant: "outline" }]}
+      />
+    );
+  }
+  if (gallery.revokedAt) {
+    return <GalleryLinkExpired />;
+  }
   const row = await getTenantRow(gallery.tenantId);
-  if (!row || !entitlements(row.plan).reports) notFound();
+  if (!row || !entitlements(row.plan).reports) {
+    return (
+      <StatusPage
+        shell="delivery"
+        eyebrow="Plan"
+        title="Reports aren’t on your plan"
+        body="Upgrade to a plan that includes gallery activity reports, then reopen this link."
+        actions={[
+          { href: "/admin/settings", label: "Open settings", variant: "solid" },
+        ]}
+      />
+    );
+  }
 
   const tenant = await getTenant(gallery.tenantId);
   const stats = await galleryReport(gallery.id, gallery.tenantId);

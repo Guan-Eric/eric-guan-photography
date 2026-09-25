@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { StudioCalendarSync } from "@/components/studio-calendar-sync";
+import { StickySaveBar } from "@/components/sticky-save-bar";
 import { TimezoneSelect } from "@/components/timezone-select";
 import { useUnsavedChanges } from "@/components/unsaved-changes";
 import type { Order } from "@/lib/db/schema";
@@ -100,7 +101,7 @@ export function StudioScheduleEditor({
         </Link>
       </div>
 
-      <form className="studio-schedule-form" onSubmit={onSave}>
+      <form id="studio-schedule-form" className="studio-schedule-form" onSubmit={onSave}>
         <section className="studio-section">
           <h2>Weekly hours</h2>
           <p className="studio-section-lede">
@@ -219,9 +220,12 @@ export function StudioScheduleEditor({
 
         {message ? <p className="form-success">{message}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
-        <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy}>
-          {busy ? "Saving…" : "Save schedule"}
-        </button>
+        <StickySaveBar
+          dirty={current !== saved}
+          busy={busy}
+          label="Save schedule"
+          formId="studio-schedule-form"
+        />
       </form>
 
       <StudioCalendarSync />

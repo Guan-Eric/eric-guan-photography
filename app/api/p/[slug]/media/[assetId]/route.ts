@@ -18,7 +18,7 @@ export async function GET(
   }
   const { slug, assetId } = await context.params;
   const data = await listingPageForPublic(tenant.id, slug);
-  if (!data) {
+  if (data.state !== "live") {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
   const asset = data.media.find((item) => item.id === assetId);

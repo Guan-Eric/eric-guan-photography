@@ -33,6 +33,23 @@ export const listingCopy = {
     phone: "Phone",
     langSwitch: "Français",
     langSwitchHref: (slug: string) => `/fr/p/${slug}`,
+    statusWaitingEyebrow: "Not published yet",
+    statusWaitingTitle: "This property page isn’t live yet",
+    statusWaitingBody:
+      "The photographer or listing agent still needs to finish a few details before this page can be shown publicly.",
+    statusDraftEyebrow: "Draft",
+    statusDraftTitle: "This property page isn’t published",
+    statusDraftBody:
+      "The studio has not published this page yet. Check back once the listing is live.",
+    statusSoldEyebrow: "Sold",
+    statusSoldTitle: "This property is no longer advertised",
+    statusSoldBody:
+      "The listing has been marked sold and the public page has been taken down.",
+    statusEndedEyebrow: "Expired",
+    statusEndedTitle: "The advertising period for this listing has ended",
+    statusEndedBody:
+      "Ask the listing agent or photographer if the page should be renewed.",
+    statusPortalCta: "Agent portal",
   },
   fr: {
     presentedBy: "Présenté par",
@@ -51,6 +68,23 @@ export const listingCopy = {
     phone: "Téléphone",
     langSwitch: "English",
     langSwitchHref: (slug: string) => `/p/${slug}`,
+    statusWaitingEyebrow: "Pas encore publié",
+    statusWaitingTitle: "Cette page de propriété n’est pas encore en ligne",
+    statusWaitingBody:
+      "Le photographe ou le courtier doit encore compléter certains renseignements avant la publication.",
+    statusDraftEyebrow: "Brouillon",
+    statusDraftTitle: "Cette page de propriété n’est pas publiée",
+    statusDraftBody:
+      "Le studio n’a pas encore publié cette page. Revenez lorsqu’elle sera en ligne.",
+    statusSoldEyebrow: "Vendue",
+    statusSoldTitle: "Cette propriété n’est plus annoncée",
+    statusSoldBody:
+      "L’inscription a été marquée vendue et la page publique a été retirée.",
+    statusEndedEyebrow: "Expirée",
+    statusEndedTitle: "La période de publicité de cette inscription est terminée",
+    statusEndedBody:
+      "Demandez au courtier ou au photographe si la page doit être renouvelée.",
+    statusPortalCta: "Portail courtier",
   },
 } as const;
 

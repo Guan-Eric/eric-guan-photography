@@ -4,7 +4,14 @@ import { redirect } from "next/navigation";
 import { PortalSignOut } from "@/components/portal-sign-out";
 import { getAgentSession } from "@/lib/agent-auth";
 import { galleryPublicUrl, getGalleryByOrderId } from "@/lib/galleries";
-import { getListingPageByOrder } from "@/lib/listing-pages";
+import {
+  listingPublicState,
+  listingStateLabel,
+} from "@/lib/listing-compliance";
+import {
+  getListingPageByOrder,
+  listingPageMedia,
+} from "@/lib/listing-pages";
 import { listMediaLinksForOrder } from "@/lib/media-links";
 import { listOrdersByAgentEmail } from "@/lib/orders";
 import { publicStudioUrl } from "@/lib/platform";
@@ -46,13 +53,22 @@ export default async function AgentPortalPage() {
           ? "floor plan"
           : null,
       ].filter(Boolean);
+      let listingState: ReturnType<typeof listingPublicState> | null = null;
+      if (listing) {
+        const media = await listingPageMedia(listing);
+        listingState = listingPublicState(listing, media);
+      }
       return {
         order,
         galleryUrl: gallery
           ? galleryPublicUrl(gallery.publicToken, "branded", siteUrl)
           : null,
-        listingUrl: listing ? `${siteUrl.replace(/\/$/, "")}/p/${listing.slug}` : null,
+        listingUrl:
+          listing && listingState?.state === "live"
+            ? `${siteUrl.replace(/\/$/, "")}/p/${listing.slug}`
+            : null,
         listingId: listing?.id ?? null,
+        listingState,
         extrasHint: extras.length ? `Includes ${extras.join(" + ")}` : null,
       };
     }),
@@ -74,41 +90,75 @@ export default async function AgentPortalPage() {
           <p>No listings yet. Book a shoot to see it here.</p>
         ) : (
           <ul className="listing-index">
-            {cards.map(({ order, galleryUrl, listingUrl, listingId, extrasHint }) => (
-              <li key={order.id}>
-                <div>
-                  <strong>{order.propertyAddress}</strong>
-                  <span className="muted">
-                    {order.packageName} · {order.status}
-                  </span>
-                </div>
-                <div className="listing-index-actions">
-                  {galleryUrl ? (
-                    <>
-                      <a className="text-link" href={galleryUrl}>
-                        Gallery
-                      </a>
-                      {extrasHint ? (
-                        <span className="muted">{extrasHint}</span>
+            {cards.map(
+              ({
+                order,
+                galleryUrl,
+                listingUrl,
+                listingId,
+                listingState,
+                extrasHint,
+              }) => (
+                <li key={order.id}>
+                  <div>
+                    <strong>{order.propertyAddress}</strong>
+                    <span className="muted">
+                      {order.packageName} · {order.status}
+                      {listingState ? (
+                        <>
+                          {" · "}
+                          <span
+                            className={`listing-state-badge is-${listingState.state}`}
+                          >
+                            {listingStateLabel(listingState.state)}
+                          </span>
+                        </>
                       ) : null}
-                    </>
-                  ) : null}
-                  {listingUrl ? (
-                    <a className="text-link" href={listingUrl}>
-                      Listing page
-                    </a>
-                  ) : null}
-                  {listingId ? (
-                    <Link className="btn btn-solid" href={`/portal/listings/${listingId}`}>
-                      Edit listing
+                    </span>
+                    {listingState?.state === "waiting_on_agent" &&
+                    listingState.checklistErrors[0] ? (
+                      <span className="muted">
+                        {" "}
+                        · {listingState.checklistErrors[0]}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="listing-index-actions">
+                    {galleryUrl ? (
+                      <>
+                        <a className="text-link" href={galleryUrl}>
+                          Gallery
+                        </a>
+                        {extrasHint ? (
+                          <span className="muted">{extrasHint}</span>
+                        ) : null}
+                      </>
+                    ) : null}
+                    {listingUrl ? (
+                      <a className="text-link" href={listingUrl}>
+                        Listing page
+                      </a>
+                    ) : listingId ? (
+                      <span className="muted">Not public yet</span>
+                    ) : null}
+                    {listingId ? (
+                      <Link
+                        className="btn btn-solid"
+                        href={`/portal/listings/${listingId}`}
+                      >
+                        Edit listing
+                      </Link>
+                    ) : null}
+                    <Link
+                      className="btn btn-outline"
+                      href={`/book?package=${order.packageId}`}
+                    >
+                      Book again
                     </Link>
-                  ) : null}
-                  <Link className="btn btn-outline" href={`/book?package=${order.packageId}`}>
-                    Book again
-                  </Link>
-                </div>
-              </li>
-            ))}
+                  </div>
+                </li>
+              ),
+            )}
           </ul>
         )}
       </div>

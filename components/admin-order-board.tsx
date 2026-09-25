@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { parseAddOnsJson } from "@/lib/addons";
 import type { Order, OrderStatus } from "@/lib/db/schema";
@@ -19,6 +19,14 @@ import {
 import { AdminGettingStarted } from "@/components/admin-getting-started";
 import { DeliveryPhotoBrowser } from "@/components/delivery-photo-browser";
 import { OrderMediaLinks } from "@/components/order-media-links";
+import { PhotoDropzone } from "@/components/photo-dropzone";
+import { UploadTray } from "@/components/upload-tray";
+import {
+  DELIVERY_MAX_BYTES,
+  useUploadQueue,
+  type UploadBatchResult,
+  type UploadQueueItem,
+} from "@/lib/upload-queue";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 const VIEW_KEY = "sf_board_view";
@@ -29,74 +37,6 @@ type OrderPhoto = {
   originalName: string;
   roomLabel: string | null;
 };
-
-type PendingShot = {
-  key: string;
-  file: File;
-  preview: string;
-};
-
-type UploadProgress = {
-  current: number;
-  total: number;
-  percent: number;
-  label: string;
-};
-
-function postPhotoUpload(
-  orderId: string,
-  file: File,
-  onProgress: (loaded: number, total: number, phase: "send" | "process") => void,
-  signal?: AbortSignal,
-): Promise<{
-  ok?: boolean;
-  error?: string;
-  galleryId?: string;
-  state?: GallerySummary["state"];
-  token?: string;
-  uploaded?: number;
-}> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `/api/admin/orders/${orderId}/upload`);
-    xhr.timeout = 90_000;
-    const form = new FormData();
-    form.append("files", file);
-    const abort = () => {
-      xhr.abort();
-      reject(new Error("Upload cancelled."));
-    };
-    if (signal?.aborted) {
-      abort();
-      return;
-    }
-    signal?.addEventListener("abort", abort, { once: true });
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress(event.loaded, event.total, "send");
-    };
-    xhr.upload.onload = () => onProgress(1, 1, "process");
-    xhr.onerror = () => reject(new Error("Network error during upload."));
-    xhr.onabort = () => reject(new Error("Upload cancelled."));
-    xhr.ontimeout = () =>
-      reject(new Error("Upload timed out. Try a smaller JPEG."));
-    xhr.onload = () => {
-      let json: Awaited<ReturnType<typeof postPhotoUpload>> | null = null;
-      try {
-        json = JSON.parse(xhr.responseText) as Awaited<
-          ReturnType<typeof postPhotoUpload>
-        >;
-      } catch {
-        json = null;
-      }
-      if (xhr.status >= 200 && xhr.status < 300 && json) {
-        resolve(json);
-        return;
-      }
-      reject(new Error(json?.error ?? `Upload failed (${xhr.status}).`));
-    };
-    xhr.send(form);
-  });
-}
 
 function formatMoney(cents: number, currency: string) {
   if (cents <= 0) return "Quote later";
@@ -218,26 +158,30 @@ export function AdminOrderBoard({
       | "status"
       | "savePrice"
       | "saveAddress"
-      | "upload"
       | "publish"
       | "unlock"
       | "refresh"
       | "regenerateProofs";
   } | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [visibleLimit, setVisibleLimit] = useState(20);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [links, setLinks] = useState<
-    Record<string, { branded: string; unbranded: string; listing?: string }>
+    Record<
+      string,
+      {
+        branded: string;
+        unbranded: string;
+        listing?: string;
+        listingLive?: boolean;
+        listingId?: string;
+      }
+    >
   >({});
-  const [pendingShots, setPendingShots] = useState<Record<string, PendingShot[]>>(
-    {},
-  );
   const [orderPhotos, setOrderPhotos] = useState<Record<string, OrderPhoto[]>>(
     {},
   );
-  const [uploadProgress, setUploadProgress] = useState<
-    Record<string, UploadProgress | null>
-  >({});
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [slotDrafts, setSlotDrafts] = useState<Record<string, string>>({});
@@ -255,8 +199,142 @@ export function AdminOrderBoard({
     >
   >({});
   const [view, setView] = useState<BoardView>("grid");
-  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const uploadAbortRef = useRef<AbortController | null>(null);
+
+  const handleFileDone = useCallback(
+    (file: File, responseJson: unknown, item: UploadQueueItem) => {
+      const orderId = item.meta?.orderId;
+      if (typeof orderId !== "string") return;
+      const json = responseJson as {
+        ok?: boolean;
+        galleryId?: string;
+        state?: GallerySummary["state"];
+        token?: string;
+        uploaded?: number;
+        assetId?: string | null;
+        photos?: OrderPhoto[];
+      };
+      const photo =
+        json.photos?.[0] ??
+        (json.assetId
+          ? {
+              id: json.assetId,
+              originalName: file.name,
+              roomLabel: null,
+            }
+          : null);
+      if (photo) {
+        setOrderPhotos((current) => {
+          const list = current[orderId] ?? [];
+          if (list.some((row) => row.id === photo.id)) return current;
+          return { ...current, [orderId]: [...list, photo] };
+        });
+      }
+      setGalleries((current) => {
+        const previous =
+          current.find((gallery) => gallery.orderId === orderId) ?? null;
+        const without = current.filter((gallery) => gallery.orderId !== orderId);
+        if (!json.galleryId || !json.token || !json.state) return current;
+        return [
+          ...without,
+          {
+            id: json.galleryId,
+            orderId,
+            state: json.state,
+            publicToken: json.token,
+            trustTier: previous?.trustTier ?? ("pay_first" as const),
+            brandMode: previous?.brandMode ?? ("branded" as const),
+            mediaCount: (previous?.mediaCount ?? 0) + (json.uploaded ?? 1),
+            coverAssetId: previous?.coverAssetId ?? null,
+            coverWidth: previous?.coverWidth ?? null,
+            coverHeight: previous?.coverHeight ?? null,
+            videoCount: previous?.videoCount ?? 0,
+            tourCount: previous?.tourCount ?? 0,
+            floorPlanCount: previous?.floorPlanCount ?? 0,
+          },
+        ];
+      });
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    },
+    [],
+  );
+
+  const handleBatchComplete = useCallback(
+    (results: UploadBatchResult[]) => {
+      const orderId = results[0]?.meta?.orderId;
+      if (typeof orderId !== "string") return;
+      const newPhotos: OrderPhoto[] = [];
+      for (const result of results) {
+        if (!result.ok) continue;
+        const json = result.response as {
+          assetId?: string | null;
+          photos?: OrderPhoto[];
+        };
+        const photo =
+          json.photos?.[0] ??
+          (json.assetId
+            ? {
+                id: json.assetId,
+                originalName: result.file.name,
+                roomLabel: null,
+              }
+            : null);
+        if (photo) newPhotos.push(photo);
+      }
+      if (newPhotos.length === 0) return;
+
+      setOrderPhotos((current) => {
+        const existing = current[orderId] ?? [];
+        const newIds = new Set(newPhotos.map((photo) => photo.id));
+        const kept = existing.filter((photo) => !newIds.has(photo.id));
+        const next = [...kept, ...newPhotos];
+        void (async () => {
+          try {
+            const response = await fetch(`/api/admin/orders/${orderId}/photos`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: next.map((photo) => photo.id) }),
+            });
+            const json = (await response.json().catch(() => null)) as {
+              ok?: boolean;
+              error?: string;
+            } | null;
+            if (!response.ok || !json?.ok) {
+              setOrderPhotos((rollback) => ({
+                ...rollback,
+                [orderId]: existing,
+              }));
+              fail(json?.error ?? "Could not save photo order.");
+            } else {
+              ok(
+                `Uploaded ${newPhotos.length} photo${newPhotos.length === 1 ? "" : "s"}.`,
+              );
+              router.refresh();
+            }
+          } catch {
+            setOrderPhotos((rollback) => ({
+              ...rollback,
+              [orderId]: existing,
+            }));
+            fail("Network error saving photo order.");
+          }
+        })();
+        return { ...current, [orderId]: next };
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fail/ok stable enough via toast
+    [router],
+  );
+
+  const uploadQueue = useUploadQueue({
+    url: (file, meta) =>
+      `/api/admin/orders/${String(meta?.orderId ?? "")}/upload`,
+    fieldName: "files",
+    concurrency: 3,
+    maxBytes: DELIVERY_MAX_BYTES,
+    onFileDone: handleFileDone,
+    onBatchComplete: handleBatchComplete,
+    onError: (message) => fail(message),
+  });
 
   function fail(message: string) {
     setError(message);
@@ -342,12 +420,34 @@ export function AdminOrderBoard({
       const json = (await response.json().catch(() => null)) as {
         ok?: boolean;
         photos?: OrderPhoto[];
+        listing?: {
+          id: string;
+          slug: string;
+          live: boolean;
+          state: string;
+        } | null;
       } | null;
       if (!response.ok || !json?.ok) return;
       setOrderPhotos((current) => ({
         ...current,
         [orderId]: json.photos ?? [],
       }));
+      if (json.listing) {
+        setLinks((current) => {
+          const existing = current[orderId] ?? { branded: "", unbranded: "" };
+          return {
+            ...current,
+            [orderId]: {
+              ...existing,
+              listing: json.listing!.live
+                ? `${siteUrl.replace(/\/$/, "")}/p/${json.listing!.slug}`
+                : existing.listing,
+              listingLive: json.listing!.live,
+              listingId: json.listing!.id,
+            },
+          };
+        });
+      }
     } catch {
       /* keep last known grid */
     }
@@ -368,10 +468,17 @@ export function AdminOrderBoard({
     setExpandedIds(new Set());
   }
 
-  const visibleOrders =
-    statusFilter === "all"
-      ? orders
-      : orders.filter((order) => order.status === statusFilter);
+  const filteredOrders = (() => {
+    const needle = searchQuery.trim().toLowerCase();
+    return orders.filter((order) => {
+      if (statusFilter !== "all" && order.status !== statusFilter) return false;
+      if (!needle) return true;
+      const haystack =
+        `${order.propertyAddress} ${order.agentName} ${order.agentEmail} ${order.brokerage ?? ""}`.toLowerCase();
+      return haystack.includes(needle);
+    });
+  })();
+  const visibleOrders = filteredOrders.slice(0, visibleLimit);
 
   function galleryUrl(token: string, brand: "branded" | "unbranded" = "branded") {
     const url = new URL(`/g/${token}`, `${siteUrl}/`);
@@ -530,171 +637,77 @@ export function AdminOrderBoard({
     }
   }
 
-  async function uploadPhotos(orderId: string) {
-    const queued = pendingShots[orderId] ?? [];
-    if (queued.length === 0) {
-      fail("Choose one or more photos to upload.");
-      return;
-    }
-
-    setBusy({ orderId, action: "upload" });
-    setError(null);
-    const total = queued.length;
-    let uploadedCount = 0;
-    const controller = new AbortController();
-    uploadAbortRef.current = controller;
-
-    try {
-      for (let index = 0; index < queued.length; index += 1) {
-        const shot = queued[index]!;
-        setUploadProgress((current) => ({
-          ...current,
-          [orderId]: {
-            current: index + 1,
-            total,
-            percent: Math.round((index / total) * 100),
-            label: `Uploading ${index + 1} of ${total}: ${shot.file.name}`,
-          },
-        }));
-
-        const json = await postPhotoUpload(
-          orderId,
-          shot.file,
-          (loaded, totalBytes, phase) => {
-          const fileFraction =
-            phase === "process" ? 1 : totalBytes > 0 ? loaded / totalBytes : 0;
-          const overall = ((index + fileFraction * 0.92) / total) * 100;
-          setUploadProgress((current) => ({
-            ...current,
-            [orderId]: {
-              current: index + 1,
-              total,
-              percent: Math.min(99, Math.round(overall)),
-              label:
-                phase === "process"
-                  ? `Processing ${shot.file.name}…`
-                  : `Uploading ${index + 1} of ${total}: ${shot.file.name}`,
-            },
-          }));
-        },
-          controller.signal,
-        );
-
-        if (!json.ok) {
-          throw new Error(json.error ?? "Upload failed.");
-        }
-        uploadedCount += json.uploaded ?? 1;
-
-        setGalleries((current) => {
-          const previous = galleryFor(orderId);
-          const without = current.filter((gallery) => gallery.orderId !== orderId);
-          return [
-            ...without,
-            {
-              id: json.galleryId!,
-              orderId,
-              state: json.state!,
-              publicToken: json.token!,
-              trustTier: previous?.trustTier ?? ("pay_first" as const),
-              brandMode: previous?.brandMode ?? ("branded" as const),
-              mediaCount: (previous?.mediaCount ?? 0) + (json.uploaded ?? 1),
-              coverAssetId: previous?.coverAssetId ?? null,
-              coverWidth: previous?.coverWidth ?? null,
-              coverHeight: previous?.coverHeight ?? null,
-              videoCount: previous?.videoCount ?? 0,
-              tourCount: previous?.tourCount ?? 0,
-              floorPlanCount: previous?.floorPlanCount ?? 0,
-            },
-          ];
-        });
-
-        URL.revokeObjectURL(shot.preview);
-        setPendingShots((current) => ({
-          ...current,
-          [orderId]: (current[orderId] ?? []).filter((item) => item.key !== shot.key),
-        }));
-        await loadOrderPhotos(orderId);
-      }
-
-      const input = fileRefs.current[orderId];
-      if (input) input.value = "";
-      setUploadProgress((current) => ({ ...current, [orderId]: null }));
-      ok(
-        `Uploaded ${uploadedCount} photo${uploadedCount === 1 ? "" : "s"}.`,
-      );
-      router.refresh();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Network error during upload.";
-      fail(message);
-    } finally {
-      uploadAbortRef.current = null;
-      setBusy(null);
-      setUploadProgress((current) => ({ ...current, [orderId]: null }));
-    }
-  }
-
-  function queuePhotos(orderId: string, list: FileList | File[] | null) {
-    const files = list ? Array.from(list) : [];
+  function startOrderUploads(orderId: string, files: File[]) {
     if (files.length === 0) return;
-    const added = files.map((file) => ({
-      key: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
-      file,
-      preview: URL.createObjectURL(file),
+    uploadQueue.enqueue(files, {
+      meta: { orderId },
+      url: `/api/admin/orders/${orderId}/upload`,
+      fieldName: "files",
+    });
+  }
+
+  function galleryBrowserItems(orderId: string) {
+    const uploaded = (orderPhotos[orderId] ?? []).map((photo) => ({
+      id: photo.id,
+      name: photo.roomLabel || photo.originalName,
+      src: `/api/admin/orders/${orderId}/photos/${photo.id}`,
     }));
-    setPendingShots((current) => ({
-      ...current,
-      [orderId]: [...(current[orderId] ?? []), ...added],
-    }));
+    const placeholders = uploadQueue.items
+      .filter(
+        (item) =>
+          item.meta?.orderId === orderId &&
+          item.status !== "done",
+      )
+      .map((item) => ({
+        id: item.id,
+        name: item.file.name,
+        src: item.previewUrl,
+        queued: true,
+        progress: item.progress,
+        statusLabel:
+          item.status === "failed"
+            ? item.error ?? "Failed"
+            : item.status === "processing"
+              ? "Processing…"
+              : item.status === "uploading"
+                ? `${item.progress}%`
+                : "Queued",
+      }));
+    return [...uploaded, ...placeholders];
   }
 
-  function removeQueuedPhotos(orderId: string, keys: string[]) {
-    if (keys.length === 0) return;
-    const keySet = new Set(keys);
-    setPendingShots((current) => {
-      const existing = current[orderId] ?? [];
-      for (const shot of existing) {
-        if (keySet.has(shot.key)) URL.revokeObjectURL(shot.preview);
-      }
-      return {
-        ...current,
-        [orderId]: existing.filter((item) => !keySet.has(item.key)),
-      };
-    });
-  }
-
-  function clearQueuedPhotos(orderId: string) {
-    setPendingShots((current) => {
-      const existing = current[orderId] ?? [];
-      for (const shot of existing) URL.revokeObjectURL(shot.preview);
-      return { ...current, [orderId]: [] };
-    });
-  }
-
-  function reorderQueuedPhotos(orderId: string, orderedKeys: string[]) {
-    setPendingShots((current) => {
-      const existing = current[orderId] ?? [];
-      const byKey = new Map(existing.map((shot) => [shot.key, shot]));
-      const next = orderedKeys
-        .map((key) => byKey.get(key))
-        .filter((shot): shot is PendingShot => Boolean(shot));
-      for (const shot of existing) {
-        if (!orderedKeys.includes(shot.key)) next.push(shot);
-      }
-      return { ...current, [orderId]: next };
-    });
+  function orderUploading(orderId: string) {
+    return uploadQueue.items.some(
+      (item) =>
+        item.meta?.orderId === orderId &&
+        (item.status === "queued" ||
+          item.status === "uploading" ||
+          item.status === "processing"),
+    );
   }
 
   async function removeUploadedPhotos(orderId: string, assetIds: string[]) {
     if (assetIds.length === 0) return;
+
+    const uploadIds = assetIds.filter((id) =>
+      uploadQueue.items.some(
+        (item) => item.id === id && item.meta?.orderId === orderId,
+      ),
+    );
+    const realIds = assetIds.filter((id) => !uploadIds.includes(id));
+    if (uploadIds.length > 0) {
+      uploadQueue.remove(uploadIds);
+    }
+    if (realIds.length === 0) return;
+
     const label =
-      assetIds.length === 1
+      realIds.length === 1
         ? "Remove this photo from the gallery?"
-        : `Remove ${assetIds.length} photos from the gallery?`;
+        : `Remove ${realIds.length} photos from the gallery?`;
     if (!window.confirm(label)) return;
 
     let removed = 0;
-    for (const assetId of assetIds) {
+    for (const assetId of realIds) {
       try {
         const response = await fetch(
           `/api/admin/orders/${orderId}/photos/${assetId}`,
@@ -764,12 +777,18 @@ export function AdminOrderBoard({
 
   function reorderUploadedPhotos(orderId: string, orderedIds: string[]) {
     const list = orderPhotos[orderId] ?? [];
+    const placeholders = uploadQueue.items.filter(
+      (item) => item.meta?.orderId === orderId && item.status !== "done",
+    );
+    const placeholderIds = new Set(placeholders.map((item) => item.id));
+    // Only persist real asset order; ignore placeholder ids in the drag result.
+    const realOrdered = orderedIds.filter((id) => !placeholderIds.has(id));
     const byId = new Map(list.map((photo) => [photo.id, photo]));
-    const next = orderedIds
+    const next = realOrdered
       .map((id) => byId.get(id))
       .filter((photo): photo is OrderPhoto => Boolean(photo));
     for (const photo of list) {
-      if (!orderedIds.includes(photo.id)) next.push(photo);
+      if (!realOrdered.includes(photo.id)) next.push(photo);
     }
     void savePhotoOrder(orderId, next);
   }
@@ -1030,49 +1049,76 @@ export function AdminOrderBoard({
         </div>
       ) : (
         <>
-          <div className="admin-order-filters">
+          <div className="admin-filter-bar">
             <label className="field">
-              <span>Status</span>
-              <select
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as "all" | OrderStatus)
-                }
-              >
-                <option value="all">All ({orders.length})</option>
-                {ORDER_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {orderStatusLabel(status)} (
-                    {orders.filter((order) => order.status === status).length})
-                  </option>
-                ))}
-              </select>
+              <span>Search</span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setVisibleLimit(20);
+                }}
+                placeholder="Address, agent, or email"
+              />
             </label>
-            <div className="admin-order-collapse-tools">
-              <div className="admin-order-view" role="group" aria-label="Board layout">
+            <div className="admin-filter-bar-tools">
+              <div className="admin-filter-chips" role="group" aria-label="Order status">
                 <button
                   type="button"
-                  className={view === "grid" ? "is-active" : undefined}
-                  aria-pressed={view === "grid"}
-                  onClick={() => chooseView("grid")}
+                  className={`admin-filter-chip${statusFilter === "all" ? " is-active" : ""}`}
+                  aria-pressed={statusFilter === "all"}
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setVisibleLimit(20);
+                  }}
                 >
-                  Cards
+                  All ({orders.length})
                 </button>
-                <button
-                  type="button"
-                  className={view === "list" ? "is-active" : undefined}
-                  aria-pressed={view === "list"}
-                  onClick={() => chooseView("list")}
-                >
-                  List
+                {ORDER_STATUSES.map((status) => {
+                  const count = orders.filter((order) => order.status === status).length;
+                  return (
+                    <button
+                      key={status}
+                      type="button"
+                      className={`admin-filter-chip${statusFilter === status ? " is-active" : ""}`}
+                      aria-pressed={statusFilter === status}
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setVisibleLimit(20);
+                      }}
+                    >
+                      {orderStatusLabel(status)} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="admin-order-collapse-tools">
+                <div className="admin-order-view" role="group" aria-label="Board layout">
+                  <button
+                    type="button"
+                    className={view === "grid" ? "is-active" : undefined}
+                    aria-pressed={view === "grid"}
+                    onClick={() => chooseView("grid")}
+                  >
+                    Cards
+                  </button>
+                  <button
+                    type="button"
+                    className={view === "list" ? "is-active" : undefined}
+                    aria-pressed={view === "list"}
+                    onClick={() => chooseView("list")}
+                  >
+                    List
+                  </button>
+                </div>
+                <button type="button" className="text-link" onClick={expandAllVisible}>
+                  Expand all
+                </button>
+                <button type="button" className="text-link" onClick={collapseAll}>
+                  Collapse all
                 </button>
               </div>
-              <button type="button" className="text-link" onClick={expandAllVisible}>
-                Expand all
-              </button>
-              <button type="button" className="text-link" onClick={collapseAll}>
-                Collapse all
-              </button>
             </div>
           </div>
           <div className={`admin-order-list is-${view}`}>
@@ -1506,195 +1552,10 @@ export function AdminOrderBoard({
                           <div className="delivery-step-title">Upload photos</div>
                           <p className="muted">
                             {gallery?.mediaCount
-                              ? `${gallery.mediaCount} photo${gallery.mediaCount === 1 ? "" : "s"} on this shoot. Select, drag to reorder, or add more below.`
-                              : "Add edited JPEGs from this shoot."}
-                          </p>
-                          <div className="delivery-photo-panel is-gallery">
-                            <div className="delivery-photo-panel-head">
-                              <strong>On this gallery</strong>
-                              <span>
-                                {orderPhotos[order.id]?.length ?? 0} uploaded
-                              </span>
-                            </div>
-                            <DeliveryPhotoBrowser
-                              showIndex
-                              disabled={orderLocked || Boolean(pending("upload"))}
-                              emptyMessage="Nothing in the gallery yet. Choose files below, then upload."
-                              items={(orderPhotos[order.id] ?? []).map((photo) => ({
-                                id: photo.id,
-                                name: photo.originalName,
-                                src: `/api/admin/orders/${order.id}/photos/${photo.id}`,
-                              }))}
-                              onReorder={(ids) =>
-                                reorderUploadedPhotos(order.id, ids)
-                              }
-                              onRemove={(ids) =>
-                                void removeUploadedPhotos(order.id, ids)
-                              }
-                            />
-                          </div>
-                          <div className="delivery-photo-panel is-queue">
-                            <div className="delivery-photo-panel-head">
-                              <strong>Ready to upload</strong>
-                              <span>
-                                {pendingShots[order.id]?.length ?? 0} selected
-                              </span>
-                            </div>
-                            <DeliveryPhotoBrowser
-                              acceptDrops
-                              queuedStyle
-                              disabled={Boolean(pending("upload"))}
-                              emptyMessage="Choose files, then press Upload. They stay here until they finish processing."
-                              clearAllLabel="Clear queue"
-                              items={(pendingShots[order.id] ?? []).map((shot) => ({
-                                id: shot.key,
-                                name: shot.file.name,
-                                src: shot.preview,
-                              }))}
-                              onReorder={(ids) =>
-                                reorderQueuedPhotos(order.id, ids)
-                              }
-                              onRemove={(ids) =>
-                                removeQueuedPhotos(order.id, ids)
-                              }
-                              onClearAll={() => clearQueuedPhotos(order.id)}
-                              onDropFiles={(files) =>
-                                queuePhotos(order.id, files)
-                              }
-                            />
-                            {uploadProgress[order.id] ? (
-                              <div
-                                className="delivery-upload-progress"
-                                role="progressbar"
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                                aria-valuenow={uploadProgress[order.id]!.percent}
-                                aria-label={uploadProgress[order.id]!.label}
-                              >
-                                <div className="delivery-upload-progress-bar">
-                                  <span
-                                    style={{
-                                      width: `${uploadProgress[order.id]!.percent}%`,
-                                    }}
-                                  />
-                                </div>
-                                <p className="muted">
-                                  {uploadProgress[order.id]!.label} (
-                                  {uploadProgress[order.id]!.percent}%)
-                                </p>
-                                {pending("upload") ? (
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline"
-                                    onClick={() => uploadAbortRef.current?.abort()}
-                                  >
-                                    Cancel
-                                  </button>
-                                ) : null}
-                              </div>
-                            ) : null}
-                            <div className="delivery-step-actions">
-                              <label className="delivery-file">
-                                <span className="btn btn-outline">Choose files</span>
-                                <input
-                                  ref={(node) => {
-                                    fileRefs.current[order.id] = node;
-                                  }}
-                                  type="file"
-                                  accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp"
-                                  multiple
-                                  onChange={(event) => {
-                                    queuePhotos(order.id, event.target.files);
-                                    event.target.value = "";
-                                  }}
-                                />
-                              </label>
-                              <button
-                                type="button"
-                                className={`btn btn-solid${pending("upload") ? " is-busy" : ""}`}
-                                disabled={
-                                  orderLocked ||
-                                  pending("upload") ||
-                                  !(pendingShots[order.id]?.length)
-                                }
-                                onClick={() => uploadPhotos(order.id)}
-                              >
-                                {pending("upload") ? "Uploading…" : "Upload"}
-                              </button>
-                              {gallery && gallery.mediaCount > 0 && branded ? (
-                                <a
-                                  className="btn btn-outline"
-                                  href={branded}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                >
-                                  Preview gallery
-                                </a>
-                              ) : null}
-                              {gallery && gallery.mediaCount > 0 ? (
-                                <button
-                                  type="button"
-                                  className={`btn btn-outline${pending("regenerateProofs") ? " is-busy" : ""}`}
-                                  disabled={
-                                    orderLocked ||
-                                    pending("upload") ||
-                                    pending("regenerateProofs")
-                                  }
-                                  onClick={() => void regenerateProofs(order.id)}
-                                >
-                                  {pending("regenerateProofs")
-                                    ? "Regenerating…"
-                                    : "Regenerate watermarks"}
-                                </button>
-                              ) : null}
-                              {gallery && gallery.mediaCount > 0 ? (
-                                <>
-                                  <a
-                                    className="btn btn-outline"
-                                    href={`/api/admin/orders/${order.id}/zip?kind=mls`}
-                                  >
-                                    Download MLS zip
-                                  </a>
-                                  <a
-                                    className="btn btn-outline"
-                                    href={`/api/admin/orders/${order.id}/zip?kind=full`}
-                                  >
-                                    Download full-res zip
-                                  </a>
-                                </>
-                              ) : null}
-                            </div>
-                            {gallery && gallery.mediaCount > 0 ? (
-                              <p className="muted">
-                                Your zips do not unlock the agent gallery or mark the job paid.
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-                      </li>
-
-                      <li
-                        className={`delivery-step${phase === 2 ? " is-current" : ""}${phase > 2 ? " is-done" : ""}`}
-                      >
-                        <span className="delivery-step-num">2</span>
-                        <div className="delivery-step-body">
-                          <div className="delivery-step-title">Publish to agent</div>
-                          <p className="muted">
-                            Emails {order.agentName} the gallery link. They can
-                            preview, then pay to download. Use Preview in step 1
-                            first if you want to check the set.
+                              ? `${gallery.mediaCount} photo${gallery.mediaCount === 1 ? "" : "s"} on this shoot. Drop more anytime — they upload automatically.`
+                              : "Drop edited JPEGs here. They upload automatically."}
                           </p>
                           <div className="delivery-step-actions">
-                            {gallery && gallery.mediaCount > 0 && branded ? (
-                              <a
-                                className="btn btn-outline"
-                                href={branded}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                Preview gallery
-                              </a>
-                            ) : null}
                             <button
                               type="button"
                               className={`btn ${published ? "btn-outline" : "btn-solid"}${pending("publish") ? " is-busy" : ""}`}
@@ -1711,7 +1572,99 @@ export function AdminOrderBoard({
                                   ? "Resend email"
                                   : "Publish & email agent"}
                             </button>
+                            {gallery && gallery.mediaCount > 0 && branded ? (
+                              <a
+                                className="btn btn-outline"
+                                href={branded}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Preview gallery
+                              </a>
+                            ) : null}
+                            {gallery && gallery.mediaCount > 0 ? (
+                              <button
+                                type="button"
+                                className={`btn btn-outline${pending("regenerateProofs") ? " is-busy" : ""}`}
+                                disabled={
+                                  orderLocked ||
+                                  orderUploading(order.id) ||
+                                  pending("regenerateProofs")
+                                }
+                                onClick={() => void regenerateProofs(order.id)}
+                              >
+                                {pending("regenerateProofs")
+                                  ? "Regenerating…"
+                                  : "Regenerate watermarks"}
+                              </button>
+                            ) : null}
+                            {gallery && gallery.mediaCount > 0 ? (
+                              <>
+                                <a
+                                  className="btn btn-outline"
+                                  href={`/api/admin/orders/${order.id}/zip?kind=mls`}
+                                >
+                                  Download MLS zip
+                                </a>
+                                <a
+                                  className="btn btn-outline"
+                                  href={`/api/admin/orders/${order.id}/zip?kind=full`}
+                                >
+                                  Download full-res zip
+                                </a>
+                              </>
+                            ) : null}
                           </div>
+                          {gallery && gallery.mediaCount > 0 ? (
+                            <p className="muted">
+                              Your zips do not unlock the agent gallery or mark the job paid.
+                            </p>
+                          ) : null}
+                          <PhotoDropzone
+                            className="delivery-photo-panel is-gallery"
+                            disabled={orderLocked}
+                            onFiles={(files) => startOrderUploads(order.id, files)}
+                          >
+                            <div className="delivery-photo-panel-head">
+                              <strong>On this gallery</strong>
+                              <span>
+                                {(orderPhotos[order.id]?.length ?? 0) +
+                                  uploadQueue.items.filter(
+                                    (item) =>
+                                      item.meta?.orderId === order.id &&
+                                      item.status !== "done",
+                                  ).length}{" "}
+                                photos
+                                {orderUploading(order.id) ? " · uploading…" : ""}
+                              </span>
+                            </div>
+                            <DeliveryPhotoBrowser
+                              showIndex
+                              disabled={orderLocked}
+                              emptyMessage="Nothing in the gallery yet. Drop photos here or choose files."
+                              items={galleryBrowserItems(order.id)}
+                              onReorder={(ids) =>
+                                reorderUploadedPhotos(order.id, ids)
+                              }
+                              onRemove={(ids) =>
+                                void removeUploadedPhotos(order.id, ids)
+                              }
+                            />
+                          </PhotoDropzone>
+                        </div>
+                      </li>
+
+                      <li
+                        className={`delivery-step${phase === 2 ? " is-current" : ""}${phase > 2 ? " is-done" : ""}`}
+                      >
+                        <span className="delivery-step-num">2</span>
+                        <div className="delivery-step-body">
+                          <div className="delivery-step-title">Publish to agent</div>
+                          <p className="muted">
+                            Use Publish above once the set looks right. That emails{" "}
+                            {order.agentName} the gallery link so they can preview,
+                            then pay to download.
+                          </p>
                         </div>
                       </li>
 
@@ -1781,23 +1734,40 @@ export function AdminOrderBoard({
                                   </button>
                                 </p>
                               ) : null}
-                              {orderLinks?.listing ? (
+                              {orderLinks?.listingId || orderLinks?.listing ? (
                                 <p className="muted delivery-mls-hint">
                                   Property page:{" "}
-                                  <button
-                                    type="button"
-                                    className="text-link"
-                                    onClick={() =>
-                                      void copyText(
-                                        `${order.id}-listing`,
-                                        orderLinks.listing!,
-                                      )
-                                    }
-                                  >
-                                    {copiedKey === `${order.id}-listing`
-                                      ? "Copied"
-                                      : "copy"}
-                                  </button>
+                                  {orderLinks.listingLive && orderLinks.listing ? (
+                                    <button
+                                      type="button"
+                                      className="text-link"
+                                      onClick={() =>
+                                        void copyText(
+                                          `${order.id}-listing`,
+                                          orderLinks.listing!,
+                                        )
+                                      }
+                                    >
+                                      {copiedKey === `${order.id}-listing`
+                                        ? "Copied"
+                                        : "copy"}
+                                    </button>
+                                  ) : (
+                                    <>
+                                      Draft — waiting on agent details
+                                      {orderLinks.listingId ? (
+                                        <>
+                                          {" · "}
+                                          <a
+                                            className="text-link"
+                                            href={`/admin/listings/${orderLinks.listingId}`}
+                                          >
+                                            Open listing
+                                          </a>
+                                        </>
+                                      ) : null}
+                                    </>
+                                  )}
                                 </p>
                               ) : null}
                             </div>
@@ -1890,11 +1860,28 @@ export function AdminOrderBoard({
               );
             })}
           </div>
-          {visibleOrders.length === 0 ? (
-            <p className="muted">No orders with that status.</p>
+          {filteredOrders.length > visibleLimit ? (
+            <div className="admin-show-more">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setVisibleLimit((current) => current + 20)}
+              >
+                Show more ({filteredOrders.length - visibleLimit} remaining)
+              </button>
+            </div>
+          ) : null}
+          {filteredOrders.length === 0 ? (
+            <p className="muted">No orders match that search or status.</p>
           ) : null}
         </>
       )}
+      <UploadTray
+        items={uploadQueue.items}
+        onRetryFailed={uploadQueue.retryAllFailed}
+        onCancelAll={uploadQueue.cancelAll}
+        onDismiss={uploadQueue.clearDone}
+      />
     </div>
   );
 }

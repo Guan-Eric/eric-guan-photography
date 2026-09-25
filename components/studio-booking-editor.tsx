@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CurrencySelect } from "@/components/currency-select";
+import { StickySaveBar } from "@/components/sticky-save-bar";
 import { useUnsavedChanges } from "@/components/unsaved-changes";
 import { normalizeStudioCurrency } from "@/lib/currency";
 import { toastError, toastSuccess } from "@/lib/toast";
@@ -85,7 +86,7 @@ export function StudioBookingEditor({
   }
 
   return (
-    <form className="studio-settings" onSubmit={onSave}>
+    <form id="studio-booking-form" className="studio-settings" onSubmit={onSave}>
       <div className="admin-toolbar">
         <div>
           <p className="eyebrow">Booking</p>
@@ -176,9 +177,12 @@ export function StudioBookingEditor({
 
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy}>
-        {busy ? "Saving…" : "Save booking"}
-      </button>
+      <StickySaveBar
+        dirty={current !== saved}
+        busy={busy}
+        label="Save booking"
+        formId="studio-booking-form"
+      />
     </form>
   );
 }

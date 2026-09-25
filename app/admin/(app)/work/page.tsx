@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { StudioWorkEditor } from "@/components/studio-work-editor";
 import { getPhotographerSession } from "@/lib/auth";
 import { publicStudioUrl } from "@/lib/platform";
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
 
 export default async function AdminWorkPage() {
   const session = await getPhotographerSession();
-  if (!session?.activeTenantId) return null;
+  if (!session) redirect("/login");
+  if (!session.activeTenantId) redirect("/onboarding");
   const tenant = await getTenant(session.activeTenantId);
   const siteUrl = publicStudioUrl({
     slug: tenant.slug,

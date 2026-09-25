@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { StatusPage } from "@/components/status-page";
 import { parseAddOnsJson } from "@/lib/addons";
 import { orderStatusLabel } from "@/lib/db/schema";
 import { formatSlotInZone, parsePreferredSlotsJson } from "@/lib/preferred-slots";
@@ -37,10 +37,28 @@ export default async function ConfirmationPage({
 }) {
   const { id } = await params;
   const { token } = await searchParams;
-  if (!token) notFound();
+  if (!token) {
+    return (
+      <StatusPage
+        eyebrow="Confirmation"
+        title="Open the confirmation link from your email"
+        body="This page needs the secure token from your booking confirmation email. Check your inbox for the link that ends with ?token=…"
+        actions={[{ href: "/book", label: "Back to booking", variant: "outline" }]}
+      />
+    );
+  }
 
   const order = await getOrderForPublic(id, token);
-  if (!order) notFound();
+  if (!order) {
+    return (
+      <StatusPage
+        eyebrow="Confirmation"
+        title="This confirmation link is incomplete or expired"
+        body="Open the link from your booking confirmation email, or contact the studio if you need a new copy."
+        actions={[{ href: "/book", label: "Back to booking", variant: "outline" }]}
+      />
+    );
+  }
 
   const tenant = await getTenant(order.tenantId);
   const row = await getTenantRow(order.tenantId);

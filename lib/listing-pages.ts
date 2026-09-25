@@ -16,6 +16,7 @@ import {
   assertListingPublishReady,
   defaultAdvertisingEndsAt,
   listingIsPubliclyLive,
+  listingPublicState,
   suggestComplianceRegion,
 } from "@/lib/listing-compliance";
 import { type ListingTheme, listingTheme } from "@/lib/listing-themes";
@@ -473,14 +474,26 @@ export async function listingPageLinks(page: ListingPage) {
 
 export async function listingPageForPublic(tenantId: string, slug: string) {
   let page = await getListingPageBySlug(tenantId, slug);
-  if (!page) return null;
+  if (!page) {
+    return {
+      state: "missing" as const,
+      checklistErrors: [] as string[],
+      page: null,
+      tenant: null,
+      media: [] as Awaited<ReturnType<typeof listingPageMedia>>,
+      links: [] as Awaited<ReturnType<typeof listingPageLinks>>,
+    };
+  }
   page = await unpublishListingIfExpired(page);
-  if (!listingIsPubliclyLive(page)) return null;
+  const media = await listingPageMedia(page);
+  const { state, checklistErrors } = listingPublicState(page, media);
   const tenant = await getTenant(tenantId);
   return {
+    state,
+    checklistErrors,
     page,
     tenant,
-    media: await listingPageMedia(page),
+    media,
     links: await listingPageLinks(page),
   };
 }

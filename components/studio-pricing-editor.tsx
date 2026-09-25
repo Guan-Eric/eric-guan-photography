@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { normalizeStudioCurrency } from "@/lib/currency";
-import { toastError, toastSuccess } from "@/lib/toast";
+import { StickySaveBar } from "@/components/sticky-save-bar";
 import { useUnsavedChanges } from "@/components/unsaved-changes";
+import { normalizeStudioCurrency } from "@/lib/currency";
 import { MAX_SERVICE_CATEGORIES } from "@/lib/service-categories";
 import {
   DEFAULT_PRICING_LEDE,
   PRICING_LEDE_MAX_LENGTH,
 } from "@/lib/studio-defaults";
+import { toastError, toastSuccess } from "@/lib/toast";
 import type { Package, PriceBand, ServiceCategory, Tenant } from "@/lib/tenant-schema";
 
 type PricingMode = "set_price" | "quote_later" | "email_only";
@@ -75,12 +76,40 @@ export function StudioPricingEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const current = JSON.stringify({ packages, categories, pricingLede });
   const [saved, setSaved] = useState(current);
   useUnsavedChanges(current !== saved);
 
   const shootPackages = packages.filter((pkg) => !pkg.upsell);
+
+  function categoryLabel(pkg: Package) {
+    if (pkg.upsell) return "Add-on";
+    const category = categories.find((row) => row.id === pkg.categoryId);
+    return category?.name.trim() || "Uncategorized";
+  }
+
+  function expandAndScroll(id: string) {
+    setExpandedId(id);
+    window.setTimeout(() => {
+      document
+        .getElementById(`pricing-item-${id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 50);
+  }
+
+  function addPackage() {
+    const pkg = emptyPackage();
+    setPackages((list) => [...list, pkg]);
+    expandAndScroll(pkg.id);
+  }
+
+  function addAddon() {
+    const pkg = emptyAddon();
+    setPackages((list) => [...list, pkg]);
+    expandAndScroll(pkg.id);
+  }
 
   function addCategory() {
     setCategories((list) => [
@@ -151,6 +180,7 @@ export function StudioPricingEditor({
     const label = pkg.name.trim() || (pkg.upsell ? "this add-on" : "this package");
     if (!window.confirm(`Remove “${label}”?`)) return;
     setPackages((current) => current.filter((_, i) => i !== index));
+    setExpandedId((current) => (current === pkg.id ? null : current));
   }
 
   function setMode(index: number, mode: PricingMode) {
@@ -252,7 +282,11 @@ export function StudioPricingEditor({
   }
 
   return (
-    <form className="studio-settings studio-settings--wide" onSubmit={onSave}>
+    <form
+      id="studio-pricing-form"
+      className="studio-settings studio-settings--wide"
+      onSubmit={onSave}
+    >
       <div className="admin-toolbar">
         <div>
           <p className="eyebrow">Pricing</p>
@@ -263,9 +297,17 @@ export function StudioPricingEditor({
             <a href="/admin/booking">Booking</a>.
           </p>
         </div>
-        <a className="btn btn-outline" href={viewUrl} target="_blank" rel="noreferrer">
-          View on site
-        </a>
+        <div className="admin-toolbar-actions">
+          <button type="button" className="btn btn-outline" onClick={addPackage}>
+            Add package
+          </button>
+          <button type="button" className="btn btn-outline" onClick={addAddon}>
+            Add add-on
+          </button>
+          <a className="btn btn-outline" href={viewUrl} target="_blank" rel="noreferrer">
+            View on site
+          </a>
+        </div>
       </div>
 
       <section className="studio-section">
@@ -377,24 +419,40 @@ export function StudioPricingEditor({
         {packages.map((pkg, index) => {
           const isAddon = Boolean(pkg.upsell);
           const mode = modeOf(pkg);
+          const expanded = expandedId === pkg.id;
+          const title = pkg.name || (isAddon ? "New add-on" : "New package");
           return (
-            <section key={pkg.id} className="studio-section studio-editor-item">
-              <div className="studio-editor-row">
-                <h2>
-                  {pkg.name || (isAddon ? "New add-on" : "New package")}
-                  {isAddon ? (
-                    <span className="muted" style={{ marginLeft: "0.5rem", fontSize: "0.85rem" }}>
-                      Add-on
-                    </span>
-                  ) : null}
-                </h2>
+            <section
+              key={pkg.id}
+              id={`pricing-item-${pkg.id}`}
+              className="studio-section studio-editor-item studio-collapse-item"
+            >
+              <div className="studio-collapse-summary">
+                <button
+                  type="button"
+                  className="studio-collapse-summary-main"
+                  aria-expanded={expanded}
+                  onClick={() => setExpandedId(expanded ? null : pkg.id)}
+                >
+                  <strong>{title}</strong>
+                  <span className="muted">
+                    {pkg.price || "No price"} · {categoryLabel(pkg)}
+                  </span>
+                </button>
                 <div className="studio-category-actions">
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => setExpandedId(expanded ? null : pkg.id)}
+                  >
+                    {expanded ? "Collapse" : "Edit"}
+                  </button>
                   <button
                     type="button"
                     className="text-link"
                     onClick={() => movePackage(index, -1)}
                     disabled={neighborOfSameKind(packages, index, -1) < 0}
-                    aria-label={`Move ${pkg.name || (isAddon ? "add-on" : "package")} up`}
+                    aria-label={`Move ${title} up`}
                   >
                     Up
                   </button>
@@ -403,7 +461,7 @@ export function StudioPricingEditor({
                     className="text-link"
                     onClick={() => movePackage(index, 1)}
                     disabled={neighborOfSameKind(packages, index, 1) < 0}
-                    aria-label={`Move ${pkg.name || (isAddon ? "add-on" : "package")} down`}
+                    aria-label={`Move ${title} down`}
                   >
                     Down
                   </button>
@@ -416,6 +474,9 @@ export function StudioPricingEditor({
                   </button>
                 </div>
               </div>
+
+              {expanded ? (
+              <div className="studio-collapse-body">
 
               {isAddon ? (
                 <>
@@ -760,6 +821,8 @@ export function StudioPricingEditor({
                   </div>
                 </>
               )}
+              </div>
+              ) : null}
             </section>
           );
         })}
@@ -767,25 +830,12 @@ export function StudioPricingEditor({
 
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      <div className="listing-index-actions">
-        <button
-          type="button"
-          className="btn btn-outline"
-          onClick={() => setPackages((current) => [...current, emptyPackage()])}
-        >
-          Add package
-        </button>
-        <button
-          type="button"
-          className="btn btn-outline"
-          onClick={() => setPackages((current) => [...current, emptyAddon()])}
-        >
-          Add add-on
-        </button>
-        <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy}>
-          {busy ? "Saving…" : "Save pricing"}
-        </button>
-      </div>
+      <StickySaveBar
+        dirty={current !== saved}
+        busy={busy}
+        label="Save pricing"
+        formId="studio-pricing-form"
+      />
     </form>
   );
 }

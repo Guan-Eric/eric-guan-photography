@@ -1,8 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { GalleryImage, Tenant } from "@/lib/tenant-schema";
+import { PhotoDropzone } from "@/components/photo-dropzone";
+import { SortablePhotoGrid } from "@/components/sortable-photo-grid";
+import { StickySaveBar } from "@/components/sticky-save-bar";
+import { UploadTray } from "@/components/upload-tray";
 import { useUnsavedChanges } from "@/components/unsaved-changes";
+import {
+  PORTFOLIO_MAX_BYTES,
+  useUploadQueue,
+  type UploadBatchResult,
+  type UploadQueueItem,
+} from "@/lib/upload-queue";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 function emptyImage(): GalleryImage {
@@ -19,6 +29,10 @@ function emptyImage(): GalleryImage {
 
 function isLocalUpload(src: string) {
   return src.startsWith("/api/site-media/");
+}
+
+function galleryKey(image: GalleryImage, index: number) {
+  return image.src ? `src:${image.src}` : `idx:${index}`;
 }
 
 export function StudioWorkEditor({
@@ -41,11 +55,11 @@ export function StudioWorkEditor({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [uploading, setUploading] = useState<string | null>(null);
   const [showHeroUrl, setShowHeroUrl] = useState(
     Boolean(tenant.hero.src && !isLocalUpload(tenant.hero.src)),
   );
-  const heroInputRef = useRef<HTMLInputElement>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const replaceIndexRef = useRef<number | null>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const current = JSON.stringify({
@@ -61,94 +75,124 @@ export function StudioWorkEditor({
   const [saved, setSaved] = useState(current);
   useUnsavedChanges(current !== saved);
 
+  const onFileDone = useCallback(
+    (_file: File, responseJson: unknown, item: UploadQueueItem) => {
+      const json = responseJson as {
+        src?: string;
+        width?: number;
+        height?: number;
+        alt?: string;
+      };
+      if (!json.src) return;
+      const role = item.meta?.role;
+      if (role === "hero") {
+        setHeroSrc(json.src);
+        setHeroWidth(json.width ?? 1800);
+        setHeroHeight(json.height ?? 1200);
+        setHeroAlt((alt) => (alt.trim() ? alt : json.alt ?? ""));
+        setMessage("Hero uploaded — click Save work to publish.");
+        toastSuccess("Hero uploaded — click Save work to publish.");
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        return;
+      }
+      if (role === "replace") {
+        const index = Number(item.meta?.index ?? -1);
+        if (index >= 0) {
+          setGallery((list) =>
+            list.map((image, i) =>
+              i === index
+                ? {
+                    ...image,
+                    src: json.src!,
+                    alt: image.alt || json.alt || "",
+                    width: json.width ?? 1800,
+                    height: json.height ?? 1200,
+                  }
+                : image,
+            ),
+          );
+          setMessage("Photo replaced — click Save work to publish.");
+          toastSuccess("Photo replaced — click Save work to publish.");
+        }
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+        return;
+      }
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    },
+    [],
+  );
+
+  const onBatchComplete = useCallback((results: UploadBatchResult[]) => {
+    const galleryUploads = results.filter(
+      (result) => result.ok && result.meta?.role === "gallery",
+    );
+    if (galleryUploads.length === 0) return;
+    const uploaded: GalleryImage[] = galleryUploads.map((result) => {
+      const json = result.response as {
+        src?: string;
+        width?: number;
+        height?: number;
+        alt?: string;
+      };
+      return {
+        src: json.src ?? "",
+        alt: json.alt ?? "",
+        width: json.width ?? 1800,
+        height: json.height ?? 1200,
+        room: "",
+        note: "",
+        wide: false,
+      };
+    }).filter((image) => image.src);
+    if (uploaded.length === 0) return;
+    setGallery((currentGallery) => [
+      ...currentGallery.filter((image) => image.src.trim()),
+      ...uploaded,
+    ]);
+    setMessage(
+      `${uploaded.length} photo${uploaded.length === 1 ? "" : "s"} uploaded — click Save work to publish.`,
+    );
+    toastSuccess(
+      `${uploaded.length} photo${uploaded.length === 1 ? "" : "s"} uploaded — click Save work to publish.`,
+    );
+  }, []);
+
+  const uploadQueue = useUploadQueue({
+    url: "/api/admin/portfolio/upload",
+    fieldName: "file",
+    concurrency: 3,
+    maxBytes: PORTFOLIO_MAX_BYTES,
+    onFileDone,
+    onBatchComplete,
+    onError: (msg) => {
+      setError(msg);
+      toastError(msg);
+    },
+  });
+
   function updateImage(index: number, patch: Partial<GalleryImage>) {
-    setGallery((current) =>
-      current.map((image, i) => (i === index ? { ...image, ...patch } : image)),
+    setGallery((currentGallery) =>
+      currentGallery.map((image, i) =>
+        i === index ? { ...image, ...patch } : image,
+      ),
     );
   }
 
-  function moveImage(index: number, delta: -1 | 1) {
-    setGallery((list) => {
-      const target = index + delta;
-      if (target < 0 || target >= list.length) return list;
-      const next = [...list];
-      [next[index], next[target]] = [next[target]!, next[index]!];
-      return next;
-    });
+  function enqueueGallery(files: File[]) {
+    uploadQueue.enqueue(files, { meta: { role: "gallery" } });
   }
 
-  async function uploadOne(file: File) {
-    const form = new FormData();
-    form.append("file", file);
-    const response = await fetch("/api/admin/portfolio/upload", {
-      method: "POST",
-      body: form,
-    });
-    const json = await response.json();
-    if (!json.ok) {
-      throw new Error(json.error ?? "Upload failed.");
-    }
-    return json as {
-      src: string;
-      width: number;
-      height: number;
-      alt: string;
-    };
+  function enqueueHero(files: File[]) {
+    const file = files[0];
+    if (!file) return;
+    uploadQueue.enqueue([file], { meta: { role: "hero" } });
   }
 
-  async function uploadHero(file: File) {
-    setUploading("hero");
-    setError(null);
-    try {
-      const json = await uploadOne(file);
-      setHeroSrc(json.src);
-      setHeroWidth(json.width);
-      setHeroHeight(json.height);
-      if (!heroAlt.trim()) setHeroAlt(json.alt ?? "");
-      setMessage("Hero uploaded — click Save work to publish.");
-      toastSuccess("Hero uploaded — click Save work to publish.");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Upload failed.";
-      setError(message);
-      toastError(message);
-    } finally {
-      setUploading(null);
-    }
-  }
-
-  async function uploadGalleryFiles(files: FileList | File[]) {
-    const list = Array.from(files);
-    if (list.length === 0) return;
-    setUploading("gallery");
-    setError(null);
-    try {
-      const uploaded: GalleryImage[] = [];
-      for (const file of list) {
-        const json = await uploadOne(file);
-        uploaded.push({
-          src: json.src,
-          alt: json.alt ?? "",
-          width: json.width ?? 1800,
-          height: json.height ?? 1200,
-          room: "",
-          note: "",
-          wide: false,
-        });
-      }
-      setGallery((current) => [...current.filter((image) => image.src.trim()), ...uploaded]);
-      setMessage(
-        `${uploaded.length} photo${uploaded.length === 1 ? "" : "s"} uploaded — click Save work to publish.`,
-      );
-      toastSuccess(
-        `${uploaded.length} photo${uploaded.length === 1 ? "" : "s"} uploaded — click Save work to publish.`,
-      );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Upload failed.";
-      setError(message);
-      toastError(message);
-    } finally {
-      setUploading(null);
-    }
+  function enqueueReplace(index: number, files: File[]) {
+    const file = files[0];
+    if (!file) return;
+    replaceIndexRef.current = index;
+    uploadQueue.enqueue([file], { meta: { role: "replace", index } });
   }
 
   async function onSave(event: React.FormEvent) {
@@ -206,8 +250,45 @@ export function StudioWorkEditor({
     }
   }
 
+  const selectedIndex =
+    selectedId == null
+      ? -1
+      : gallery.findIndex((image, index) => galleryKey(image, index) === selectedId);
+  const selectedImage = selectedIndex >= 0 ? gallery[selectedIndex] : null;
+  const uploading = uploadQueue.stats.activeCount > 0;
+
+  const gridItems = [
+    ...gallery.map((image, index) => ({
+      id: galleryKey(image, index),
+      src: image.src || "/placeholder.svg",
+      label: image.room || image.alt || `Photo ${index + 1}`,
+    })),
+    ...uploadQueue.items
+      .filter(
+        (item) =>
+          item.meta?.role === "gallery" && item.status !== "done",
+      )
+      .map((item) => ({
+        id: item.id,
+        src: item.previewUrl,
+        label: item.file.name,
+        queued: true,
+        progress: item.progress,
+        statusLabel:
+          item.status === "failed"
+            ? "Failed"
+            : item.status === "processing"
+              ? "Processing…"
+              : `${item.progress}%`,
+      })),
+  ];
+
   return (
-    <form className="studio-settings studio-settings--wide" onSubmit={onSave}>
+    <form
+      id="studio-work-form"
+      className="studio-settings studio-settings--wide"
+      onSubmit={onSave}
+    >
       <div className="admin-toolbar">
         <div>
           <p className="eyebrow">Work</p>
@@ -216,9 +297,33 @@ export function StudioWorkEditor({
             This is what agents see first. Keep the hero and selected work current.
           </p>
         </div>
-        <a className="btn btn-outline" href={viewUrl} target="_blank" rel="noreferrer">
-          View on site
-        </a>
+        <div className="admin-toolbar-actions">
+          <input
+            ref={galleryInputRef}
+            className="sr-only"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+            multiple
+            disabled={uploading}
+            onChange={(event) => {
+              if (event.target.files?.length) {
+                enqueueGallery(Array.from(event.target.files));
+              }
+              event.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            className={`btn btn-solid${uploading ? " is-busy" : ""}`}
+            disabled={uploading}
+            onClick={() => galleryInputRef.current?.click()}
+          >
+            {uploading ? "Uploading…" : "Upload photos"}
+          </button>
+          <a className="btn btn-outline" href={viewUrl} target="_blank" rel="noreferrer">
+            View on site
+          </a>
+        </div>
       </div>
 
       <section className="studio-section">
@@ -243,42 +348,28 @@ export function StudioWorkEditor({
 
       <section className="studio-section">
         <h2>Hero image</h2>
-        <p className="studio-section-lede">Upload from your computer. JPG, PNG, or WebP up to 12MB.</p>
-        {heroSrc ? (
-          <div className="work-preview">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={heroSrc} alt={heroAlt || "Hero preview"} />
-          </div>
-        ) : null}
-        <div className="work-upload-row">
-          <input
-            ref={heroInputRef}
-            className="sr-only"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-            disabled={uploading === "hero"}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void uploadHero(file);
-              event.target.value = "";
-            }}
-          />
-          <button
-            type="button"
-            className={`btn btn-solid${uploading === "hero" ? " is-busy" : ""}`}
-            disabled={Boolean(uploading)}
-            onClick={() => heroInputRef.current?.click()}
-          >
-            {uploading === "hero" ? "Uploading…" : "Choose from computer"}
-          </button>
-          <button
-            type="button"
-            className="text-link"
-            onClick={() => setShowHeroUrl((open) => !open)}
-          >
-            {showHeroUrl ? "Hide URL" : "Use image URL instead"}
-          </button>
-        </div>
+        <p className="studio-section-lede">Drop a photo to replace. JPG, PNG, or WebP up to 12MB.</p>
+        <PhotoDropzone
+          className="work-hero-drop"
+          multiple={false}
+          disabled={uploading}
+          onFiles={enqueueHero}
+          label={heroSrc ? "Drop to replace hero" : "Drop hero photo here"}
+        >
+          {heroSrc ? (
+            <div className="work-preview">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroSrc} alt={heroAlt || "Hero preview"} />
+            </div>
+          ) : null}
+        </PhotoDropzone>
+        <button
+          type="button"
+          className="text-link"
+          onClick={() => setShowHeroUrl((open) => !open)}
+        >
+          {showHeroUrl ? "Hide URL" : "Use image URL instead"}
+        </button>
         {showHeroUrl ? (
           <label className="field">
             <span>Image URL</span>
@@ -298,164 +389,163 @@ export function StudioWorkEditor({
       <section className="studio-section">
         <h2>Selected work</h2>
         <p className="studio-section-lede">
-          Upload one or many photos from your machine. They appear on the home page after you save.
+          Drop photos to add them. Drag to reorder. Click a thumbnail to edit details. Order saves with Save work.
         </p>
-        <div className="work-upload-row">
-          <input
-            ref={galleryInputRef}
-            className="sr-only"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-            multiple
-            disabled={uploading === "gallery"}
-            onChange={(event) => {
-              if (event.target.files?.length) {
-                void uploadGalleryFiles(event.target.files);
-              }
-              event.target.value = "";
-            }}
-          />
-          <button
-            type="button"
-            className={`btn btn-solid${uploading === "gallery" ? " is-busy" : ""}`}
-            disabled={Boolean(uploading)}
-            onClick={() => galleryInputRef.current?.click()}
-          >
-            {uploading === "gallery" ? "Uploading…" : "Upload photos"}
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={() => setGallery((current) => [...current, emptyImage()])}
-          >
-            Add URL row
-          </button>
-        </div>
-
-        {gallery.length === 0 ? (
-          <p className="studio-empty-inline">No portfolio photos yet.</p>
-        ) : (
-          <div className="studio-editor-list">
-            {gallery.map((image, index) => (
-              <div key={`${image.src}-${index}`} className="studio-editor-item work-editor-card">
-                {image.src ? (
-                  <div className="work-preview work-preview--thumb">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={image.src} alt={image.alt || `Photo ${index + 1}`} />
-                  </div>
-                ) : null}
-                <label className="field">
-                  <span>Replace from computer</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                    disabled={Boolean(uploading)}
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (!file) return;
-                      setUploading(`gallery-${index}`);
-                      setError(null);
-                      void uploadOne(file)
-                        .then((json) => {
-                          updateImage(index, {
-                            src: json.src,
-                            alt: image.alt || json.alt || "",
-                            width: json.width ?? 1800,
-                            height: json.height ?? 1200,
-                          });
-                          setMessage("Photo replaced — click Save work to publish.");
-                        })
-                        .catch((err: unknown) => {
-                          setError(err instanceof Error ? err.message : "Upload failed.");
-                        })
-                        .finally(() => setUploading(null));
-                      event.target.value = "";
-                    }}
-                  />
-                </label>
-                <label className="field">
-                  <span>Image URL</span>
-                  <input
-                    value={image.src}
-                    onChange={(event) => updateImage(index, { src: event.target.value })}
-                    placeholder="https:// or uploaded path"
-                  />
-                </label>
-                <div className="form-grid">
-                  <label className="field">
-                    <span>Room</span>
-                    <input
-                      value={image.room}
-                      onChange={(event) => updateImage(index, { room: event.target.value })}
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Note</span>
-                    <input
-                      value={image.note}
-                      onChange={(event) => updateImage(index, { note: event.target.value })}
-                    />
-                  </label>
-                </div>
-                <label className="field">
-                  <span>Alt text</span>
-                  <input
-                    value={image.alt}
-                    onChange={(event) => updateImage(index, { alt: event.target.value })}
-                  />
-                </label>
-                <div className="studio-editor-row">
-                  <label className="field field-check">
-                    <span>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(image.wide)}
-                        onChange={(event) => updateImage(index, { wide: event.target.checked })}
-                      />{" "}
-                      Wide frame
-                    </span>
-                  </label>
-                  <div className="studio-category-actions">
-                    <button
-                      type="button"
-                      className="text-link"
-                      onClick={() => moveImage(index, -1)}
-                      disabled={index === 0}
-                      aria-label={`Move photo ${index + 1} up`}
-                    >
-                      Up
-                    </button>
-                    <button
-                      type="button"
-                      className="text-link"
-                      onClick={() => moveImage(index, 1)}
-                      disabled={index === gallery.length - 1}
-                      aria-label={`Move photo ${index + 1} down`}
-                    >
-                      Down
-                    </button>
-                    <button
-                      type="button"
-                      className="text-link"
-                      onClick={() =>
-                        setGallery((current) => current.filter((_, i) => i !== index))
-                      }
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <PhotoDropzone
+          className="work-gallery-drop"
+          disabled={uploading && uploadQueue.stats.activeCount > 8}
+          onFiles={enqueueGallery}
+        >
+          {gridItems.length === 0 ? (
+            <p className="studio-empty-inline">No portfolio photos yet.</p>
+          ) : (
+            <SortablePhotoGrid
+              items={gridItems}
+              showIndex
+              emptyMessage="No portfolio photos yet."
+              onReorder={(ids) => {
+                const byId = new Map(
+                  gallery.map((image, index) => [galleryKey(image, index), image]),
+                );
+                const next = ids
+                  .map((id) => byId.get(id))
+                  .filter((image): image is GalleryImage => Boolean(image));
+                if (next.length > 0) setGallery(next);
+              }}
+              onActivate={(id) => setSelectedId(id)}
+              onSelect={(ids) => {
+                if (ids.length === 1) setSelectedId(ids[0] ?? null);
+              }}
+            />
+          )}
+        </PhotoDropzone>
+        <button
+          type="button"
+          className="btn btn-outline"
+          onClick={() => {
+            setGallery((currentGallery) => [...currentGallery, emptyImage()]);
+          }}
+        >
+          Add URL row
+        </button>
       </section>
+
+      {selectedImage && selectedIndex >= 0 ? (
+        <aside className="work-details-drawer" aria-label="Photo details">
+          <div className="work-details-drawer-head">
+            <strong>Photo details</strong>
+            <button
+              type="button"
+              className="text-link"
+              onClick={() => setSelectedId(null)}
+            >
+              Close
+            </button>
+          </div>
+          <div className="work-preview work-preview--thumb">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={selectedImage.src}
+              alt={selectedImage.alt || `Photo ${selectedIndex + 1}`}
+            />
+          </div>
+          <div className="form-grid">
+            <label className="field">
+              <span>Room</span>
+              <input
+                value={selectedImage.room}
+                onChange={(event) =>
+                  updateImage(selectedIndex, { room: event.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Note</span>
+              <input
+                value={selectedImage.note}
+                onChange={(event) =>
+                  updateImage(selectedIndex, { note: event.target.value })
+                }
+              />
+            </label>
+          </div>
+          <label className="field">
+            <span>Alt text</span>
+            <input
+              value={selectedImage.alt}
+              onChange={(event) =>
+                updateImage(selectedIndex, { alt: event.target.value })
+              }
+            />
+          </label>
+          <label className="field field-check">
+            <span>
+              <input
+                type="checkbox"
+                checked={Boolean(selectedImage.wide)}
+                onChange={(event) =>
+                  updateImage(selectedIndex, { wide: event.target.checked })
+                }
+              />{" "}
+              Wide frame
+            </span>
+          </label>
+          <label className="field">
+            <span>Image URL</span>
+            <input
+              value={selectedImage.src}
+              onChange={(event) =>
+                updateImage(selectedIndex, { src: event.target.value })
+              }
+            />
+          </label>
+          <div className="work-upload-row">
+            <label className="btn btn-outline">
+              Replace
+              <input
+                className="sr-only"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                disabled={uploading}
+                onChange={(event) => {
+                  if (event.target.files?.length) {
+                    enqueueReplace(selectedIndex, Array.from(event.target.files));
+                  }
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => {
+                setGallery((currentGallery) =>
+                  currentGallery.filter((_, i) => i !== selectedIndex),
+                );
+                setSelectedId(null);
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        </aside>
+      ) : null}
 
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
-      <button className={`btn btn-solid${busy ? " is-busy" : ""}`} type="submit" disabled={busy || Boolean(uploading)}>
-        {busy ? "Saving…" : "Save work"}
-      </button>
+      <StickySaveBar
+        dirty={current !== saved}
+        busy={busy || uploading}
+        label="Save work"
+        formId="studio-work-form"
+      />
+
+      <UploadTray
+        items={uploadQueue.items}
+        onRetryFailed={uploadQueue.retryAllFailed}
+        onCancelAll={uploadQueue.cancelAll}
+        onDismiss={uploadQueue.clearDone}
+      />
     </form>
   );
 }

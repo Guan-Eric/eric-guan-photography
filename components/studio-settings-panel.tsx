@@ -478,7 +478,28 @@ export function StudioSettingsPanel() {
         </div>
       </div>
 
-      <section className="studio-section">
+      <nav className="settings-page-nav" aria-label="On this page">
+        <p className="eyebrow">On this page</p>
+        <ul>
+          <li>
+            <a href="#settings-plan">Plan</a>
+          </li>
+          <li>
+            <a href="#settings-payouts">Payouts</a>
+          </li>
+          <li>
+            <a href="#settings-domain">Domain</a>
+          </li>
+          <li>
+            <a href="#settings-team">Team</a>
+          </li>
+          <li>
+            <a href="#settings-referrals">Referrals</a>
+          </li>
+        </ul>
+      </nav>
+
+      <section className="studio-section" id="settings-plan">
         <h2>Subscription</h2>
         <p className="muted">
           {billing ? (
@@ -641,7 +662,7 @@ export function StudioSettingsPanel() {
         </button>
       </section>
 
-      <section className="studio-section">
+      <section className="studio-section" id="settings-payouts">
         <h2>Payouts</h2>
         <p className="muted">{connectLabel}</p>
         <p className="field-hint">
@@ -653,7 +674,7 @@ export function StudioSettingsPanel() {
         </button>
       </section>
 
-      <section className="studio-section">
+      <section className="studio-section" id="settings-domain">
         <h2>Custom domain</h2>
         {!state?.customDomainsEnabled ? (
           <p className="field-hint">
@@ -752,7 +773,7 @@ export function StudioSettingsPanel() {
         ) : null}
       </section>
 
-      <section className="studio-section">
+      <section className="studio-section" id="settings-team">
         <h2>Team</h2>
         <p className="field-hint">
           Invite an editor by email. They get a link to join this studio and can
@@ -841,7 +862,7 @@ export function StudioSettingsPanel() {
         ) : null}
       </section>
 
-      <section className="studio-section">
+      <section className="studio-section" id="settings-referrals">
         <h2>Refer a photographer</h2>
         <p className="field-hint">
           Share your link with another photographer. When they sign up, you both

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { BlogArticle } from "@/components/blog-article";
 import { BlogPostingJsonLd } from "@/components/json-ld";
 import { getBlogPost, getBlogSlugs, postPath } from "@/lib/blog";
@@ -55,10 +55,14 @@ export default async function BlogPostPage({
 }: {
   params: Promise<Params>;
 }) {
-  const tenant = await getRequestTenant();
-  if (tenant) notFound();
-
   const { slug } = await params;
+  const tenant = await getRequestTenant();
+  if (tenant) {
+    redirect(
+      `${platformPublicUrl().replace(/\/$/, "")}/blog/${encodeURIComponent(slug)}`,
+    );
+  }
+
   const post = getBlogPost(slug);
   if (!post) notFound();
 

@@ -4,6 +4,7 @@ import {
   defaultAdvertisingEndsAt,
   listingContainsPrice,
   listingIsPubliclyLive,
+  listingPublicState,
   suggestComplianceRegion,
 } from "@/lib/listing-compliance";
 import type { ListingPage } from "@/lib/db/schema";
@@ -135,5 +136,60 @@ describe("listing compliance", () => {
         advertisingEndsAt: "2020-01-01T00:00:00.000Z",
       }),
     ).toBe(false);
+  });
+
+  it("listingPublicState distinguishes live, waiting, draft, sold, ended, missing", () => {
+    expect(listingPublicState(null).state).toBe("missing");
+
+    const readyFields = {
+      agentName: "Alex",
+      agentEmail: "a@example.com",
+      brokerage: "Brokerage Co",
+      brokeragePhone: "514-555-0100",
+      agentPhone: null,
+      brandMode: "branded" as const,
+      complianceRegion: "ca_other" as const,
+      licenseDisplayName: null,
+      licenseType: null,
+      agencyLegalName: null,
+      agencyLicenseType: null,
+      advertisingEndsAt: "2099-01-01T00:00:00.000Z",
+      headline: null,
+      description: null,
+      title: "123 Main",
+      sectionsJson: "[]",
+      publishedAt: null,
+      deedSignedAt: null,
+    } as ListingPage;
+
+    expect(listingPublicState(readyFields).state).toBe("draft");
+    expect(
+      listingPublicState({
+        ...readyFields,
+        publishedAt: "2026-01-01T00:00:00.000Z",
+      }).state,
+    ).toBe("live");
+    expect(
+      listingPublicState({
+        ...readyFields,
+        publishedAt: "2026-01-01T00:00:00.000Z",
+        deedSignedAt: "2026-06-01T00:00:00.000Z",
+      }).state,
+    ).toBe("sold");
+    expect(
+      listingPublicState({
+        ...readyFields,
+        publishedAt: "2026-01-01T00:00:00.000Z",
+        advertisingEndsAt: "2020-01-01T00:00:00.000Z",
+      }).state,
+    ).toBe("ended");
+
+    const waiting = listingPublicState({
+      ...readyFields,
+      brokerage: null,
+      brokeragePhone: null,
+    });
+    expect(waiting.state).toBe("waiting_on_agent");
+    expect(waiting.checklistErrors.length).toBeGreaterThan(0);
   });
 });

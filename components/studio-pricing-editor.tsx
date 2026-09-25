@@ -415,8 +415,17 @@ export function StudioPricingEditor({
         )}
       </section>
 
-      <div className="studio-editor-list">
+      {[
+        { heading: "Packages", upsell: false, empty: "No packages yet." },
+        { heading: "Add-ons", upsell: true, empty: "No add-ons yet." },
+      ].map((group) => (
+      <div key={group.heading} className="studio-editor-list">
+        <h2 className="studio-editor-group-heading">{group.heading}</h2>
+        {packages.every((pkg) => Boolean(pkg.upsell) !== group.upsell) ? (
+          <p className="studio-empty-inline">{group.empty}</p>
+        ) : null}
         {packages.map((pkg, index) => {
+          if (Boolean(pkg.upsell) !== group.upsell) return null;
           const isAddon = Boolean(pkg.upsell);
           const mode = modeOf(pkg);
           const expanded = expandedId === pkg.id;
@@ -827,6 +836,7 @@ export function StudioPricingEditor({
           );
         })}
       </div>
+      ))}
 
       {message ? <p className="form-success">{message}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}

@@ -58,9 +58,10 @@ export function StudioWorkEditor({
   const [showHeroUrl, setShowHeroUrl] = useState(
     Boolean(tenant.hero.src && !isLocalUpload(tenant.hero.src)),
   );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const replaceIndexRef = useRef<number | null>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const detailsListRef = useRef<HTMLDivElement>(null);
 
   const current = JSON.stringify({
     photographerName,
@@ -250,12 +251,25 @@ export function StudioWorkEditor({
     }
   }
 
-  const selectedIndex =
-    selectedId == null
-      ? -1
-      : gallery.findIndex((image, index) => galleryKey(image, index) === selectedId);
-  const selectedImage = selectedIndex >= 0 ? gallery[selectedIndex] : null;
+  const selectedEntries = gallery
+    .map((image, index) => ({ image, index, id: galleryKey(image, index) }))
+    .filter((entry) => selectedIds.includes(entry.id));
   const uploading = uploadQueue.stats.activeCount > 0;
+
+  function setSelection(ids: string[]) {
+    const valid = new Set(gallery.map((image, index) => galleryKey(image, index)));
+    const next = ids.filter((id) => valid.has(id));
+    const grew = next.length > selectedIds.length;
+    setSelectedIds(next);
+    if (grew && next.length > 0) {
+      requestAnimationFrame(() => {
+        detailsListRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      });
+    }
+  }
 
   const gridItems = [
     ...gallery.map((image, index) => ({
@@ -389,7 +403,7 @@ export function StudioWorkEditor({
       <section className="studio-section">
         <h2>Selected work</h2>
         <p className="studio-section-lede">
-          Drop photos to add them. Drag to reorder. Click a thumbnail to edit details. Order saves with Save work.
+          Drop photos to add them. Drag to reorder. Select one or more thumbnails — Shift/Cmd+click — then edit captions below. Order saves with Save work.
         </p>
         <PhotoDropzone
           className="work-gallery-drop"
@@ -403,6 +417,9 @@ export function StudioWorkEditor({
               items={gridItems}
               showIndex
               emptyMessage="No portfolio photos yet."
+              selectedIds={selectedIds}
+              onSelect={setSelection}
+              onActivate={(id) => setSelection([id])}
               onReorder={(ids) => {
                 const byId = new Map(
                   gallery.map((image, index) => [galleryKey(image, index), image]),
@@ -410,11 +427,12 @@ export function StudioWorkEditor({
                 const next = ids
                   .map((id) => byId.get(id))
                   .filter((image): image is GalleryImage => Boolean(image));
-                if (next.length > 0) setGallery(next);
-              }}
-              onActivate={(id) => setSelectedId(id)}
-              onSelect={(ids) => {
-                if (ids.length === 1) setSelectedId(ids[0] ?? null);
+                if (next.length > 0) {
+                  setGallery(next);
+                  setSelectedIds((current) =>
+                    current.filter((id) => next.some((image, index) => galleryKey(image, index) === id)),
+                  );
+                }
               }}
             />
           )}
@@ -430,105 +448,155 @@ export function StudioWorkEditor({
         </button>
       </section>
 
-      {selectedImage && selectedIndex >= 0 ? (
-        <aside className="work-details-drawer" aria-label="Photo details">
-          <div className="work-details-drawer-head">
-            <strong>Photo details</strong>
-            <button
-              type="button"
-              className="text-link"
-              onClick={() => setSelectedId(null)}
+      {selectedEntries.length > 0 ? (
+        <section
+          ref={detailsListRef}
+          className="work-details-list"
+          aria-label="Selected photo details"
+        >
+          <div className="work-details-list-head">
+            <strong>
+              Editing {selectedEntries.length} photo
+              {selectedEntries.length === 1 ? "" : "s"}
+            </strong>
+            <div className="work-details-list-actions">
+              {selectedEntries.length > 1 ? (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => {
+                    const remove = new Set(selectedEntries.map((entry) => entry.index));
+                    setGallery((currentGallery) =>
+                      currentGallery.filter((_, i) => !remove.has(i)),
+                    );
+                    setSelectedIds([]);
+                  }}
+                >
+                  Remove selected
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => setSelectedIds([])}
+              >
+                Clear selection
+              </button>
+            </div>
+          </div>
+          {selectedEntries.map(({ image, index, id }) => (
+            <article
+              key={id}
+              id={`work-detail-${id}`}
+              className="work-details-drawer"
             >
-              Close
-            </button>
-          </div>
-          <div className="work-preview work-preview--thumb">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={selectedImage.src}
-              alt={selectedImage.alt || `Photo ${selectedIndex + 1}`}
-            />
-          </div>
-          <div className="form-grid">
-            <label className="field">
-              <span>Room</span>
-              <input
-                value={selectedImage.room}
-                onChange={(event) =>
-                  updateImage(selectedIndex, { room: event.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>Note</span>
-              <input
-                value={selectedImage.note}
-                onChange={(event) =>
-                  updateImage(selectedIndex, { note: event.target.value })
-                }
-              />
-            </label>
-          </div>
-          <label className="field">
-            <span>Alt text</span>
-            <input
-              value={selectedImage.alt}
-              onChange={(event) =>
-                updateImage(selectedIndex, { alt: event.target.value })
-              }
-            />
-          </label>
-          <label className="field field-check">
-            <span>
-              <input
-                type="checkbox"
-                checked={Boolean(selectedImage.wide)}
-                onChange={(event) =>
-                  updateImage(selectedIndex, { wide: event.target.checked })
-                }
-              />{" "}
-              Wide frame
-            </span>
-          </label>
-          <label className="field">
-            <span>Image URL</span>
-            <input
-              value={selectedImage.src}
-              onChange={(event) =>
-                updateImage(selectedIndex, { src: event.target.value })
-              }
-            />
-          </label>
-          <div className="work-upload-row">
-            <label className="btn btn-outline">
-              Replace
-              <input
-                className="sr-only"
-                type="file"
-                accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-                disabled={uploading}
-                onChange={(event) => {
-                  if (event.target.files?.length) {
-                    enqueueReplace(selectedIndex, Array.from(event.target.files));
+              <div className="work-details-drawer-head">
+                <strong>Photo {index + 1}</strong>
+                <button
+                  type="button"
+                  className="text-link"
+                  onClick={() =>
+                    setSelectedIds((current) => current.filter((row) => row !== id))
                   }
-                  event.target.value = "";
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => {
-                setGallery((currentGallery) =>
-                  currentGallery.filter((_, i) => i !== selectedIndex),
-                );
-                setSelectedId(null);
-              }}
-            >
-              Remove
-            </button>
-          </div>
-        </aside>
+                >
+                  Deselect
+                </button>
+              </div>
+              <div className="work-details-body">
+                <div className="work-preview work-preview--thumb">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={image.src}
+                    alt={image.alt || `Photo ${index + 1}`}
+                  />
+                </div>
+                <div className="work-details-fields">
+                  <div className="form-grid">
+                    <label className="field">
+                      <span>Room</span>
+                      <input
+                        value={image.room}
+                        onChange={(event) =>
+                          updateImage(index, { room: event.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Note</span>
+                      <input
+                        value={image.note}
+                        onChange={(event) =>
+                          updateImage(index, { note: event.target.value })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <label className="field">
+                    <span>Alt text</span>
+                    <input
+                      value={image.alt}
+                      onChange={(event) =>
+                        updateImage(index, { alt: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="field field-check">
+                    <span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(image.wide)}
+                        onChange={(event) =>
+                          updateImage(index, { wide: event.target.checked })
+                        }
+                      />{" "}
+                      Wide frame
+                    </span>
+                  </label>
+                  <label className="field">
+                    <span>Image URL</span>
+                    <input
+                      value={image.src}
+                      onChange={(event) =>
+                        updateImage(index, { src: event.target.value })
+                      }
+                    />
+                  </label>
+                  <div className="work-upload-row">
+                    <label className="btn btn-outline">
+                      Replace
+                      <input
+                        className="sr-only"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                        disabled={uploading}
+                        onChange={(event) => {
+                          if (event.target.files?.length) {
+                            enqueueReplace(index, Array.from(event.target.files));
+                          }
+                          event.target.value = "";
+                        }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => {
+                        setGallery((currentGallery) =>
+                          currentGallery.filter((_, i) => i !== index),
+                        );
+                        setSelectedIds((current) =>
+                          current.filter((row) => row !== id),
+                        );
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+        </section>
       ) : null}
 
       {message ? <p className="form-success">{message}</p> : null}

@@ -29,13 +29,11 @@ CREATE TABLE IF NOT EXISTS invoice_counters (
 );
 
 -- Silent Shutter already issued SS-2026-001 manually; next must be SS-2026-002.
--- Seed for file-seed id and the live Silent Shutter tenant id used in Neon.
+-- Seed only when missing — never reset last_number on re-run.
 INSERT INTO invoice_counters (tenant_id, year, last_number, updated_at)
 VALUES ('eric-guan', 2026, 1, to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
-ON CONFLICT (tenant_id, year) DO UPDATE
-SET last_number = 1, updated_at = excluded.updated_at;
+ON CONFLICT (tenant_id, year) DO NOTHING;
 
 INSERT INTO invoice_counters (tenant_id, year, last_number, updated_at)
 VALUES ('ten_x0wnara5wf', 2026, 1, to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
-ON CONFLICT (tenant_id, year) DO UPDATE
-SET last_number = 1, updated_at = excluded.updated_at;
+ON CONFLICT (tenant_id, year) DO NOTHING;

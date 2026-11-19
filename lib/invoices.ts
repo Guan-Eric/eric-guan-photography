@@ -337,7 +337,9 @@ async function reserveInvoiceSequence(tenantId: string, year: number) {
   const db = getDb();
   const updatedAt = nowIso();
 
-  await qRun(
+  // Return the reserved number from the same upsert that increments it so two
+  // concurrent payments cannot both read the same last_number.
+  const row = await qGet<{ lastNumber: number }>(
     db
       .insert(schema.invoiceCounters)
       .values({
@@ -352,19 +354,8 @@ async function reserveInvoiceSequence(tenantId: string, year: number) {
           lastNumber: sql`${schema.invoiceCounters.lastNumber} + 1`,
           updatedAt,
         },
-      }),
-  );
-
-  const row = await qGet<{ lastNumber: number }>(
-    db
-      .select({ lastNumber: schema.invoiceCounters.lastNumber })
-      .from(schema.invoiceCounters)
-      .where(
-        and(
-          eq(schema.invoiceCounters.tenantId, tenantId),
-          eq(schema.invoiceCounters.year, year),
-        ),
-      ),
+      })
+      .returning({ lastNumber: schema.invoiceCounters.lastNumber }),
   );
   if (!row?.lastNumber) {
     throw new Error("Failed to reserve invoice number.");

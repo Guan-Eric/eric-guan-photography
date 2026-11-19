@@ -164,6 +164,11 @@ export async function GET(request: Request) {
     };
   }
 
+  const defaultPrefix = (latest?.slug ?? "INV")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase()
+    .slice(0, 4);
+
   return NextResponse.json({
     ok: true,
     connectStatus: latest?.stripeConnectStatus ?? "not_started",
@@ -173,6 +178,14 @@ export async function GET(request: Request) {
     storageBytesUsed: latest?.storageBytesUsed ?? 0,
     mediaQuotaBytes: latest?.mediaQuotaBytes ?? 0,
     serviceAreaGate: config?.serviceAreaGate ?? null,
+    invoice: {
+      prefix: config?.invoice?.prefix ?? defaultPrefix,
+      businessName: config?.invoice?.businessName ?? config?.studioName ?? "",
+      businessEmail: config?.invoice?.businessEmail ?? config?.email ?? "",
+      businessPhone: config?.invoice?.businessPhone ?? config?.phone ?? "",
+      businessAddressLines: config?.invoice?.businessAddressLines ?? [],
+      taxNumbers: config?.invoice?.taxNumbers ?? [],
+    },
     canCustomDomain:
       latest && customDomainsEnabled() ? entitlements(latest.plan).customDomain : false,
     customDomainsEnabled: customDomainsEnabled(),

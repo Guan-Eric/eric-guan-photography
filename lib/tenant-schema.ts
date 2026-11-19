@@ -209,4 +209,19 @@ export type Tenant = {
    * Gates the "placeholder imagery" notice, and later gates going live.
    */
   portfolioComplete: boolean;
+
+  /**
+   * Client invoice PDF settings (gallery payments). When absent, defaults are
+   * derived from studioName / email / phone / slug.
+   */
+  invoice?: {
+    /** Invoice number prefix, e.g. "SS". Defaults to slug uppercased (max 4). */
+    prefix?: string;
+    businessName?: string;
+    businessAddressLines?: string[];
+    businessPhone?: string | null;
+    businessEmail?: string;
+    /** When empty, total reads "Total, taxes included" with no tax rows. */
+    taxNumbers?: string[];
+  };
 };

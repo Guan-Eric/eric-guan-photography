@@ -13,10 +13,19 @@ export const ericGuan: Tenant = {
     "Clean, bright real estate photography for agents — shot fast, edited clean, delivered ready for MLS and marketing.",
 
   email: "ericguan.photo@gmail.com",
-  phone: null,
+  phone: "(514) 839-2120",
   instagram: null,
 
   siteUrl: "https://ericguan.photo",
+
+  invoice: {
+    prefix: "SS",
+    businessName: "Silent Shutter",
+    businessAddressLines: [],
+    businessPhone: "(514) 839-2120",
+    businessEmail: "ericguan.photo@gmail.com",
+    taxNumbers: [],
+  },
 
   theme: {
     bg: "#e8ebe6",

@@ -6,12 +6,20 @@ import type { Tenant } from "@/lib/tenant-schema";
 const nanoid = customAlphabet("23456789ABCDEFGHJKLMNPQRSTUVWXYZ", 10);
 const tokenId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 24);
 
+export type OutboundEmailAttachment = {
+  filename: string;
+  /** Base64-encoded file contents (Resend format). */
+  content: string;
+  contentType?: string;
+};
+
 export type OutboundEmail = {
   to: string;
   subject: string;
   text: string;
   html?: string;
   replyTo?: string;
+  attachments?: OutboundEmailAttachment[];
 };
 
 type DetailRow = { label: string; value: string };
@@ -209,6 +217,10 @@ function composeEmail(
 export async function sendEmail(message: OutboundEmail) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = platformEmailFrom();
+  const attachments = message.attachments?.map((attachment) => ({
+    filename: attachment.filename,
+    content: attachment.content,
+  }));
 
   if (!apiKey) {
     console.info("[email:stub]", {
@@ -217,9 +229,23 @@ export async function sendEmail(message: OutboundEmail) {
       replyTo: message.replyTo,
       subject: message.subject,
       text: message.text,
+      attachments: message.attachments?.map((attachment) => ({
+        filename: attachment.filename,
+        bytes: Buffer.from(attachment.content, "base64").byteLength,
+      })),
     });
     return { ok: true as const, stubbed: true };
   }
+
+  const payload = {
+    from,
+    to: message.to,
+    ...(message.replyTo ? { reply_to: message.replyTo } : {}),
+    subject: message.subject,
+    text: message.text,
+    html: message.html ?? `<pre>${escapeHtml(message.text)}</pre>`,
+    ...(attachments?.length ? { attachments } : {}),
+  };
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -227,19 +253,35 @@ export async function sendEmail(message: OutboundEmail) {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from,
-      to: message.to,
-      ...(message.replyTo ? { reply_to: message.replyTo } : {}),
-      subject: message.subject,
-      text: message.text,
-      html: message.html ?? `<pre>${escapeHtml(message.text)}</pre>`,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
     const body = await response.text();
     console.error("[email] Resend failed", response.status, body);
+
+    // Attachment failures must not block paid unlock emails.
+    if (attachments?.length) {
+      console.error("[email] retrying without attachments", {
+        to: message.to,
+        subject: message.subject,
+        filenames: attachments.map((item) => item.filename),
+      });
+      const retry = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...payload, attachments: undefined }),
+      });
+      if (retry.ok) {
+        return { ok: true as const, stubbed: false, attachmentDropped: true as const };
+      }
+      const retryBody = await retry.text();
+      console.error("[email] Resend retry failed", retry.status, retryBody);
+    }
+
     let detail = "Email provider rejected the message.";
     try {
       const parsed = JSON.parse(body) as { message?: string };
@@ -412,6 +454,7 @@ export function orderStatusEmail(options: {
   listingCopyUrl?: string;
   prepUrl?: string;
   scheduledLabel?: string;
+  invoiceAttachment?: OutboundEmailAttachment;
 }): OutboundEmail | null {
   const { tenant, order, status } = options;
   const prepUrl = options.prepUrl ?? `${tenant.siteUrl.replace(/\/$/, "")}/prep`;
@@ -508,16 +551,19 @@ export function orderStatusEmail(options: {
       secondaryLinks.push({ label: "Add listing copy", url: options.listingCopyUrl });
     }
 
-    return composeEmail(order.agentEmail, `Downloads ready — ${order.propertyAddress}`, {
+    const intro = [
+      "Thank you — payment is confirmed. Your full-resolution and MLS downloads are ready on a new gallery link below.",
+      ...(options.invoiceAttachment ? ["Your invoice is attached."] : []),
+      "Your previous preview link no longer works. Use only this download link going forward.",
+      options.listingUrl
+        ? "Your listing website is ready — add a headline and description when you’re ready (that’s your copy, not the photographer’s)."
+        : "Add listing copy from Your listings when a property page is available on this studio’s plan.",
+    ];
+
+    const mail = composeEmail(order.agentEmail, `Downloads ready — ${order.propertyAddress}`, {
       preview: `Payment received. Your download link for ${order.propertyAddress} is ready.`,
       greeting: `Hi ${name},`,
-      intro: [
-        "Thank you — payment is confirmed. Your full-resolution and MLS downloads are ready on a new gallery link below.",
-        "Your previous preview link no longer works. Use only this download link going forward.",
-        options.listingUrl
-          ? "Your listing website is ready — add a headline and description when you’re ready (that’s your copy, not the photographer’s)."
-          : "Add listing copy from Your listings when a property page is available on this studio’s plan.",
-      ],
+      intro,
       cta: options.galleryUrl
         ? { label: "Download photos", url: options.galleryUrl }
         : undefined,
@@ -529,6 +575,10 @@ export function orderStatusEmail(options: {
       signoffName: tenant.photographerName,
       signoffLine: tenant.email,
     }, tenant.email);
+    if (options.invoiceAttachment) {
+      mail.attachments = [options.invoiceAttachment];
+    }
+    return mail;
   }
 
   if (status === "cancelled") {
@@ -558,6 +608,7 @@ export function photographerOrderStatusEmail(options: {
   adminUrl?: string;
   scheduledLabel?: string;
   priceLabel?: string;
+  invoiceAttachment?: OutboundEmailAttachment;
 }): OutboundEmail | null {
   const { tenant, order, status } = options;
   const adminUrl =
@@ -643,7 +694,7 @@ export function photographerOrderStatusEmail(options: {
   }
 
   if (status === "paid") {
-    return composeEmail(
+    const mail = composeEmail(
       tenant.email,
       `Payment received — ${order.propertyAddress}`,
       {
@@ -651,6 +702,9 @@ export function photographerOrderStatusEmail(options: {
         greeting: `Hi ${name},`,
         intro: [
           "Payment cleared. The agent was emailed a new download link — their previous preview URL no longer works.",
+          ...(options.invoiceAttachment
+            ? ["A copy of the invoice is attached for your records."]
+            : []),
         ],
         details: baseDetails,
         cta: options.galleryUrl
@@ -660,6 +714,10 @@ export function photographerOrderStatusEmail(options: {
       },
       order.agentEmail,
     );
+    if (options.invoiceAttachment) {
+      mail.attachments = [options.invoiceAttachment];
+    }
+    return mail;
   }
 
   if (status === "cancelled") {
@@ -789,6 +847,7 @@ export function orderLifecycleEmails(options: {
   scheduledLabel?: string;
   adminUrl?: string;
   priceLabel?: string;
+  invoiceAttachment?: OutboundEmailAttachment;
 }): OutboundEmail[] {
   const mails: OutboundEmail[] = [];
   const agent = orderStatusEmail(options);

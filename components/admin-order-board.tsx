@@ -161,7 +161,9 @@ export function AdminOrderBoard({
       | "publish"
       | "unlock"
       | "refresh"
-      | "regenerateProofs";
+      | "regenerateProofs"
+      | "invoiceGenerate"
+      | "invoiceResend";
   } | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | OrderStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -182,6 +184,9 @@ export function AdminOrderBoard({
   const [orderPhotos, setOrderPhotos] = useState<Record<string, OrderPhoto[]>>(
     {},
   );
+  const [orderInvoices, setOrderInvoices] = useState<
+    Record<string, { number: string } | null>
+  >({});
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [slotDrafts, setSlotDrafts] = useState<Record<string, string>>({});
@@ -409,9 +414,85 @@ export function AdminOrderBoard({
       else {
         next.add(orderId);
         void loadOrderPhotos(orderId);
+        void loadOrderInvoice(orderId);
       }
       return next;
     });
+  }
+
+  async function loadOrderInvoice(orderId: string) {
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/invoice`);
+      const json = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        invoice?: { number: string } | null;
+      } | null;
+      if (!response.ok || !json?.ok) return;
+      setOrderInvoices((current) => ({
+        ...current,
+        [orderId]: json.invoice ? { number: json.invoice.number } : null,
+      }));
+    } catch {
+      /* keep last known */
+    }
+  }
+
+  async function generateInvoice(orderId: string) {
+    setBusy({ orderId, action: "invoiceGenerate" });
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate" }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!json?.ok) {
+        fail(json?.error ?? "Could not generate invoice.");
+        return;
+      }
+      setOrderInvoices((current) => ({
+        ...current,
+        [orderId]: { number: json.invoice.number },
+      }));
+      ok(
+        json.created
+          ? `Invoice ${json.invoice.number} generated.`
+          : `Invoice ${json.invoice.number} already exists.`,
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function resendOrderInvoice(orderId: string) {
+    setBusy({ orderId, action: "invoiceResend" });
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "resend" }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!json?.ok) {
+        fail(json?.error ?? "Could not resend invoice.");
+        return;
+      }
+      setOrderInvoices((current) => ({
+        ...current,
+        [orderId]: { number: json.invoice.number },
+      }));
+      ok(
+        json.stubbed
+          ? `Invoice ${json.invoice.number} ready (email stubbed locally).`
+          : `Invoice ${json.invoice.number} resent to the agent.`,
+      );
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function loadOrderPhotos(orderId: string) {
@@ -459,6 +540,7 @@ export function AdminOrderBoard({
       for (const order of visibleOrders) {
         next.add(order.id);
         void loadOrderPhotos(order.id);
+        void loadOrderInvoice(order.id);
       }
       return next;
     });
@@ -972,6 +1054,7 @@ export function AdminOrderBoard({
           ? "Marked paid. Agent was emailed a new download link — listing website is ready."
           : "Marked paid. Agent was emailed a new download link — the old preview URL no longer works.",
       );
+      void loadOrderInvoice(orderId);
     } finally {
       setBusy(null);
     }
@@ -1812,6 +1895,44 @@ export function AdminOrderBoard({
                               </button>
                             ) : null}
                           </div>
+                          {paid ? (
+                            <div className="delivery-step-actions" style={{ marginTop: "0.75rem" }}>
+                              {orderInvoices[order.id]?.number ? (
+                                <>
+                                  <span className="muted">
+                                    Invoice {orderInvoices[order.id]!.number}
+                                  </span>
+                                  <a
+                                    className="btn btn-outline"
+                                    href={`/api/admin/orders/${order.id}/invoice?download=1`}
+                                  >
+                                    Download
+                                  </a>
+                                  <button
+                                    type="button"
+                                    className={`btn btn-outline${pending("invoiceResend") ? " is-busy" : ""}`}
+                                    disabled={orderLocked || pending("invoiceResend")}
+                                    onClick={() => void resendOrderInvoice(order.id)}
+                                  >
+                                    {pending("invoiceResend")
+                                      ? "Sending…"
+                                      : "Resend to agent"}
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className={`btn btn-outline${pending("invoiceGenerate") ? " is-busy" : ""}`}
+                                  disabled={orderLocked || pending("invoiceGenerate")}
+                                  onClick={() => void generateInvoice(order.id)}
+                                >
+                                  {pending("invoiceGenerate")
+                                    ? "Generating…"
+                                    : "Generate invoice"}
+                                </button>
+                              )}
+                            </div>
+                          ) : null}
                         </div>
                       </li>
                     </ol>

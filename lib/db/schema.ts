@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /**
  * Order statuses for the photographer admin board.
@@ -364,6 +364,36 @@ export const payments = sqliteTable("payments", {
   updatedAt: text("updated_at").notNull(),
 });
 
+/** One invoice per paid gallery order. `orderId` unique is the idempotency key. */
+export const invoices = sqliteTable("invoices", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id").notNull(),
+  orderId: text("order_id")
+    .notNull()
+    .references(() => orders.id),
+  paymentId: text("payment_id").references(() => payments.id),
+  number: text("number").notNull(),
+  year: integer("year").notNull(),
+  sequence: integer("sequence").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("CAD"),
+  pdfPath: text("pdf_path").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+/** Per-tenant, per-year invoice sequence counter. */
+export const invoiceCounters = sqliteTable(
+  "invoice_counters",
+  {
+    tenantId: text("tenant_id").notNull(),
+    year: integer("year").notNull(),
+    lastNumber: integer("last_number").notNull().default(0),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.tenantId, table.year] })],
+);
+
 export type Order = typeof orders.$inferSelect;
 export type NewOrder = typeof orders.$inferInsert;
 export type Appointment = typeof appointments.$inferSelect;
@@ -372,6 +402,8 @@ export type Gallery = typeof galleries.$inferSelect;
 export type MediaAsset = typeof mediaAssets.$inferSelect;
 export type MediaLink = typeof mediaLinks.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+export type Invoice = typeof invoices.$inferSelect;
+export type InvoiceCounter = typeof invoiceCounters.$inferSelect;
 export type User = typeof users.$inferSelect;
 export const billingEvents = sqliteTable("billing_events", {
   id: text("id").primaryKey(),

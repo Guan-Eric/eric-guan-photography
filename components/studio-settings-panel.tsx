@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import { PLAN_DEFS } from "@/lib/plan-defs";
 import { toastError, toastSuccess } from "@/lib/toast";
 
+type InvoiceSettings = {
+  prefix: string;
+  businessName: string;
+  businessEmail: string;
+  businessPhone: string;
+  businessAddressLines: string[];
+  taxNumbers: string[];
+};
+
 type ConnectState = {
   connectStatus: string;
   connectAccountId: string | null;
@@ -22,6 +31,7 @@ type ConnectState = {
   domainSslStatus?: string | null;
   expectedDnsTarget?: string;
   note?: string;
+  invoice?: InvoiceSettings;
   serviceAreaGate: {
     enabled: boolean;
     region: string;
@@ -117,12 +127,21 @@ export function StudioSettingsPanel() {
     | "lifetime"
     | "portal"
     | "invite"
+    | "invoice"
     | `remove-invite:${string}`
     | `remove-member:${string}`
     | null
   >(null);
   const [loaded, setLoaded] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PlanChoice | null>(null);
+  const [invoiceDraft, setInvoiceDraft] = useState<InvoiceSettings>({
+    prefix: "",
+    businessName: "",
+    businessEmail: "",
+    businessPhone: "",
+    businessAddressLines: [],
+    taxNumbers: [],
+  });
 
   async function load() {
     try {
@@ -137,6 +156,16 @@ export function StudioSettingsPanel() {
       if (connectJson?.ok) {
         setState(connectJson);
         setDomain(connectJson.domain ?? "");
+        if (connectJson.invoice) {
+          setInvoiceDraft({
+            prefix: connectJson.invoice.prefix ?? "",
+            businessName: connectJson.invoice.businessName ?? "",
+            businessEmail: connectJson.invoice.businessEmail ?? "",
+            businessPhone: connectJson.invoice.businessPhone ?? "",
+            businessAddressLines: connectJson.invoice.businessAddressLines ?? [],
+            taxNumbers: connectJson.invoice.taxNumbers ?? [],
+          });
+        }
       } else if (connectJson?.error) {
         setError(connectJson.error);
       }
@@ -156,6 +185,41 @@ export function StudioSettingsPanel() {
   useEffect(() => {
     void load();
   }, []);
+
+  async function saveInvoiceSettings() {
+    setBusy("invoice");
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/site", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          section: "invoice",
+          prefix: invoiceDraft.prefix,
+          businessName: invoiceDraft.businessName,
+          businessEmail: invoiceDraft.businessEmail,
+          businessPhone: invoiceDraft.businessPhone,
+          businessAddressLines: invoiceDraft.businessAddressLines.join("\n"),
+          taxNumbers: invoiceDraft.taxNumbers.join("\n"),
+        }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!json?.ok) {
+        setError(json?.error ?? "Could not save invoice settings.");
+        toastError(json?.error ?? "Could not save invoice settings.");
+        return;
+      }
+      setMessage("Invoice settings saved.");
+      toastSuccess("Invoice settings saved.");
+      await load();
+    } catch {
+      setError("Could not save invoice settings.");
+      toastError("Could not save invoice settings.");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function startConnect() {
     setBusy("connect");
@@ -488,6 +552,9 @@ export function StudioSettingsPanel() {
             <a href="#settings-payouts">Payouts</a>
           </li>
           <li>
+            <a href="#settings-invoices">Invoices</a>
+          </li>
+          <li>
             <a href="#settings-domain">Domain</a>
           </li>
           <li>
@@ -671,6 +738,94 @@ export function StudioSettingsPanel() {
         {state?.connectNote ? <p className="form-error">{state.connectNote}</p> : null}
         <button type="button" className={`btn btn-solid${busy === "connect" ? " is-busy" : ""}`} disabled={busy !== null} onClick={startConnect}>
           {busy === "connect" ? "Working…" : state?.connectStatus === "complete" ? "Update payouts" : "Connect payouts"}
+        </button>
+      </section>
+
+      <section className="studio-section" id="settings-invoices">
+        <h2>Client invoices</h2>
+        <p className="field-hint">
+          Auto-generated PDFs attach to the agent and photographer emails after a
+          gallery payment. Leave tax numbers blank to show “Total, taxes included”.
+        </p>
+        <label className="field">
+          <span>Invoice prefix</span>
+          <input
+            value={invoiceDraft.prefix}
+            onChange={(event) =>
+              setInvoiceDraft((prev) => ({
+                ...prev,
+                prefix: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8),
+              }))
+            }
+            placeholder="SS"
+            maxLength={8}
+          />
+        </label>
+        <label className="field">
+          <span>Business name</span>
+          <input
+            value={invoiceDraft.businessName}
+            onChange={(event) =>
+              setInvoiceDraft((prev) => ({ ...prev, businessName: event.target.value }))
+            }
+            placeholder="Silent Shutter"
+          />
+        </label>
+        <label className="field">
+          <span>Business email</span>
+          <input
+            type="email"
+            value={invoiceDraft.businessEmail}
+            onChange={(event) =>
+              setInvoiceDraft((prev) => ({ ...prev, businessEmail: event.target.value }))
+            }
+          />
+        </label>
+        <label className="field">
+          <span>Business phone</span>
+          <input
+            value={invoiceDraft.businessPhone}
+            onChange={(event) =>
+              setInvoiceDraft((prev) => ({ ...prev, businessPhone: event.target.value }))
+            }
+            placeholder="(514) 839-2120"
+          />
+        </label>
+        <label className="field">
+          <span>Business address (one line per row)</span>
+          <textarea
+            rows={3}
+            value={invoiceDraft.businessAddressLines.join("\n")}
+            onChange={(event) =>
+              setInvoiceDraft((prev) => ({
+                ...prev,
+                businessAddressLines: event.target.value.split("\n"),
+              }))
+            }
+            placeholder="Optional"
+          />
+        </label>
+        <label className="field">
+          <span>Tax numbers (optional, one per line)</span>
+          <textarea
+            rows={2}
+            value={invoiceDraft.taxNumbers.join("\n")}
+            onChange={(event) =>
+              setInvoiceDraft((prev) => ({
+                ...prev,
+                taxNumbers: event.target.value.split("\n"),
+              }))
+            }
+            placeholder="GST/HST · QST"
+          />
+        </label>
+        <button
+          type="button"
+          className={`btn btn-outline${busy === "invoice" ? " is-busy" : ""}`}
+          disabled={busy !== null}
+          onClick={() => void saveInvoiceSettings()}
+        >
+          {busy === "invoice" ? "Saving…" : "Save invoice settings"}
         </button>
       </section>
 

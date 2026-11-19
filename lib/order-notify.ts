@@ -5,8 +5,10 @@ import {
   photographerPriceChangeEmail,
   sendEmail,
   type OutboundEmail,
+  type OutboundEmailAttachment,
 } from "@/lib/email";
 import { galleryPublicUrl, getGalleryByOrderId } from "@/lib/galleries";
+import { createInvoiceForOrder, invoiceAttachment } from "@/lib/invoices";
 import { getOrder } from "@/lib/orders";
 import { ensureReviewRequest } from "@/lib/reviews";
 import { getTenant } from "@/lib/tenants";
@@ -39,6 +41,7 @@ export async function notifyOrderStatusChange(options: {
   listingUrl?: string;
   listingCopyUrl?: string;
   scheduledLabel?: string;
+  invoiceAttachment?: OutboundEmailAttachment;
 }) {
   const tenant = await getTenant(options.tenantId);
   const gallery =
@@ -62,6 +65,7 @@ export async function notifyOrderStatusChange(options: {
     scheduledLabel: options.scheduledLabel,
     adminUrl: `${tenant.siteUrl.replace(/\/$/, "")}/admin`,
     priceLabel: moneyLabel(options.order.priceCents, options.order.currency),
+    invoiceAttachment: options.invoiceAttachment,
   });
 
   return sendAll(mails);
@@ -100,6 +104,21 @@ export async function notifyGalleryPaid(options: {
       ? listingCopyUrl(listing.page, tenant.siteUrl)
       : null;
 
+  let paidAttachment: OutboundEmailAttachment | undefined;
+  try {
+    const created = await createInvoiceForOrder({
+      tenantId: options.tenantId,
+      orderId: options.orderId,
+    });
+    paidAttachment = invoiceAttachment(created.invoice, created.pdf);
+  } catch (error) {
+    console.error("[invoice] generation failed", {
+      orderId: options.orderId,
+      tenantId: options.tenantId,
+      error,
+    });
+  }
+
   const results = await notifyOrderStatusChange({
     tenantId: options.tenantId,
     order: paidOrder,
@@ -107,6 +126,7 @@ export async function notifyGalleryPaid(options: {
     galleryUrl,
     listingUrl: listingUrl ?? undefined,
     listingCopyUrl: copyUrl ?? undefined,
+    invoiceAttachment: paidAttachment,
   });
 
   return { results, listingUrl };

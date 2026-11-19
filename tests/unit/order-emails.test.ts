@@ -81,6 +81,29 @@ describe("order lifecycle emails", () => {
     expect(paid.text).toMatch(/Listing page/);
   });
 
+  it("attaches the invoice PDF on paid emails when provided", () => {
+    const attachment = {
+      filename: "Invoice-SS-2026-002.pdf",
+      content: Buffer.from("%PDF-test").toString("base64"),
+      contentType: "application/pdf",
+    };
+    const mails = orderLifecycleEmails({
+      tenant,
+      order,
+      status: "paid",
+      galleryUrl: "https://test.studiofront.ca/g/abc",
+      invoiceAttachment: attachment,
+    });
+    expect(mails).toHaveLength(2);
+    for (const mail of mails) {
+      expect(mail.attachments).toEqual([attachment]);
+    }
+    const agent = mails.find((mail) => mail.to === "agent@example.com")!;
+    expect(agent.text).toMatch(/Your invoice is attached/);
+    const photo = mails.find((mail) => mail.to === "photo@example.com")!;
+    expect(photo.text).toMatch(/invoice is attached/);
+  });
+
   it("does not attach listing links on gallery-ready email", () => {
     const delivered = orderLifecycleEmails({
       tenant,

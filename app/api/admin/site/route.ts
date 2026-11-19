@@ -256,5 +256,55 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (section === "invoice") {
+    const prefix = asString(body?.prefix, current.invoice?.prefix ?? "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 8);
+    const businessName =
+      asString(body?.businessName, current.invoice?.businessName ?? current.studioName).trim() ||
+      current.studioName;
+    const businessEmail =
+      asString(body?.businessEmail, current.invoice?.businessEmail ?? current.email)
+        .trim()
+        .toLowerCase() || current.email;
+    if (!businessEmail.includes("@")) {
+      return NextResponse.json({ ok: false, error: "A valid business email is required." }, { status: 400 });
+    }
+    const businessPhoneRaw = asString(
+      body?.businessPhone,
+      current.invoice?.businessPhone ?? current.phone ?? "",
+    ).trim();
+    const addressRaw = asString(body?.businessAddressLines, "").trim();
+    const businessAddressLines = addressRaw
+      ? addressRaw
+          .split("\n")
+          .map((line: string) => line.trim())
+          .filter(Boolean)
+          .slice(0, 6)
+      : [];
+    const taxRaw = asString(body?.taxNumbers, "").trim();
+    const taxNumbers = taxRaw
+      ? taxRaw
+          .split("\n")
+          .map((line: string) => line.trim())
+          .filter(Boolean)
+          .slice(0, 4)
+      : [];
+
+    await updateTenantConfig(session.activeTenantId, {
+      invoice: {
+        prefix: prefix || undefined,
+        businessName,
+        businessEmail,
+        businessPhone: businessPhoneRaw || null,
+        businessAddressLines,
+        taxNumbers,
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   return NextResponse.json({ ok: false, error: "Unknown section." }, { status: 400 });
 }

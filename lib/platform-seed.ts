@@ -154,4 +154,23 @@ export function seedPlatform(db: Db) {
       .where(eq(schema.tenants.id, tenantId))
       .run();
   }
+
+  // SS-2026-001 was issued manually; next auto invoice must be SS-2026-002.
+  const counterYear = 2026;
+  const existingCounter = db
+    .select()
+    .from(schema.invoiceCounters)
+    .where(eq(schema.invoiceCounters.tenantId, ericGuan.id))
+    .all()
+    .find((row) => row.year === counterYear);
+  if (!existingCounter) {
+    db.insert(schema.invoiceCounters)
+      .values({
+        tenantId: ericGuan.id,
+        year: counterYear,
+        lastNumber: 1,
+        updatedAt: nowIso(),
+      })
+      .run();
+  }
 }

@@ -204,6 +204,29 @@ CREATE TABLE IF NOT EXISTS payments (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS invoices (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant_id TEXT NOT NULL,
+  order_id TEXT NOT NULL REFERENCES orders(id),
+  payment_id TEXT REFERENCES payments(id),
+  number TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  sequence INTEGER NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'CAD',
+  pdf_path TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS invoice_counters (
+  tenant_id TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  last_number INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, year)
+);
+
 CREATE TABLE IF NOT EXISTS billing_events (
   id TEXT PRIMARY KEY NOT NULL,
   tenant_id TEXT NOT NULL,
@@ -379,6 +402,9 @@ CREATE INDEX IF NOT EXISTS listing_domains_tenant_idx ON listing_domains(tenant_
 CREATE INDEX IF NOT EXISTS media_links_tenant_idx ON media_links(tenant_id, kind);
 CREATE INDEX IF NOT EXISTS media_links_gallery_idx ON media_links(gallery_id, sort_order);
 CREATE INDEX IF NOT EXISTS upload_rate_tenant_idx ON upload_rate_limits(tenant_id);
+CREATE UNIQUE INDEX IF NOT EXISTS invoices_order_id_idx ON invoices(order_id);
+CREATE UNIQUE INDEX IF NOT EXISTS invoices_tenant_number_idx ON invoices(tenant_id, number);
+CREATE INDEX IF NOT EXISTS invoices_tenant_idx ON invoices(tenant_id, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS listing_pages_tenant_slug_idx ON listing_pages(tenant_id, slug);
 CREATE INDEX IF NOT EXISTS listing_pages_order_idx ON listing_pages(order_id);
 CREATE INDEX IF NOT EXISTS gallery_events_gallery_idx ON gallery_events(gallery_id, kind);

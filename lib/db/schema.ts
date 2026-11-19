@@ -352,7 +352,7 @@ export const payments = sqliteTable("payments", {
   orderId: text("order_id")
     .notNull()
     .references(() => orders.id),
-  provider: text("provider").$type<"stripe" | "local_stub">().notNull(),
+  provider: text("provider").$type<"stripe" | "local_stub" | "manual">().notNull(),
   providerSessionId: text("provider_session_id"),
   amountCents: integer("amount_cents").notNull(),
   currency: text("currency").notNull().default("CAD"),

@@ -121,6 +121,83 @@ describe("gallery payment invoices", () => {
     expect(rows).toHaveLength(1);
   });
 
+  it("creates an invoice after admin mark-as-paid without a prior payments row", async () => {
+    const tenant = await getTenant("eric-guan");
+    await updateTenantConfig(tenant.id, {
+      siteUrl: "https://silentshutter.studiofront.ca",
+      invoice: {
+        prefix: "SS",
+        businessName: "Silent Shutter",
+        businessEmail: "ericguan.photo@gmail.com",
+        businessPhone: "(514) 839-2120",
+        businessAddressLines: [],
+        taxNumbers: [],
+      },
+    });
+
+    const booked = await createBooking(
+      tenant,
+      bookingFixture(tenant, {
+        propertyAddress: "100 Mark Paid Ave",
+        agentName: "Manual Pay Agent",
+        agentEmail: "manual-pay@example.com",
+      }),
+    );
+    expect(booked.ok).toBe(true);
+    if (!booked.ok) return;
+
+    const order = await getOrder(booked.orderId, tenant.id);
+    expect(order).toBeTruthy();
+    const gallery = await ensureGalleryForOrder(order!, tenant);
+
+    const paymentsBefore = await qAll<{ id: string }>(
+      getDb()
+        .select({ id: schema.payments.id })
+        .from(schema.payments)
+        .where(eq(schema.payments.orderId, booked.orderId)),
+    );
+    expect(paymentsBefore).toHaveLength(0);
+
+    const { unlockGallery } = await import("@/lib/galleries");
+    const unlocked = await unlockGallery(gallery.id, { markOrderPaid: true });
+    expect(unlocked.ok).toBe(true);
+    if (!unlocked.ok) return;
+
+    const paidOrder = await getOrder(booked.orderId, tenant.id);
+    expect(paidOrder?.status).toBe("paid");
+
+    const paymentsAfter = await qAll<{
+      id: string;
+      provider: string;
+      status: string;
+      amountCents: number;
+    }>(
+      getDb()
+        .select({
+          id: schema.payments.id,
+          provider: schema.payments.provider,
+          status: schema.payments.status,
+          amountCents: schema.payments.amountCents,
+        })
+        .from(schema.payments)
+        .where(eq(schema.payments.orderId, booked.orderId)),
+    );
+    expect(paymentsAfter).toHaveLength(1);
+    expect(paymentsAfter[0]?.provider).toBe("manual");
+    expect(paymentsAfter[0]?.status).toBe("paid");
+    expect(paymentsAfter[0]?.amountCents).toBe(order!.priceCents);
+
+    // Simulate notifyGalleryPaid invoice creation on the mark-as-paid path.
+    const created = await createInvoiceForOrder({
+      tenantId: tenant.id,
+      orderId: booked.orderId,
+    });
+    expect(created.created).toBe(true);
+    expect(created.invoice.amountCents).toBe(order!.priceCents);
+    expect(created.invoice.paymentId).toBe(paymentsAfter[0]!.id);
+    expect(created.pdf.subarray(0, 5).toString("utf8")).toBe("%PDF-");
+  });
+
   it("keeps Eric's 2026 counter at >= 1 so auto invoices never reuse SS-2026-001", async () => {
     const db = getDb();
     let counter = await qGet<{ lastNumber: number }>(

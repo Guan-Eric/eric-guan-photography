@@ -720,13 +720,15 @@ export async function buildInvoicePdfData(options: {
   const brand = options.cardBrand?.trim() || null;
   const amountLabel = moneyPlain(options.payment.amountCents);
   const what = paymentWhatLabel(options.order.packageName);
-  const paymentLines = brand
-    ? [
-        `Card (${brand}): pay ${amountLabel} through the gallery link provided to unlock and download ${what}.`,
-      ]
-    : [
-        `Paid by card through the gallery link on ${formatLongDate(invoiceDateIso, timeZone)}.`,
-      ];
+  const paidOn = formatLongDate(invoiceDateIso, timeZone);
+  const paymentLines =
+    options.payment.provider === "manual"
+      ? [`Marked paid by the studio on ${paidOn}.`]
+      : brand
+        ? [
+            `Card (${brand}): pay ${amountLabel} through the gallery link provided to unlock and download ${what}.`,
+          ]
+        : [`Paid by card through the gallery link on ${paidOn}.`];
 
   return {
     number: options.number,
@@ -777,9 +779,23 @@ export async function createInvoiceForOrder(options: {
   if (!order) throw new Error(`Order not found: ${options.orderId}`);
   requireAgentEmail(order);
 
-  const payment = await getPaidPaymentForOrder(options.orderId, options.tenantId);
+  let payment = await getPaidPaymentForOrder(options.orderId, options.tenantId);
   if (!payment) {
-    throw new Error(`No paid payment found for order ${options.orderId}.`);
+    // Admin mark-as-paid used to flip orders.status without a payments row.
+    // Create a durable manual payment from the order price when the order is paid.
+    if (order.status !== "paid") {
+      throw new Error(`No paid payment found for order ${options.orderId}.`);
+    }
+    const { ensurePaidPaymentForGallery, getGalleryByOrderId } = await import(
+      "@/lib/galleries"
+    );
+    const gallery = await getGalleryByOrderId(options.orderId, options.tenantId);
+    if (!gallery) {
+      throw new Error(
+        `No paid payment found for order ${options.orderId} (and no gallery to record a manual payment).`,
+      );
+    }
+    payment = await ensurePaidPaymentForGallery(gallery);
   }
 
   const row = await getTenantRow(options.tenantId);

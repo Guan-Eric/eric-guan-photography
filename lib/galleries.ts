@@ -347,6 +347,47 @@ export async function setGalleryBrandMode(
   return getGalleryById(galleryIdValue);
 }
 
+/**
+ * Ensure a paid payment row exists for invoice generation. Admin mark-as-paid
+ * historically only flipped orders.status; invoices require a paid payment.
+ * Idempotent: returns the existing paid row when present.
+ */
+export async function ensurePaidPaymentForGallery(gallery: Gallery) {
+  const db = getDb();
+  const existing = await qGet<(typeof schema.payments.$inferSelect)>(
+    db
+      .select()
+      .from(schema.payments)
+      .where(
+        and(
+          eq(schema.payments.orderId, gallery.orderId),
+          eq(schema.payments.tenantId, gallery.tenantId),
+          eq(schema.payments.status, "paid"),
+        ),
+      ),
+  );
+  if (existing) return existing;
+
+  const order = await qGet<Pick<Order, "priceCents" | "currency">>(
+    db
+      .select({
+        priceCents: schema.orders.priceCents,
+        currency: schema.orders.currency,
+      })
+      .from(schema.orders)
+      .where(eq(schema.orders.id, gallery.orderId)),
+  );
+
+  return createPaymentRecord({
+    tenantId: gallery.tenantId,
+    gallery,
+    provider: "manual",
+    status: "paid",
+    amountCents: order?.priceCents ?? gallery.amountCents,
+    currency: order?.currency ?? gallery.currency,
+  });
+}
+
 export async function unlockGallery(
   galleryIdValue: string,
   options?: { markOrderPaid?: boolean },
@@ -364,6 +405,7 @@ export async function unlockGallery(
           .set({ status: "paid", updatedAt: nowIso() })
           .where(eq(schema.orders.id, gallery.orderId)),
       );
+      await ensurePaidPaymentForGallery(gallery);
     }
     return { ok: true as const, gallery, alreadyUnlocked: true as const };
   }
@@ -393,14 +435,17 @@ export async function unlockGallery(
         .set({ status: "paid", updatedAt: unlockedAt })
         .where(eq(schema.orders.id, gallery.orderId)),
     );
-  } else {
-    await qRun(
-      db
-        .update(schema.orders)
-        .set({ status: "delivered", updatedAt: unlockedAt })
-        .where(eq(schema.orders.id, gallery.orderId)),
-    );
+    const unlockedGallery = (await getGalleryById(galleryIdValue))!;
+    await ensurePaidPaymentForGallery(unlockedGallery);
+    return { ok: true as const, gallery: unlockedGallery };
   }
+
+  await qRun(
+    db
+      .update(schema.orders)
+      .set({ status: "delivered", updatedAt: unlockedAt })
+      .where(eq(schema.orders.id, gallery.orderId)),
+  );
 
   return { ok: true as const, gallery: (await getGalleryById(galleryIdValue))! };
 }
@@ -559,9 +604,11 @@ export async function publishDelivery(orderId: string, tenantId?: string) {
 export async function createPaymentRecord(options: {
   tenantId: string;
   gallery: Gallery;
-  provider: "stripe" | "local_stub";
+  provider: "stripe" | "local_stub" | "manual";
   providerSessionId?: string;
   status?: "pending" | "paid";
+  amountCents?: number;
+  currency?: string;
 }) {
   const db = getDb();
   const createdAt = nowIso();
@@ -572,8 +619,8 @@ export async function createPaymentRecord(options: {
     orderId: options.gallery.orderId,
     provider: options.provider,
     providerSessionId: options.providerSessionId ?? null,
-    amountCents: options.gallery.amountCents,
-    currency: options.gallery.currency,
+    amountCents: options.amountCents ?? options.gallery.amountCents,
+    currency: options.currency ?? options.gallery.currency,
     status: options.status ?? "pending",
     createdAt,
     updatedAt: createdAt,
